@@ -26,12 +26,12 @@ const (
 
 // columns required when creating or updating a record
 type Input struct {
-	Name           string           `db:"name" json:"name,omitempty" validate:"required"`
+	Name string `db:"name" json:"name,omitempty" validate:"required"`
 }
 
 // columns outputted when selecting a record. Note that Input is embedded
 type Model struct {
-	Id                 int64            `db:"id" json:"id"`
+	Id    int64 `db:"id" json:"id"`
 	Input
 }
 
@@ -104,9 +104,9 @@ See the [Northwind sample application](https://github.com/loveyourstack/northwin
 * Uses [pgx](https://github.com/jackc/pgx/) for database access and only uses parameterized SQL queries
 * Uses generics and reflection to minimize boilerplate
 * Custom date/time types with zero default values and sensible JSON formats
-* Fast rowcount function even for large tables with query conditions
+* Fast rowcount function, including estimated count for large tables with query conditions
 * Struct validation using [validator](https://github.com/go-playground/validator)
-* Differentiation between user errors (unlogged, reported to user) and application errors (logged, hidden from user)
+* Distinction between user errors (unlogged, reported to user) and application errors (logged, hidden from user)
 * Provides useful bulk insert (COPY) wrapper
 * Support for getting and filtering enum values
 * Database creation function from embedded SQL files
@@ -116,7 +116,7 @@ See the [Northwind sample application](https://github.com/loveyourstack/northwin
 ## Current limitations
 
 * Only supports PostgreSQL
-* Struct "db" tags must be added and must be identical to the "json" tag, unless the latter is "-"
+* No database obfuscation. Struct "db" tags must be added and must be identical to the "json" tag, unless the latter is "-"
 * Limited support for database date/time arrays
 
 ## Testing
