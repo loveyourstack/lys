@@ -1,0 +1,49 @@
+package lyspg
+
+import (
+	"context"
+	"fmt"
+	"reflect"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/loveyourstack/lys/lysmeta"
+)
+
+// BulkInsert inserts multiple records using the postgres COPY protocol
+// T must be a struct with "db" tags
+func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName string, inputs []T) (rowsAffected int64, err error) {
+
+	// check params
+	if len(inputs) == 0 {
+		return 0, fmt.Errorf("inputs has len 0")
+	}
+
+	var recs [][]any
+
+	// get db tags of first input
+	inputReflVals := reflect.ValueOf(inputs[0])
+	dbTags, _, err := lysmeta.GetStructTags(inputReflVals)
+	if err != nil {
+		return 0, fmt.Errorf("lysmeta.GetStructTags failed: %w", err)
+	}
+
+	if len(dbTags) == 0 {
+		return 0, fmt.Errorf("input type does not have db tags")
+	}
+
+	// for each input
+	for _, input := range inputs {
+
+		// get input values by reflection
+		inputReflVals := reflect.ValueOf(input)
+		recs = append(recs, getInputValsFromStruct(inputReflVals, nil))
+	}
+
+	// COPY to table using pgx
+	rowsAffected, err = db.CopyFrom(ctx, pgx.Identifier{schemaName, tableName}, dbTags, pgx.CopyFromRows(recs))
+	if err != nil {
+		return 0, fmt.Errorf("db.CopyFrom failed: %w", err)
+	}
+
+	return rowsAffected, nil
+}
