@@ -15,8 +15,10 @@ Lys tests are run against an actual PostgreSQL database which you can create aut
 * copy lys_config_sample.toml to lys_config.toml
 * enter your db superuser password in lys_config.toml
 * ensure you don't currently have a database with the database name shown
+* ensure /home/\<user\>/go/bin is in PATH (check with `echo $PATH`)
 * enter `make testdb`. This will (re-)create the database and populate it with tables and data
 
 ## Run tests
 
-From the root directory, `make tests`
+* ensure CGO is enabled (check with `go env`: if CGO_ENABLED=0, then `sudo apt install build-essentials` then `go env -w CGO_ENABLED=1`)
+* from the root directory, `make tests`
