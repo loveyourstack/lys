@@ -32,8 +32,7 @@ type Model struct {
 }
 
 var (
-	meta      lysmeta.Result
-	inputMeta lysmeta.Result
+	meta, inputMeta lysmeta.Result
 )
 
 func init() {
