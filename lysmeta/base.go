@@ -6,9 +6,18 @@ import (
 	"strings"
 )
 
-// GetStructTags reflects the supplied struct(s) and returns the combined "db" and "json" tags
-// checks for duplicate tags
-func GetStructTags(reflVals ...reflect.Value) (dbTags, jsonTags []string, err error) {
+// Result contains struct metadata
+type Result struct {
+	DbTags         []string          // all combined "db" tags in the struct(s) passed
+	JsonTags       []string          // all combined "json" tags in the struct(s) passed, excluding "-"
+	JsonTagTypeMap map[string]string // a map of [json tag]type name
+}
+
+// AnalyzeStructs reflects the supplied struct(s) and returns a Result
+// checks for duplicate db and json tags
+func AnalyzeStructs(reflVals ...reflect.Value) (res Result, err error) {
+
+	res.JsonTagTypeMap = make(map[string]string)
 
 	// use maps to help with duplication checks
 	dbTagMap := make(map[string]int)
@@ -17,24 +26,28 @@ func GetStructTags(reflVals ...reflect.Value) (dbTags, jsonTags []string, err er
 	// for each struct passed
 	for _, reflVal := range reflVals {
 
+		reflType := reflVal.Type()
+
 		// for each struct field
 		for i := 0; i < reflVal.NumField(); i++ {
 
 			// get the whole tag string
-			structTag := reflVal.Type().Field(i).Tag
+			structTag := reflType.Field(i).Tag
 
 			// get "db" tag if set
 			dbTag := structTag.Get("db")
 			if dbTag != "" && dbTag != "-" {
-				dbTags = append(dbTags, dbTag)
+				res.DbTags = append(res.DbTags, dbTag)
 				dbTagMap[dbTag]++
 			}
 
 			// get "json" tag if set, but strip out omitempty
 			jsonTag := strings.Replace(structTag.Get("json"), ",omitempty", "", -1)
 			if jsonTag != "" && jsonTag != "-" {
-				jsonTags = append(jsonTags, jsonTag)
+				res.JsonTags = append(res.JsonTags, jsonTag)
 				jsonTagMap[jsonTag]++
+
+				res.JsonTagTypeMap[jsonTag] = fmt.Sprintf("%v", reflType.Field(i).Type)
 			}
 		}
 	}
@@ -54,9 +67,8 @@ func GetStructTags(reflVals ...reflect.Value) (dbTags, jsonTags []string, err er
 
 	// return errors, if any
 	if len(errA) > 0 {
-		return nil, nil, fmt.Errorf(strings.Join(errA, ", "))
+		return Result{}, fmt.Errorf(strings.Join(errA, ", "))
 	}
 
-	// success: don't use maps.Keys, since some callers depend on field order
-	return dbTags, jsonTags, nil
+	return res, nil
 }

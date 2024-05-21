@@ -48,13 +48,13 @@ func Update[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, pkCo
 
 	// get columns to update by reflecting input T
 	inputReflVals := reflect.ValueOf(input)
-	dbTags, _, err := lysmeta.GetStructTags(inputReflVals)
+	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
 	if err != nil {
-		return "", fmt.Errorf("lysmeta.GetStructTags failed: %w", err)
+		return "", fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
 	}
 
 	// updateFields is dbTags with omitted fields removed
-	for _, dbTag := range dbTags {
+	for _, dbTag := range meta.DbTags {
 		found := false
 		for _, omitField := range omitFields {
 			if dbTag == omitField {

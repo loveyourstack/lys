@@ -29,19 +29,19 @@ func Insert[inputT any, itemT any](ctx context.Context, db PoolOrTx, schemaName,
 
 	// get input db struct tags
 	inputReflVals := reflect.ValueOf(input)
-	dbTags, _, err := lysmeta.GetStructTags(inputReflVals)
+	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
 	if err != nil {
-		return newItem, "", fmt.Errorf("lysmeta.GetStructTags failed: %w", err)
+		return newItem, "", fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
 	}
 
-	if len(dbTags) == 0 {
+	if len(meta.DbTags) == 0 {
 		return newItem, "", fmt.Errorf("input type does not have db tags")
 	}
 
 	// get the input values via reflection
 	inputVals := getInputValsFromStruct(inputReflVals, nil)
 
-	stmt = getInsertStmt(schemaName, tableName, pkColName, dbTags)
+	stmt = getInsertStmt(schemaName, tableName, pkColName, meta.DbTags)
 
 	var newPk any
 	if err = db.QueryRow(ctx, stmt, inputVals...).Scan(&newPk); err != nil {
