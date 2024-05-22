@@ -12,8 +12,19 @@ import (
 	"github.com/loveyourstack/lys/lyspg"
 )
 
+// output format consts
+const (
+	FormatJson  string = "json"
+	FormatExcel string = "excel"
+)
+
+var (
+	ValidFormats = [...]string{FormatJson, FormatExcel}
+)
+
 // GetReqModifiers contains data from a GET request's Url params which is used to modify a database SELECT statement
 type GetReqModifiers struct {
+	Format     string
 	Fields     []string
 	Conditions []lyspg.Condition
 	Page       int
@@ -24,13 +35,13 @@ type GetReqModifiers struct {
 // ExtractGetRequestModifiers reads the Url params of the supplied GET request and converts them into a GetReqModifiers
 func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOptions GetOptions) (getReqModifiers GetReqModifiers, err error) {
 
-	// fields (become column selection)
-	getReqModifiers.Fields, err = ExtractFields(r, validJsonFields, getOptions.FieldsParamName)
+	// format
+	getReqModifiers.Format, err = ExtractFormat(r, getOptions.FormatParamName)
 	if err != nil {
 		if userErr, ok := err.(lyserr.User); ok {
 			return GetReqModifiers{}, userErr
 		} else {
-			return GetReqModifiers{}, fmt.Errorf("ExtractFields failed: %w", err)
+			return GetReqModifiers{}, fmt.Errorf("ExtractFormat failed: %w", err)
 		}
 	}
 
@@ -44,16 +55,6 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOp
 		}
 	}
 
-	// paging (become LIMIT and OFFSET)
-	getReqModifiers.Page, getReqModifiers.PerPage, err = ExtractPaging(r, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.DefaultPerPage, getOptions.DefaultMaxPerPage)
-	if err != nil {
-		if userErr, ok := err.(lyserr.User); ok {
-			return GetReqModifiers{}, userErr
-		} else {
-			return GetReqModifiers{}, fmt.Errorf("ExtractPaging failed: %w", err)
-		}
-	}
-
 	// sorts (become ORDER BY)
 	getReqModifiers.Sorts, err = ExtractSorts(r, validJsonFields, getOptions.SortParamName)
 	if err != nil {
@@ -64,7 +65,56 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOp
 		}
 	}
 
+	// skip fields and paging if outputting to file
+	if getReqModifiers.Format != FormatJson {
+		return getReqModifiers, nil
+	}
+
+	// json output
+
+	// fields (become column selection)
+	getReqModifiers.Fields, err = ExtractFields(r, validJsonFields, getOptions.FieldsParamName)
+	if err != nil {
+		if userErr, ok := err.(lyserr.User); ok {
+			return GetReqModifiers{}, userErr
+		} else {
+			return GetReqModifiers{}, fmt.Errorf("ExtractFields failed: %w", err)
+		}
+	}
+
+	// paging (become LIMIT and OFFSET)
+	getReqModifiers.Page, getReqModifiers.PerPage, err = ExtractPaging(r, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.DefaultPerPage, getOptions.DefaultMaxPerPage)
+	if err != nil {
+		if userErr, ok := err.(lyserr.User); ok {
+			return GetReqModifiers{}, userErr
+		} else {
+			return GetReqModifiers{}, fmt.Errorf("ExtractPaging failed: %w", err)
+		}
+	}
+
 	return getReqModifiers, nil
+}
+
+// ExtractFormat returns
+func ExtractFormat(r *http.Request, formatReqParamName string) (format string, err error) {
+
+	// formatReqParamName: e.g. "xformat"
+	// example: &xformat=excel
+
+	formatVal := r.FormValue(formatReqParamName)
+
+	// if no format param defined, default to json
+	if formatVal == "" {
+		return FormatJson, nil
+	}
+
+	// ensure value is valid
+	if !slices.Contains(ValidFormats[:], formatVal) {
+		return "", lyserr.User{
+			Message: formatReqParamName + " param value is invalid: " + formatVal}
+	}
+
+	return formatVal, nil
 }
 
 // ExtractFields returns a slice of strings parsed from the request's fields param
@@ -108,7 +158,7 @@ func ExtractFilters(urlValues url.Values, validJsonFields []string, getOptions G
 	for key, vals := range urlValues {
 
 		// skip if this is a Url key assigned to one of the other purposes (.e.g paging, sorting)
-		specialParams := []string{getOptions.FieldsParamName, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.SortParamName}
+		specialParams := []string{getOptions.FormatParamName, getOptions.FieldsParamName, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.SortParamName}
 		if slices.Contains(specialParams, key) {
 			continue
 		}

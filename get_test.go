@@ -119,6 +119,21 @@ func TestGetSuccessFilters(t *testing.T) {
 	}
 }
 
+func TestGetSuccessFormat(t *testing.T) {
+
+	srvApp := mustGetSrvApp(t, context.Background())
+	defer srvApp.Db.Close()
+
+	// json
+	targetUrl := "/param-test?id=1&xformat=json"
+	items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 1, len(items), "format json")
+
+	// excel
+	targetUrl = "/param-test?id=1&xformat=excel"
+	lysclient.MustGetFile(t, srvApp.getRouter(), targetUrl)
+}
+
 func TestGetSuccessPaging(t *testing.T) {
 
 	srvApp := mustGetSrvApp(t, context.Background())

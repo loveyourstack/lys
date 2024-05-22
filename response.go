@@ -3,7 +3,9 @@ package lys
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 )
 
 // response constants
@@ -54,4 +56,24 @@ func JsonResponse(resp StdResponse, httpStatus int, headers []RespHeader, w http
 
 	w.WriteHeader(httpStatus)
 	w.Write(json)
+}
+
+// FileResponse opens the supplied file and copies it to w
+func FileResponse(filePath, outputFileName string, remove bool, w http.ResponseWriter) {
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Printf("FileResponse: os.Open failed: %s", err.Error())
+		return
+	}
+	defer file.Close()
+
+	if remove {
+		defer os.Remove(filePath)
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", outputFileName))
+
+	io.Copy(w, file)
 }

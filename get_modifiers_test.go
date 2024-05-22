@@ -230,6 +230,37 @@ func TestExtractFiltersFailure(t *testing.T) {
 	assert.EqualValues(t, "empty value in filter field: a", err.Error())
 }
 
+func TestExtractFormatSuccess(t *testing.T) {
+
+	formatReqParamName := "xformat"
+
+	// with fields param
+	r := mustCreateGetReq(t, "/test?xformat=excel")
+	format, err := ExtractFormat(r, formatReqParamName)
+	if err != nil {
+		t.Errorf("ExtractFormat failed: %v", err)
+	}
+	assert.EqualValues(t, "excel", format)
+
+	// without format param (use json default)
+	r = mustCreateGetReq(t, "/test")
+	format, err = ExtractFormat(r, formatReqParamName)
+	if err != nil {
+		t.Errorf("ExtractFormat failed: %v", err)
+	}
+	assert.EqualValues(t, "json", format)
+}
+
+func TestExtractFormatFailure(t *testing.T) {
+
+	formatReqParamName := "xformat"
+
+	// invalid value
+	r := mustCreateGetReq(t, "/test?xformat=a")
+	_, err := ExtractFormat(r, formatReqParamName)
+	assert.EqualValues(t, "xformat param value is invalid: a", err.Error())
+}
+
 func TestExtractPagingSuccess(t *testing.T) {
 
 	pageReqParamName := "xpage"

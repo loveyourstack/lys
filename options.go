@@ -3,17 +3,22 @@ package lys
 // GetOptions contains the options used when processing GET requests, such as paging param names and default values
 // Since the json field names are used as filters, param names should be chosen which will never appear as json field names
 type GetOptions struct {
+	FormatParamName        string // param name to determine the output format of a GET request, e.g. "xformat"
 	FieldsParamName        string // param name to limit the fields returned by a GET request, e.g. "xfields"
-	PageParamName          string // param name to define the page offset returned by a GET request, e.g. "xpage"
-	PerPageParamName       string // param name to define the number of records returned by a GET request, e.g. "xper_page"
+	PageParamName          string // param name to define the page offset returned by a paged GET request, e.g. "xpage"
+	PerPageParamName       string // param name to define the number of records returned by a paged GET request, e.g. "xper_page"
 	SortParamName          string // param name to identify the sort param used by a GET request, e.g. "xsort"
 	MultipleValueSeparator string // the string used by a GET request to separate values in a filter where each value should be returned, e.g. "|", usage: "name=Bill|Sam"
-	DefaultPerPage         int    // default number of results returned by a GET request, e.g. 20
-	DefaultMaxPerPage      int    // default max number of results returned per GET request, regardless of what the caller enters in the "PerPageParamName" param, e.g. 500
+	DefaultPerPage         int    // default number of results returned by a paged GET request, e.g. 20
+	DefaultMaxPerPage      int    // default max number of results returned per paged GET request, regardless of what the caller enters in the "PerPageParamName" param, e.g. 500
+	DefaultMaxFileRecs     int    // default max number of records contained in a file output
 }
 
 // FillGetOptions returns input GetOptions if they are passed, and sets any unset fields to a sensible default value
 func FillGetOptions(input GetOptions) (ret GetOptions) {
+	if input.FormatParamName == "" {
+		ret.FormatParamName = "xformat"
+	}
 	if input.FieldsParamName == "" {
 		ret.FieldsParamName = "xfields"
 	}
@@ -34,6 +39,9 @@ func FillGetOptions(input GetOptions) (ret GetOptions) {
 	}
 	if input.DefaultMaxPerPage == 0 {
 		ret.DefaultMaxPerPage = 500
+	}
+	if input.DefaultMaxFileRecs == 0 {
+		ret.DefaultMaxFileRecs = 10000
 	}
 
 	return ret

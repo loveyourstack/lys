@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -196,6 +197,43 @@ func MustGetArray[T any](t testing.TB, h http.Handler, targetUrl string) (arr []
 
 	// success
 	return res.Data
+}
+
+// MustGetFile GETs the target Url using a test handler. It expects a response with file output headers and will fail on any error
+func MustGetFile(t testing.TB, h http.Handler, targetUrl string) {
+
+	// create req
+	req, err := http.NewRequest("GET", targetUrl, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest failed: %v", err)
+	}
+
+	// do req
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// check status code
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, rr.Code, targetUrl)
+	}
+
+	// check headers
+	respHeader := rr.Result().Header
+
+	contentDispHeader := respHeader.Get("Content-Disposition")
+	if contentDispHeader == "" {
+		t.Fatalf("content-disposition header for Url: %s is missing", targetUrl)
+	}
+	if !strings.Contains(contentDispHeader, "attachment") {
+		t.Fatalf("content-disposition header is missing 'attachment' value for Url: %s", targetUrl)
+	}
+
+	expectedContentType := "application/octet-stream"
+	if respHeader.Get("Content-Type") != "application/octet-stream" {
+		t.Fatalf("expected content-type header: %s, got: %s for Url: %s", expectedContentType, respHeader.Get("Content-Type"), targetUrl)
+	}
+
+	// success
 }
 
 // MustGetItems GETs the target Url using a test handler. It expects an array of items in response and will fail on any error

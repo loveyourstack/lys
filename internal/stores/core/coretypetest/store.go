@@ -17,6 +17,7 @@ import (
 )
 
 const (
+	name           string = "Type test"
 	schemaName     string = "core"
 	tableName      string = "type_test"
 	viewName       string = "type_test"
@@ -183,6 +184,12 @@ func GetFilledInput() (input Input, err error) {
 
 func (s Store) GetJsonFields() []string {
 	return meta.JsonTags
+}
+func (s Store) GetJsonTagTypeMap() map[string]string {
+	return meta.JsonTagTypeMap
+}
+func (s Store) GetName() string {
+	return name
 }
 
 func (s Store) Insert(ctx context.Context, input Input) (newItem Model, stmt string, err error) {

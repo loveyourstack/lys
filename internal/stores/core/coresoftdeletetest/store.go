@@ -12,6 +12,7 @@ import (
 )
 
 const (
+	name           string = "Soft delete test"
 	schemaName     string = "core"
 	tableName      string = "soft_delete_test"
 	viewName       string = "soft_delete_test"
@@ -47,6 +48,12 @@ type Store struct {
 
 func (s Store) GetJsonFields() []string {
 	return meta.JsonTags
+}
+func (s Store) GetJsonTagTypeMap() map[string]string {
+	return meta.JsonTagTypeMap
+}
+func (s Store) GetName() string {
+	return name
 }
 
 func (s Store) Restore(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error) {
