@@ -10,11 +10,12 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5"
 	"github.com/loveyourstack/lys/lyserr"
+	"github.com/loveyourstack/lys/lysmeta"
 )
 
 // iGetablebyUuid is a store that can be used by GetByUuid
 type iGetablebyUuid[T any] interface {
-	GetJsonFields() []string
+	GetMeta() lysmeta.Result
 	SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item T, stmt string, err error)
 }
 
@@ -37,7 +38,7 @@ func GetByUuid[T any](env Env, store iGetablebyUuid[T]) http.HandlerFunc {
 		}
 
 		// get fields param if present (e.g. &xfields=)
-		fields, err := ExtractFields(r, store.GetJsonFields(), env.GetOptions.FieldsParamName)
+		fields, err := ExtractFields(r, store.GetMeta().JsonTags, env.GetOptions.FieldsParamName)
 		if err != nil {
 			if userErr, ok := err.(lyserr.User); ok {
 				HandleUserError(http.StatusBadRequest, userErr.Message, w)

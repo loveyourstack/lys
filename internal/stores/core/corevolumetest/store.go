@@ -53,11 +53,8 @@ func (s Store) Delete(ctx context.Context, id int64) (stmt string, err error) {
 	return lyspg.DeleteUnique(ctx, s.Db, schemaName, tableName, pkColName, id)
 }
 
-func (s Store) GetJsonFields() []string {
-	return meta.JsonTags
-}
-func (s Store) GetJsonTagTypeMap() map[string]string {
-	return meta.JsonTagTypeMap
+func (s Store) GetMeta() lysmeta.Result {
+	return meta
 }
 func (s Store) GetName() string {
 	return name

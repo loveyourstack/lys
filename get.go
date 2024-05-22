@@ -10,14 +10,14 @@ import (
 
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysexcel"
+	"github.com/loveyourstack/lys/lysmeta"
 	"github.com/loveyourstack/lys/lyspg"
 )
 
 // iGetable is a store that can be used by Get
 type iGetable[T any] interface {
-	GetJsonFields() []string              // json output: for validation of fields, if specified
-	GetJsonTagTypeMap() map[string]string // excel output: for setting appropriate cell format for each field
-	GetName() string                      // file output: for setting filename
+	GetMeta() lysmeta.Result
+	GetName() string // file output: for setting filename
 	Select(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, stmt string, err error)
 }
 
@@ -27,7 +27,7 @@ func Get[T any](env Env, store iGetable[T]) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// get request modifiers from url params
-		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetJsonFields(), env.GetOptions)
+		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetMeta().JsonTags, env.GetOptions)
 		if err != nil {
 			if userErr, ok := err.(lyserr.User); ok {
 				HandleUserError(http.StatusBadRequest, userErr.Message, w)
@@ -54,6 +54,10 @@ func Get[T any](env Env, store iGetable[T]) http.HandlerFunc {
 			selectParams.Limit = getReqModifiers.PerPage
 			selectParams.Offset = offset
 			selectParams.GetUnpagedCount = true
+
+		} else {
+			// returning file: set max number of records
+			selectParams.Limit = env.GetOptions.DefaultMaxFileRecs
 		}
 
 		// select items from db
@@ -84,7 +88,7 @@ func Get[T any](env Env, store iGetable[T]) http.HandlerFunc {
 			f.Close()
 
 			// write items to temp file as Excel workbook
-			err = lysexcel.WriteItemsToFile(items, store.GetJsonTagTypeMap(), f.Name(), "")
+			err = lysexcel.WriteItemsToFile(items, store.GetMeta().JsonTagTypeMap, f.Name(), "")
 			if err != nil {
 				HandleInternalError(r.Context(), fmt.Errorf("Get: lysexcel.WriteItemsToFile failed: %w", err), env.ErrorLog, w)
 				return
