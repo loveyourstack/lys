@@ -8,6 +8,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/loveyourstack/lys/lyscsv"
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysexcel"
 	"github.com/loveyourstack/lys/lysmeta"
@@ -57,7 +58,7 @@ func Get[T any](env Env, store iGetable[T]) http.HandlerFunc {
 
 		} else {
 			// returning file: set max number of records
-			selectParams.Limit = env.GetOptions.DefaultMaxFileRecs
+			selectParams.Limit = env.GetOptions.MaxFileRecs
 		}
 
 		// select items from db
@@ -76,6 +77,26 @@ func Get[T any](env Env, store iGetable[T]) http.HandlerFunc {
 
 		// output the required format
 		switch getReqModifiers.Format {
+
+		case FormatCsv:
+
+			// create unique temp file
+			f, err := os.CreateTemp("", store.GetName()+".*.csv")
+			if err != nil {
+				HandleInternalError(r.Context(), fmt.Errorf("Get: os.CreateTemp failed: %w", err), env.ErrorLog, w)
+				return
+			}
+			f.Close()
+
+			// write items to temp file
+			err = lyscsv.WriteItemsToFile(items, store.GetMeta().JsonTagTypeMap, f.Name(), env.GetOptions.CsvDelimiter)
+			if err != nil {
+				HandleInternalError(r.Context(), fmt.Errorf("Get: lyscsv.WriteItemsToFile failed: %w", err), env.ErrorLog, w)
+				return
+			}
+
+			// copy file into response then remove it
+			FileResponse(f.Name(), store.GetName()+".csv", true, w)
 
 		case FormatExcel:
 

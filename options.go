@@ -10,8 +10,9 @@ type GetOptions struct {
 	SortParamName          string // param name to identify the sort param used by a GET request, e.g. "xsort"
 	MultipleValueSeparator string // the string used by a GET request to separate values in a filter where each value should be returned, e.g. "|", usage: "name=Bill|Sam"
 	DefaultPerPage         int    // default number of results returned by a paged GET request, e.g. 20
-	DefaultMaxPerPage      int    // default max number of results returned per paged GET request, regardless of what the caller enters in the "PerPageParamName" param, e.g. 500
-	DefaultMaxFileRecs     int    // default max number of records contained in a file output
+	MaxPerPage             int    // max number of results returned per paged GET request, regardless of what the caller enters in the "PerPageParamName" param, e.g. 500
+	MaxFileRecs            int    // max number of records contained in a file output
+	CsvDelimiter           rune   // delimiter between values in CSV file output
 }
 
 // FillGetOptions returns input GetOptions if they are passed, and sets any unset fields to a sensible default value
@@ -37,11 +38,14 @@ func FillGetOptions(input GetOptions) (ret GetOptions) {
 	if input.DefaultPerPage == 0 {
 		ret.DefaultPerPage = 20
 	}
-	if input.DefaultMaxPerPage == 0 {
-		ret.DefaultMaxPerPage = 500
+	if input.MaxPerPage == 0 {
+		ret.MaxPerPage = 500
 	}
-	if input.DefaultMaxFileRecs == 0 {
-		ret.DefaultMaxFileRecs = 10000
+	if input.MaxFileRecs == 0 {
+		ret.MaxFileRecs = 10000
+	}
+	if input.CsvDelimiter == 0 {
+		ret.CsvDelimiter = ','
 	}
 
 	return ret

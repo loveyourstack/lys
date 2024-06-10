@@ -36,7 +36,27 @@ type RespHeader struct {
 	Value string
 }
 
-// JsonResponse writes the supplied params to w
+// FileResponse opens the supplied file and streams it to w as a file
+func FileResponse(filePath, outputFileName string, remove bool, w http.ResponseWriter) {
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Printf("FileResponse: os.Open failed: %s", err.Error())
+		return
+	}
+	defer file.Close()
+
+	if remove {
+		defer os.Remove(filePath)
+	}
+
+	w.Header().Set("Content-Type", "application/octet-stream")
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", outputFileName))
+
+	io.Copy(w, file)
+}
+
+// JsonResponse marshals the supplied StdResponse to json and writes it to w
 func JsonResponse(resp StdResponse, httpStatus int, headers []RespHeader, w http.ResponseWriter) {
 
 	json, err := json.Marshal(resp)
@@ -56,24 +76,4 @@ func JsonResponse(resp StdResponse, httpStatus int, headers []RespHeader, w http
 
 	w.WriteHeader(httpStatus)
 	w.Write(json)
-}
-
-// FileResponse opens the supplied file and copies it to w
-func FileResponse(filePath, outputFileName string, remove bool, w http.ResponseWriter) {
-
-	file, err := os.Open(filePath)
-	if err != nil {
-		fmt.Printf("FileResponse: os.Open failed: %s", err.Error())
-		return
-	}
-	defer file.Close()
-
-	if remove {
-		defer os.Remove(filePath)
-	}
-
-	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", outputFileName))
-
-	io.Copy(w, file)
 }

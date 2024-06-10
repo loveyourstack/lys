@@ -14,12 +14,13 @@ import (
 
 // output format consts
 const (
-	FormatJson  string = "json"
+	FormatCsv   string = "csv"
 	FormatExcel string = "excel"
+	FormatJson  string = "json"
 )
 
 var (
-	ValidFormats = [...]string{FormatJson, FormatExcel}
+	ValidFormats = [...]string{FormatCsv, FormatExcel, FormatJson}
 )
 
 // GetReqModifiers contains data from a GET request's Url params which is used to modify a database SELECT statement
@@ -83,7 +84,7 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOp
 	}
 
 	// paging (become LIMIT and OFFSET)
-	getReqModifiers.Page, getReqModifiers.PerPage, err = ExtractPaging(r, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.DefaultPerPage, getOptions.DefaultMaxPerPage)
+	getReqModifiers.Page, getReqModifiers.PerPage, err = ExtractPaging(r, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.DefaultPerPage, getOptions.MaxPerPage)
 	if err != nil {
 		if userErr, ok := err.(lyserr.User); ok {
 			return GetReqModifiers{}, userErr

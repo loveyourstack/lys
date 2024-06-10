@@ -102,6 +102,7 @@ See the [Northwind sample application](https://github.com/loveyourstack/northwin
 * Support for GET many, GET single, POST, PUT, PATCH and DELETE
 * Support for [sorting, paging and filtering GET results](https://github.com/loveyourstack/lys/wiki/GET-request-URL-parameters) via customizable URL params
 * Uses [pgx](https://github.com/jackc/pgx/) for database access and only uses parameterized SQL queries
+* Support for Excel and CSV output
 * Uses generics and reflection to minimize boilerplate
 * Custom date/time types with zero default values and sensible JSON formats
 * Fast rowcount function, including estimated count for large tables with query conditions
