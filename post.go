@@ -76,6 +76,6 @@ func Post[inputT any, itemT any](env Env, store iPostable[inputT, itemT]) http.H
 			Status: ReqSucceeded,
 			Data:   newItem,
 		}
-		JsonResponse(resp, http.StatusCreated, nil, w)
+		JsonResponse(resp, http.StatusCreated, w)
 	}
 }

@@ -93,6 +93,6 @@ func Put[T any](env Env, store iPutable[T]) http.HandlerFunc {
 			Status: ReqSucceeded,
 			Data:   DataUpdated,
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }

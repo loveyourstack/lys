@@ -17,7 +17,7 @@ func HandleDbError(ctx context.Context, stmt string, err error, errorLog *slog.L
 		Status:         ReqFailed,
 		ErrDescription: "A database error occurred",
 	}
-	JsonResponse(resp, http.StatusInternalServerError, nil, w)
+	JsonResponse(resp, http.StatusInternalServerError, w)
 
 	userName := GetUserNameFromCtx(ctx, "Unknown")
 	errorLog.Error(err.Error(), slog.String("user", userName), slog.String("stmt", stmt))
@@ -30,7 +30,7 @@ func HandleInternalError(ctx context.Context, err error, errorLog *slog.Logger, 
 		Status:         ReqFailed,
 		ErrDescription: "An internal error occurred",
 	}
-	JsonResponse(resp, http.StatusInternalServerError, nil, w)
+	JsonResponse(resp, http.StatusInternalServerError, w)
 
 	userName := GetUserNameFromCtx(ctx, "Unknown")
 	errorLog.Error(err.Error(), slog.String("user", userName))
@@ -72,5 +72,5 @@ func HandleUserError(statusCode int, userErrMsg string, w http.ResponseWriter) {
 		Status:         ReqFailed,
 		ErrDescription: userErrMsg,
 	}
-	JsonResponse(resp, statusCode, nil, w)
+	JsonResponse(resp, statusCode, w)
 }

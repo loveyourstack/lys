@@ -53,7 +53,7 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 	}
 
 	// success
-	return items, unpagedCount, stmt, nil
+	return items, unpagedCount, "", nil
 }
 
 // SelectByArray returns multiple rows from the db depending on the array supplied
@@ -88,5 +88,5 @@ func SelectUnique[T any](ctx context.Context, db PoolOrTx, schema, view, column 
 	}
 
 	// success
-	return item, stmt, nil
+	return item, "", nil
 }

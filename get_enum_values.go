@@ -67,7 +67,7 @@ func GetEnumValues(env Env, db *pgxpool.Pool, schema, enum string) http.HandlerF
 			Status: ReqSucceeded,
 			Data:   vals,
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }
 

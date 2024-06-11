@@ -29,7 +29,7 @@ func Exists(ctx context.Context, db PoolOrTx, schemaName, tableName, columnName 
 func ExistsConditions(ctx context.Context, db PoolOrTx, schemaName, tableName, match string, colValMap map[string]any) (ret bool, stmt string, err error) {
 
 	if !slices.Contains([]string{"AND", "OR"}, match) {
-		return false, "", fmt.Errorf("match must be AND or OR")
+		return false, "", fmt.Errorf("match must be 'AND' or 'OR'")
 	}
 
 	whereClause := ""

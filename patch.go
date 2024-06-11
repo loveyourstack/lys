@@ -94,6 +94,6 @@ func Patch(env Env, store iPatchable) http.HandlerFunc {
 			Status: ReqSucceeded,
 			Data:   DataUpdated,
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }

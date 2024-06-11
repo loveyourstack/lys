@@ -68,6 +68,6 @@ func Delete(env Env, store iDeletable) http.HandlerFunc {
 			Status: ReqSucceeded,
 			Data:   DataDeleted,
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"strconv"
 
 	"github.com/loveyourstack/lys/lyscsv"
 	"github.com/loveyourstack/lys/lyserr"
@@ -120,17 +119,17 @@ func Get[T any](env Env, store iGetable[T]) http.HandlerFunc {
 
 		case FormatJson:
 
-			// add unpagedCount as header
-			headers := []RespHeader{}
-			headers = append(headers, RespHeader{Key: "X-Total-Count", Value: strconv.FormatInt(unpagedCount.Value, 10)})
-			headers = append(headers, RespHeader{Key: "X-Total-Count-Estimated", Value: strconv.FormatBool(unpagedCount.IsEstimated)})
-
 			// marshal items to json response
 			resp := StdResponse{
 				Status: ReqSucceeded,
 				Data:   items,
+				GetMetadata: &GetMetadata{
+					Count:                 len(items),
+					TotalCount:            unpagedCount.Value,
+					TotalCountIsEstimated: unpagedCount.IsEstimated,
+				},
 			}
-			JsonResponse(resp, http.StatusOK, headers, w)
+			JsonResponse(resp, http.StatusOK, w)
 
 		default:
 			// should never happen assuming format param gets checked

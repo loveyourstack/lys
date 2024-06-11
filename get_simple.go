@@ -31,6 +31,6 @@ func GetSimple[T any](env Env, selectFunc func(ctx context.Context) (items []T, 
 			Status: ReqSucceeded,
 			Data:   items,
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }

@@ -89,6 +89,6 @@ func MoveRecordsById(env Env, db *pgxpool.Pool, moveFunc func(context.Context, p
 			Status: ReqSucceeded,
 			Data:   msg,
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }

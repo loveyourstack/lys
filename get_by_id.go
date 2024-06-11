@@ -68,6 +68,6 @@ func GetById[T any](env Env, store iGetablebyId[T]) http.HandlerFunc {
 			Status: ReqSucceeded,
 			Data:   item,
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }

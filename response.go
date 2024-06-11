@@ -21,19 +21,21 @@ const (
 	DataUpdated     string = "updated"
 )
 
-// StdResponse is the return type of all API routes
-type StdResponse struct {
-	Status          string `json:"status"`
-	Data            any    `json:"data,omitempty"`
-	ErrType         string `json:"err_type,omitempty"`
-	ErrDescription  string `json:"err_description,omitempty"`
-	ExternalMessage string `json:"external_message,omitempty"` // user-readable messages passed on from 3rd party API calls
+type GetMetadata struct {
+	Count                 int   `json:"count"`
+	TotalCount            int64 `json:"total_count"`
+	TotalCountIsEstimated bool  `json:"total_count_is_estimated"`
 }
 
-// RespHeader contains the data in a HTTP reponse header
-type RespHeader struct {
-	Key   string
-	Value string
+// StdResponse is the return type of all API routes
+type StdResponse struct {
+	Status          string       `json:"status"`
+	Data            any          `json:"data,omitempty"`
+	GetMetadata     *GetMetadata `json:"metadata,omitempty"` // only used for GET many
+	ErrType         string       `json:"err_type,omitempty"`
+	ErrDescription  string       `json:"err_description,omitempty"`
+	ExternalMessage string       `json:"external_message,omitempty"` // user-readable messages passed on from 3rd party API calls
+	//LastSyncAt      *lystype.Datetime `json:"last_sync_at,omitempty"`     // if the data was synced from external source: the last sync timestamp
 }
 
 // FileResponse opens the supplied file and streams it to w as a file
@@ -57,7 +59,7 @@ func FileResponse(filePath, outputFileName string, remove bool, w http.ResponseW
 }
 
 // JsonResponse marshals the supplied StdResponse to json and writes it to w
-func JsonResponse(resp StdResponse, httpStatus int, headers []RespHeader, w http.ResponseWriter) {
+func JsonResponse(resp StdResponse, httpStatus int, w http.ResponseWriter) {
 
 	json, err := json.Marshal(resp)
 	if err != nil {
@@ -68,11 +70,6 @@ func JsonResponse(resp StdResponse, httpStatus int, headers []RespHeader, w http
 
 	// mandatory header
 	w.Header().Set("Content-Type", "application/json")
-
-	// add further headers, if any
-	for _, v := range headers {
-		w.Header().Set(v.Key, v.Value)
-	}
 
 	w.WriteHeader(httpStatus)
 	w.Write(json)

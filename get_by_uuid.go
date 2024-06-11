@@ -73,6 +73,6 @@ func GetByUuid[T any](env Env, store iGetablebyUuid[T]) http.HandlerFunc {
 			Status: ReqSucceeded,
 			Data:   item,
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }

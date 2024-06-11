@@ -22,7 +22,7 @@ func Message(msg string) http.HandlerFunc {
 			Status: ReqSucceeded,
 			Data:   msg,
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }
 
@@ -35,7 +35,7 @@ func NotFound() http.HandlerFunc {
 			Status:         ReqFailed,
 			ErrDescription: ErrDescRouteNotFound,
 		}
-		JsonResponse(resp, http.StatusNotFound, nil, w)
+		JsonResponse(resp, http.StatusNotFound, w)
 	}
 }
 
@@ -63,7 +63,7 @@ func PgSleep(db lyspg.PoolOrTx, errorLog *slog.Logger, secs int) http.HandlerFun
 					Status:         ReqFailed,
 					ErrDescription: "process canceled in database",
 				}
-				JsonResponse(resp, http.StatusInternalServerError, nil, w)
+				JsonResponse(resp, http.StatusInternalServerError, w)
 				return
 			}
 
@@ -76,6 +76,6 @@ func PgSleep(db lyspg.PoolOrTx, errorLog *slog.Logger, secs int) http.HandlerFun
 			Status: ReqSucceeded,
 			Data:   fmt.Sprintf("slept %d seconds", secs),
 		}
-		JsonResponse(resp, http.StatusOK, nil, w)
+		JsonResponse(resp, http.StatusOK, w)
 	}
 }
