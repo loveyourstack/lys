@@ -6,6 +6,8 @@ import (
 	"io"
 	"net/http"
 	"os"
+
+	"github.com/loveyourstack/lys/lystype"
 )
 
 // response constants
@@ -29,13 +31,13 @@ type GetMetadata struct {
 
 // StdResponse is the return type of all API routes
 type StdResponse struct {
-	Status          string       `json:"status"`
-	Data            any          `json:"data,omitempty"`
-	GetMetadata     *GetMetadata `json:"metadata,omitempty"` // only used for GET many
-	ErrType         string       `json:"err_type,omitempty"`
-	ErrDescription  string       `json:"err_description,omitempty"`
-	ExternalMessage string       `json:"external_message,omitempty"` // user-readable messages passed on from 3rd party API calls
-	//LastSyncAt      *lystype.Datetime `json:"last_sync_at,omitempty"`     // if the data was synced from external source: the last sync timestamp
+	Status          string            `json:"status"`
+	Data            any               `json:"data,omitempty"`
+	GetMetadata     *GetMetadata      `json:"metadata,omitempty"`     // only used for GET many
+	LastSyncAt      *lystype.Datetime `json:"last_sync_at,omitempty"` // if the data was synced from external source: the last sync timestamp
+	ErrType         string            `json:"err_type,omitempty"`
+	ErrDescription  string            `json:"err_description,omitempty"`
+	ExternalMessage string            `json:"external_message,omitempty"` // user-readable messages passed on from 3rd party API calls
 }
 
 // FileResponse opens the supplied file and streams it to w as a file

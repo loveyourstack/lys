@@ -12,6 +12,7 @@ import (
 	"github.com/loveyourstack/lys/lysexcel"
 	"github.com/loveyourstack/lys/lysmeta"
 	"github.com/loveyourstack/lys/lyspg"
+	"github.com/loveyourstack/lys/lystype"
 )
 
 // iGetable is a store that can be used by Get
@@ -21,8 +22,12 @@ type iGetable[T any] interface {
 	Select(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, stmt string, err error)
 }
 
+type GetOption struct {
+	GetLastSyncAt func(ctx context.Context) (lastSyncAt lystype.Datetime, stmt string, err error) // for external data: func to get the last synced timestamp
+}
+
 // Get handles retrieval of multiple items from the supplied store
-func Get[T any](env Env, store iGetable[T]) http.HandlerFunc {
+func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -129,6 +134,19 @@ func Get[T any](env Env, store iGetable[T]) http.HandlerFunc {
 					TotalCountIsEstimated: unpagedCount.IsEstimated,
 				},
 			}
+
+			// if GetLastSyncAt func was passed, call it
+			for _, option := range options {
+				if option.GetLastSyncAt != nil {
+					lastSyncAt, stmt, err := option.GetLastSyncAt(r.Context())
+					if err != nil {
+						HandleDbError(r.Context(), stmt, fmt.Errorf("Get: option.GetLastSyncAt failed: %w", err), env.ErrorLog, w)
+						return
+					}
+					resp.LastSyncAt = &lastSyncAt
+				}
+			}
+
 			JsonResponse(resp, http.StatusOK, w)
 
 		default:
@@ -136,4 +154,15 @@ func Get[T any](env Env, store iGetable[T]) http.HandlerFunc {
 			HandleInternalError(r.Context(), fmt.Errorf("Get: unknown format: '%s'", getReqModifiers.Format), env.ErrorLog, w)
 		}
 	}
+}
+
+// iGetableWithLastSync is a store that can be used by GetWithLastSync
+type iGetableWithLastSync[T any] interface {
+	iGetable[T]
+	GetLastSyncAt(ctx context.Context) (lastSyncAt lystype.Datetime, stmt string, err error)
+}
+
+// GetWithLastSync is a wrapper for Get which adds the lastSyncAt timestamp from the supplied func to the JSON response
+func GetWithLastSync[T any](env Env, store iGetableWithLastSync[T]) http.HandlerFunc {
+	return Get[T](env, store, GetOption{GetLastSyncAt: store.GetLastSyncAt})
 }
