@@ -71,6 +71,18 @@ func SelectByArray[inputT, itemT any](ctx context.Context, db PoolOrTx, schema, 
 	return items, "", nil
 }
 
+// SelectT is a basic wrapper for db.Query / pgx.CollectRows
+func SelectT[T any](ctx context.Context, db PoolOrTx, selectStmt string, params ...any) (items []T, stmt string, err error) {
+
+	rows, _ := db.Query(ctx, selectStmt, params...)
+	items, err = pgx.CollectRows(rows, pgx.RowToStructByNameLax[T])
+	if err != nil {
+		return nil, selectStmt, fmt.Errorf("pgx.CollectRows failed: %w", err)
+	}
+
+	return items, "", nil
+}
+
 // SelectUnique returns a single row using the value of a unique column such as id
 func SelectUnique[T any](ctx context.Context, db PoolOrTx, schema, view, column string, fields, allFields []string, uniqueVal any) (item T, stmt string, err error) {
 

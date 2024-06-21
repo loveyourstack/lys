@@ -135,7 +135,7 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFu
 				},
 			}
 
-			// if GetLastSyncAt func was passed, call it
+			// if GetLastSyncAt func was passed, call it and add timestamp to resp
 			for _, option := range options {
 				if option.GetLastSyncAt != nil {
 					lastSyncAt, stmt, err := option.GetLastSyncAt(r.Context())
