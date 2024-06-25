@@ -56,6 +56,19 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 	return items, unpagedCount, "", nil
 }
 
+// SelectArray is a wrapper for selecting into a non-struct type T (db.Query / pgx.CollectRows with RowTo)
+// T must be a primitive type such as int64 or string
+func SelectArray[T any](ctx context.Context, db PoolOrTx, selectStmt string, params ...any) (ar []T, stmt string, err error) {
+
+	rows, _ := db.Query(ctx, selectStmt, params...)
+	ar, err = pgx.CollectRows(rows, pgx.RowTo[T])
+	if err != nil {
+		return nil, selectStmt, fmt.Errorf("pgx.CollectRows failed: %w", err)
+	}
+
+	return ar, "", nil
+}
+
 // SelectByArray returns multiple rows from the db depending on the array supplied
 // inputT must be a primitive type such as int64 or string
 func SelectByArray[inputT, itemT any](ctx context.Context, db PoolOrTx, schema, view, column string, ar []inputT) (items []itemT, stmt string, err error) {
@@ -66,18 +79,6 @@ func SelectByArray[inputT, itemT any](ctx context.Context, db PoolOrTx, schema, 
 	items, err = pgx.CollectRows(rows, pgx.RowToStructByNameLax[itemT])
 	if err != nil {
 		return nil, stmt, fmt.Errorf("pgx.CollectRows failed: %w", err)
-	}
-
-	return items, "", nil
-}
-
-// SelectNT is a wrapper for selecting into a non-struct type T (db.Query / pgx.CollectRows with RowTo)
-func SelectNT[T any](ctx context.Context, db PoolOrTx, selectStmt string, params ...any) (items []T, stmt string, err error) {
-
-	rows, _ := db.Query(ctx, selectStmt, params...)
-	items, err = pgx.CollectRows(rows, pgx.RowTo[T])
-	if err != nil {
-		return nil, selectStmt, fmt.Errorf("pgx.CollectRows failed: %w", err)
 	}
 
 	return items, "", nil
