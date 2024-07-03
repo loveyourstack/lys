@@ -19,6 +19,17 @@ type ReqUserInfo struct {
 	UserName string   `json:"user_name"`
 }
 
+// GetUserFromCtx returns the user from ctx. ReqUserInfoCtxKey and ReqUserInfo must have been assigned in middleware
+func GetUserFromCtx(ctx context.Context) ReqUserInfo {
+
+	userInfo, ok := ctx.Value(ReqUserInfoCtxKey).(ReqUserInfo)
+	if !ok {
+		return ReqUserInfo{}
+	}
+	return userInfo
+}
+
+// GetUserNameFromCtx returns the username if it can be obtained from ctx, otherwise the supplied default value
 func GetUserNameFromCtx(ctx context.Context, defaultVal string) string {
 
 	userInfo, ok := ctx.Value(ReqUserInfoCtxKey).(ReqUserInfo)
