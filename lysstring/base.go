@@ -67,6 +67,19 @@ func RandString(n int) string {
 	return *(*string)(unsafe.Pointer(&b))
 }
 
+// RemoveCharacters returns input with the chars in charsToRemove removed
+// from https://socketloop.com/tutorials/golang-remove-characters-from-string-example
+func RemoveCharacters(input string, charsToRemove string) string {
+	filter := func(r rune) rune {
+		if !strings.ContainsRune(charsToRemove, r) {
+			return r
+		}
+		return -1
+	}
+
+	return strings.Map(filter, input)
+}
+
 // SlicesEqualUnordered returns true if the supplied string slices contain the same values in any order
 // https://stackoverflow.com/questions/36000487/check-for-equality-on-slices-without-order
 func SlicesEqualUnordered(x, y []string) bool {
