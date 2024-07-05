@@ -84,6 +84,16 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFu
 
 		case FormatCsv:
 
+			// if no items, return empty json response
+			if len(items) == 0 {
+				resp := StdResponse{
+					Status: ReqSucceeded,
+					Data:   nil,
+				}
+				JsonResponse(resp, http.StatusOK, w)
+				return
+			}
+
 			// create unique temp file
 			f, err := os.CreateTemp("", store.GetName()+".*.csv")
 			if err != nil {
@@ -103,6 +113,16 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFu
 			FileResponse(f.Name(), store.GetName()+".csv", true, w)
 
 		case FormatExcel:
+
+			// if no items, return empty json response
+			if len(items) == 0 {
+				resp := StdResponse{
+					Status: ReqSucceeded,
+					Data:   nil,
+				}
+				JsonResponse(resp, http.StatusOK, w)
+				return
+			}
 
 			// create unique temp file
 			f, err := os.CreateTemp("", store.GetName()+".*.xlsx")
