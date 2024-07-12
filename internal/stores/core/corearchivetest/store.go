@@ -1,4 +1,4 @@
-package coresoftdeletetest
+package corearchivetest
 
 import (
 	"context"
@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	name           string = "Soft delete test"
+	name           string = "Archive test"
 	schemaName     string = "core"
-	tableName      string = "soft_delete_test"
-	viewName       string = "soft_delete_test"
+	tableName      string = "archive_test"
+	viewName       string = "archive_test"
 	pkColName      string = "id"
 	defaultOrderBy string = "id"
 )
@@ -46,6 +46,10 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
+func (s Store) Archive(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error) {
+	return lyspg.Archive(ctx, tx, schemaName, tableName, pkColName, id, false)
+}
+
 func (s Store) GetMeta() lysmeta.Result {
 	return meta
 }
@@ -63,8 +67,4 @@ func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []M
 
 func (s Store) SelectById(ctx context.Context, fields []string, id int64) (item Model, stmt string, err error) {
 	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, pkColName, fields, meta.DbTags, id)
-}
-
-func (s Store) SoftDelete(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error) {
-	return lyspg.SoftDelete(ctx, tx, schemaName, tableName, pkColName, id, false)
 }

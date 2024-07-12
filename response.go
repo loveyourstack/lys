@@ -17,10 +17,10 @@ const (
 	ReqFailed    string = "failed"
 
 	// data
-	DataDeleted     string = "deleted"
-	DataSoftDeleted string = "soft-deleted"
-	DataRestored    string = "restored"
-	DataUpdated     string = "updated"
+	DataArchived string = "archived"
+	DataDeleted  string = "deleted"
+	DataRestored string = "restored"
+	DataUpdated  string = "updated"
 )
 
 type GetMetadata struct {

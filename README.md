@@ -111,7 +111,7 @@ See the [Northwind sample application](https://github.com/loveyourstack/northwin
 * Provides useful bulk insert (COPY) wrapper
 * Support for getting and filtering enum values
 * Database creation function from embedded SQL files
-* Soft delete + restore functions
+* Archive (soft delete) + restore functions
 * and more. See the [wiki](https://github.com/loveyourstack/lys/wiki)
 
 ## Current limitations

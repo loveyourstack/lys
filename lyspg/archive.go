@@ -11,14 +11,16 @@ import (
 // experimental
 
 var (
-	DeletedTableSuffix = "_deleted"
-	DeletedTableCols   = []string{"deleted_at", "deleted_by_cascade"}
+	ArchivedTableSuffix = "_archived"
+	ArchivedTableCols   = []string{"archived_at", "archived_by_cascade"}
 )
 
-// SoftDelete moves record(s) to the corresponding deleted table using the supplied tx
-// the deleted table must have the same columns as the source table and also the DeletedTableCols defined above
-// the deleted table name must be the source table name plus DeletedTableSuffix
-func SoftDelete(ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName string, pkVal any, isCascaded bool) (stmt string, err error) {
+// Archive moves record(s) to a table's corresponding archived table using the supplied tx
+// the archived table name must be the source table name plus ArchivedTableSuffix
+// the archived table must have the same columns as the source table and also the ArchivedTableCols defined above
+// the column order does not need to be the same in the source and archived tables
+// if this func returns an error, rollback the tx
+func Archive(ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName string, pkVal any, isCascaded bool) (stmt string, err error) {
 
 	// get main table cols from info schema
 	tableCols, stmt, err := GetTableColumnNames(ctx, tx, schemaName, tableName)
@@ -26,18 +28,18 @@ func SoftDelete(ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName
 		return stmt, fmt.Errorf("GetTableColumnNames failed: %w", err)
 	}
 
-	// insert record(s) into deleted table
-	deletedTableCols := append(tableCols, DeletedTableCols...)
+	// insert record(s) into archived table
+	archivedTableCols := append(tableCols, ArchivedTableCols...)
 
 	stmt = fmt.Sprintf("INSERT INTO %s.%s (%s) SELECT %s, now(), %t FROM %s.%s WHERE %s = $1;",
-		schemaName, tableName+DeletedTableSuffix, strings.Join(deletedTableCols, ","),
+		schemaName, tableName+ArchivedTableSuffix, strings.Join(archivedTableCols, ","),
 		strings.Join(tableCols, ","), isCascaded, schemaName, tableName, pKColName)
 	cmdTag, err := tx.Exec(ctx, stmt, pkVal)
 	if err != nil {
 		return stmt, fmt.Errorf("tx.Exec (Insert) failed: %w", err)
 	}
 
-	// if no rows affected, Id doesn't exist
+	// if no rows affected, pkVal doesn't exist
 	if cmdTag.RowsAffected() == 0 {
 		return "", pgx.ErrNoRows
 	}
@@ -52,7 +54,7 @@ func SoftDelete(ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName
 	return "", nil
 }
 
-// Restore moves a previously soft deleted record to the corresponding table using the supplied tx
+// Restore moves a previously archived record to the corresponding table using the supplied tx
 // if this func returns an error, rollback the tx
 func Restore(ctx context.Context, tx pgx.Tx, schemaName, tableName, pkColName string, pkVal any, isCascaded bool) (stmt string, err error) {
 
@@ -63,9 +65,9 @@ func Restore(ctx context.Context, tx pgx.Tx, schemaName, tableName, pkColName st
 	}
 
 	// insert record(s) into main table
-	stmt = fmt.Sprintf("INSERT INTO %s.%s (%s) SELECT %s FROM %s.%s WHERE deleted_by_cascade = %t AND %s = $1;",
+	stmt = fmt.Sprintf("INSERT INTO %s.%s (%s) SELECT %s FROM %s.%s WHERE archived_by_cascade = %t AND %s = $1;",
 		schemaName, tableName, strings.Join(tableCols, ","),
-		strings.Join(tableCols, ","), schemaName, tableName+DeletedTableSuffix, isCascaded, pkColName)
+		strings.Join(tableCols, ","), schemaName, tableName+ArchivedTableSuffix, isCascaded, pkColName)
 	cmdTag, err := tx.Exec(ctx, stmt, pkVal)
 	if err != nil {
 		return stmt, fmt.Errorf("tx.Exec (Insert) failed: %w", err)
@@ -76,8 +78,8 @@ func Restore(ctx context.Context, tx pgx.Tx, schemaName, tableName, pkColName st
 		return "", pgx.ErrNoRows
 	}
 
-	// delete record(s) from deleted table
-	stmt = fmt.Sprintf("DELETE FROM %s.%s WHERE deleted_by_cascade = %t AND %s = $1;", schemaName, tableName+DeletedTableSuffix, isCascaded, pkColName)
+	// delete record(s) from archived table
+	stmt = fmt.Sprintf("DELETE FROM %s.%s WHERE archived_by_cascade = %t AND %s = $1;", schemaName, tableName+ArchivedTableSuffix, isCascaded, pkColName)
 	_, err = tx.Exec(ctx, stmt, pkVal)
 	if err != nil {
 		return stmt, fmt.Errorf("tx.Exec (Delete) failed: %w", err)

@@ -13,28 +13,28 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// iSoftDeletable is a store that can be used by SoftDelete and Restore
-type iSoftDeletable interface {
-	SoftDelete(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error)
+// iArchiveable is a store that can be used by Archive and Restore
+type iArchiveable interface {
+	Archive(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error)
 	Restore(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error)
 }
 
-// SoftDelete handles moving a record from the supplied store into its deleted table
-func SoftDelete(env Env, db *pgxpool.Pool, store iSoftDeletable) http.HandlerFunc {
-	return MoveRecordsById(env, db, store.SoftDelete, DataSoftDeleted)
+// Archive handles moving a record from the supplied store into its archived table
+func Archive(env Env, db *pgxpool.Pool, store iArchiveable) http.HandlerFunc {
+	return MoveRecordsById(env, db, store.Archive, DataArchived)
 }
 
-// Restore handles moving a record from the store's deleted table back to the main table
-func Restore(env Env, db *pgxpool.Pool, store iSoftDeletable) http.HandlerFunc {
+// Restore handles moving a record from the store's archived table back to the main table
+func Restore(env Env, db *pgxpool.Pool, store iArchiveable) http.HandlerFunc {
 	return MoveRecordsById(env, db, store.Restore, DataRestored)
 }
 
-// MoveRecordsById handles moving record(s) back and forth between the main table and its corresponding deleted table
+// MoveRecordsById handles moving record(s) back and forth between the main table and its corresponding archived table
 func MoveRecordsById(env Env, db *pgxpool.Pool, moveFunc func(context.Context, pgx.Tx, int64) (string, error), msg string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		// get the Id and ensure it is an int
+		// get the id and ensure it is an int
 		vars := mux.Vars(r)
 		id, err := strconv.ParseInt(vars["id"], 10, 64)
 		if err != nil {
@@ -59,7 +59,7 @@ func MoveRecordsById(env Env, db *pgxpool.Pool, moveFunc func(context.Context, p
 				return
 			}
 
-			// expected error: Id does not exist
+			// expected error: id does not exist
 			if errors.Is(err, pgx.ErrNoRows) {
 				HandleUserError(http.StatusBadRequest, ErrDescInvalidId, w)
 				return

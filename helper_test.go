@@ -13,8 +13,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/loveyourstack/lys/internal/cmd"
 	"github.com/loveyourstack/lys/internal/lyscmd"
+	"github.com/loveyourstack/lys/internal/stores/core/corearchivetest"
 	"github.com/loveyourstack/lys/internal/stores/core/coreparamtest"
-	"github.com/loveyourstack/lys/internal/stores/core/coresoftdeletetest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
 	"github.com/loveyourstack/lys/internal/stores/core/corevolumetest"
 	"github.com/loveyourstack/lys/lyspg"
@@ -43,17 +43,18 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	r := mux.NewRouter()
 	r.NotFoundHandler = http.HandlerFunc(NotFound())
 
-	endpoint := "/param-test"
+	endpoint := "/archive-test"
+
+	sdTestStore := corearchivetest.Store{Db: srvApp.Db}
+	r.HandleFunc(endpoint, Get[corearchivetest.Model](apiEnv, sdTestStore)).Methods("GET")
+	r.HandleFunc(endpoint+"/{id}", GetById[corearchivetest.Model](apiEnv, sdTestStore)).Methods("GET")
+	r.HandleFunc(endpoint+"/{id}/restore", Restore(apiEnv, srvApp.Db, sdTestStore)).Methods("POST")
+	r.HandleFunc(endpoint+"/{id}/archive", Archive(apiEnv, srvApp.Db, sdTestStore)).Methods("DELETE")
+
+	endpoint = "/param-test"
 
 	paramTestStore := coreparamtest.Store{Db: srvApp.Db}
 	r.HandleFunc(endpoint, Get[coreparamtest.Model](apiEnv, paramTestStore)).Methods("GET")
-
-	endpoint = "/soft-delete-test"
-	sdTestStore := coresoftdeletetest.Store{Db: srvApp.Db}
-	r.HandleFunc(endpoint, Get[coresoftdeletetest.Model](apiEnv, sdTestStore)).Methods("GET")
-	r.HandleFunc(endpoint+"/{id}", GetById[coresoftdeletetest.Model](apiEnv, sdTestStore)).Methods("GET")
-	r.HandleFunc(endpoint+"/{id}/restore", Restore(apiEnv, srvApp.Db, sdTestStore)).Methods("POST")
-	r.HandleFunc(endpoint+"/{id}/soft", SoftDelete(apiEnv, srvApp.Db, sdTestStore)).Methods("DELETE")
 
 	endpoint = "/type-test"
 
