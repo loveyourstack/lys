@@ -14,19 +14,19 @@ import (
 )
 
 // iArchiveable is a store that can be used by Archive and Restore
-type iArchiveable interface {
-	Archive(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error)
-	Restore(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error)
+type iArchiveableById interface {
+	ArchiveById(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error)
+	RestoreById(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error)
 }
 
 // Archive handles moving a record from the supplied store into its archived table
-func Archive(env Env, db *pgxpool.Pool, store iArchiveable) http.HandlerFunc {
-	return MoveRecordsById(env, db, store.Archive, DataArchived)
+func ArchiveById(env Env, db *pgxpool.Pool, store iArchiveableById) http.HandlerFunc {
+	return MoveRecordsById(env, db, store.ArchiveById, DataArchived)
 }
 
 // Restore handles moving a record from the store's archived table back to the main table
-func Restore(env Env, db *pgxpool.Pool, store iArchiveable) http.HandlerFunc {
-	return MoveRecordsById(env, db, store.Restore, DataRestored)
+func RestoreById(env Env, db *pgxpool.Pool, store iArchiveableById) http.HandlerFunc {
+	return MoveRecordsById(env, db, store.RestoreById, DataRestored)
 }
 
 // MoveRecordsById handles moving record(s) back and forth between the main table and its corresponding archived table

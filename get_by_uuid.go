@@ -13,14 +13,14 @@ import (
 	"github.com/loveyourstack/lys/lysmeta"
 )
 
-// iGetablebyUuid is a store that can be used by GetByUuid
-type iGetablebyUuid[T any] interface {
+// iGetableByUuid is a store that can be used by GetByUuid
+type iGetableByUuid[T any] interface {
 	GetMeta() lysmeta.Result
 	SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item T, stmt string, err error)
 }
 
 // GetByUuid handles retrieval of a single item from the supplied store using a text id
-func GetByUuid[T any](env Env, store iGetablebyUuid[T]) http.HandlerFunc {
+func GetByUuid[T any](env Env, store iGetableByUuid[T]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 

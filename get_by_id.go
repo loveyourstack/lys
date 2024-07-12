@@ -13,14 +13,14 @@ import (
 	"github.com/loveyourstack/lys/lysmeta"
 )
 
-// iGetablebyId is a store that can be used by GetById
-type iGetablebyId[T any] interface {
+// iGetableById is a store that can be used by GetById
+type iGetableById[T any] interface {
 	GetMeta() lysmeta.Result
 	SelectById(ctx context.Context, fields []string, id int64) (item T, stmt string, err error)
 }
 
 // GetById handles retrieval of a single item from the supplied store using an integer id
-func GetById[T any](env Env, store iGetablebyId[T]) http.HandlerFunc {
+func GetById[T any](env Env, store iGetableById[T]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 

@@ -5,6 +5,7 @@ import (
 	"log"
 	"reflect"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lysmeta"
 	"github.com/loveyourstack/lys/lyspg"
@@ -40,8 +41,8 @@ type Input struct {
 }
 
 type Model struct {
-	Id     int64  `db:"id" json:"id,omitempty"`
-	IdUUID string `db:"id_uuid" json:"id_uuid,omitempty"`
+	Id   int64     `db:"id" json:"id,omitempty"`
+	Iduu uuid.UUID `db:"id_uu" json:"id_uu,omitempty"`
 	Input
 }
 

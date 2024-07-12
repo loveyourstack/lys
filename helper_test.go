@@ -45,11 +45,17 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 	endpoint := "/archive-test"
 
-	sdTestStore := corearchivetest.Store{Db: srvApp.Db}
-	r.HandleFunc(endpoint, Get[corearchivetest.Model](apiEnv, sdTestStore)).Methods("GET")
-	r.HandleFunc(endpoint+"/{id}", GetById[corearchivetest.Model](apiEnv, sdTestStore)).Methods("GET")
-	r.HandleFunc(endpoint+"/{id}/restore", Restore(apiEnv, srvApp.Db, sdTestStore)).Methods("POST")
-	r.HandleFunc(endpoint+"/{id}/archive", Archive(apiEnv, srvApp.Db, sdTestStore)).Methods("DELETE")
+	archiveTestStore := corearchivetest.Store{Db: srvApp.Db}
+	r.HandleFunc(endpoint, Get[corearchivetest.Model](apiEnv, archiveTestStore)).Methods("GET")
+	r.HandleFunc(endpoint+"/{id}", GetById[corearchivetest.Model](apiEnv, archiveTestStore)).Methods("GET")
+	r.HandleFunc(endpoint+"/{id}/restore", RestoreById(apiEnv, srvApp.Db, archiveTestStore)).Methods("POST")
+	r.HandleFunc(endpoint+"/{id}/archive", ArchiveById(apiEnv, srvApp.Db, archiveTestStore)).Methods("DELETE")
+
+	endpoint = "/archive-test-uuid"
+
+	r.HandleFunc(endpoint+"/{id}", GetByUuid[corearchivetest.Model](apiEnv, archiveTestStore)).Methods("GET")
+	r.HandleFunc(endpoint+"/{id}/restore", RestoreByUuid(apiEnv, srvApp.Db, archiveTestStore)).Methods("POST")
+	r.HandleFunc(endpoint+"/{id}/archive", ArchiveByUuid(apiEnv, srvApp.Db, archiveTestStore)).Methods("DELETE")
 
 	endpoint = "/param-test"
 
