@@ -36,7 +36,8 @@ func Put[T any](env Env, store iPutable[T]) http.HandlerFunc {
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			if userErr, ok := err.(lyserr.User); ok {
+			var userErr lyserr.User
+			if errors.As(err, &userErr) {
 				HandleUserError(http.StatusBadRequest, userErr.Message, w)
 			} else {
 				HandleInternalError(r.Context(), fmt.Errorf("Put: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
@@ -47,7 +48,8 @@ func Put[T any](env Env, store iPutable[T]) http.HandlerFunc {
 		// unmarshal the body
 		input, err := DecodeJsonBody[T](body)
 		if err != nil {
-			if userErr, ok := err.(lyserr.User); ok {
+			var userErr lyserr.User
+			if errors.As(err, &userErr) {
 				HandleUserError(http.StatusBadRequest, userErr.Message, w)
 			} else {
 				HandleInternalError(r.Context(), fmt.Errorf("Put: DecodeJsonBody failed: %w", err), env.ErrorLog, w)

@@ -1,6 +1,7 @@
 package lys
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -39,7 +40,8 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOp
 	// format
 	getReqModifiers.Format, err = ExtractFormat(r, getOptions.FormatParamName)
 	if err != nil {
-		if userErr, ok := err.(lyserr.User); ok {
+		var userErr lyserr.User
+		if errors.As(err, &userErr) {
 			return GetReqModifiers{}, userErr
 		} else {
 			return GetReqModifiers{}, fmt.Errorf("ExtractFormat failed: %w", err)
@@ -49,7 +51,8 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOp
 	// filters (become WHERE clause conditions)
 	getReqModifiers.Conditions, err = ExtractFilters(r.URL.Query(), validJsonFields, getOptions)
 	if err != nil {
-		if userErr, ok := err.(lyserr.User); ok {
+		var userErr lyserr.User
+		if errors.As(err, &userErr) {
 			return GetReqModifiers{}, userErr
 		} else {
 			return GetReqModifiers{}, fmt.Errorf("ExtractFilters failed: %w", err)
@@ -59,7 +62,8 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOp
 	// sorts (become ORDER BY)
 	getReqModifiers.Sorts, err = ExtractSorts(r, validJsonFields, getOptions.SortParamName)
 	if err != nil {
-		if userErr, ok := err.(lyserr.User); ok {
+		var userErr lyserr.User
+		if errors.As(err, &userErr) {
 			return GetReqModifiers{}, userErr
 		} else {
 			return GetReqModifiers{}, fmt.Errorf("ExtractSorts failed: %w", err)
@@ -76,7 +80,8 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOp
 	// fields (become column selection)
 	getReqModifiers.Fields, err = ExtractFields(r, validJsonFields, getOptions.FieldsParamName)
 	if err != nil {
-		if userErr, ok := err.(lyserr.User); ok {
+		var userErr lyserr.User
+		if errors.As(err, &userErr) {
 			return GetReqModifiers{}, userErr
 		} else {
 			return GetReqModifiers{}, fmt.Errorf("ExtractFields failed: %w", err)
@@ -86,7 +91,8 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOp
 	// paging (become LIMIT and OFFSET)
 	getReqModifiers.Page, getReqModifiers.PerPage, err = ExtractPaging(r, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.DefaultPerPage, getOptions.MaxPerPage)
 	if err != nil {
-		if userErr, ok := err.(lyserr.User); ok {
+		var userErr lyserr.User
+		if errors.As(err, &userErr) {
 			return GetReqModifiers{}, userErr
 		} else {
 			return GetReqModifiers{}, fmt.Errorf("ExtractPaging failed: %w", err)
@@ -170,7 +176,8 @@ func ExtractFilters(urlValues url.Values, validJsonFields []string, getOptions G
 			// create condition from this filter
 			cond, err := processFilterParam(key, val, validJsonFields, getOptions)
 			if err != nil {
-				if userErr, ok := err.(lyserr.User); ok {
+				var userErr lyserr.User
+				if errors.As(err, &userErr) {
 					return nil, userErr
 				} else {
 					return nil, fmt.Errorf("processFilterParam failed for key: %s, val: %s: %w", key, val, err)

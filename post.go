@@ -25,7 +25,8 @@ func Post[inputT any, itemT any](env Env, store iPostable[inputT, itemT]) http.H
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			if userErr, ok := err.(lyserr.User); ok {
+			var userErr lyserr.User
+			if errors.As(err, &userErr) {
 				HandleUserError(http.StatusBadRequest, userErr.Message, w)
 			} else {
 				HandleInternalError(r.Context(), fmt.Errorf("Post: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
@@ -36,7 +37,8 @@ func Post[inputT any, itemT any](env Env, store iPostable[inputT, itemT]) http.H
 		// unmarshal the body
 		input, err := DecodeJsonBody[inputT](body)
 		if err != nil {
-			if userErr, ok := err.(lyserr.User); ok {
+			var userErr lyserr.User
+			if errors.As(err, &userErr) {
 				HandleUserError(http.StatusBadRequest, userErr.Message, w)
 			} else {
 				HandleInternalError(r.Context(), fmt.Errorf("Post: DecodeJsonBody failed: %w", err), env.ErrorLog, w)

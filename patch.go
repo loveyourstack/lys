@@ -36,7 +36,8 @@ func Patch(env Env, store iPatchable) http.HandlerFunc {
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			if userErr, ok := err.(lyserr.User); ok {
+			var userErr lyserr.User
+			if errors.As(err, &userErr) {
 				HandleUserError(http.StatusBadRequest, userErr.Message, w)
 			} else {
 				HandleInternalError(r.Context(), fmt.Errorf("Patch: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
