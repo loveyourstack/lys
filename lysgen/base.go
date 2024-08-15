@@ -15,7 +15,7 @@ func GetGoDataTypeFromPg(pgType string) (goType string, err error) {
 		return "int64", nil
 	case "bit", "boolean":
 		return "bool", nil
-	case "character", "character varying", "text":
+	case "character", "character varying", "text", "USER-DEFINED": // "USER-DEFINED" is enum
 		return "string", nil
 	case "date":
 		return "lystype.Date", nil
