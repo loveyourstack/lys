@@ -6,10 +6,14 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
 	"unsafe"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"golang.org/x/text/runes"
+	"golang.org/x/text/transform"
+	"golang.org/x/text/unicode/norm"
 )
 
 // ContainsAny returns true if any string in elements is found in slice
@@ -47,11 +51,27 @@ func DeAlias[T ~string](in []T) (out []string) {
 	return out
 }
 
-const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 const (
-	letterIdxBits int   = 6                    // 6 bits to represent a letter index
-	letterIdxMask int64 = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
-	letterIdxMax  int   = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
+	numbers  string = "0123456789"
+	urlChars string = "-._~:/?#[]@!$&'()*+,;%="
+)
+
+// IsAscii returns true if s only contains ASCII chars
+// from https://stackoverflow.com/questions/53069040/checking-a-string-contains-only-ascii-characters
+func IsAscii(s string) bool {
+	for i := 0; i < len(s); i++ {
+		if s[i] > unicode.MaxASCII {
+			return false
+		}
+	}
+	return true
+}
+
+const (
+	letterBytes   string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	letterIdxBits int    = 6                    // 6 bits to represent a letter index
+	letterIdxMask int64  = 1<<letterIdxBits - 1 // All 1-bits, as many as letterIdxBits
+	letterIdxMax  int    = 63 / letterIdxBits   // # of letter indices fitting in 63 bits
 )
 
 var randSrc = rand.NewSource(time.Now().UnixNano())
@@ -87,6 +107,19 @@ func RemoveCharacters(input string, charsToRemove string) string {
 	}
 
 	return strings.Map(filter, input)
+}
+
+const (
+	deAccents string = "äöüß"
+	frAccents string = "éàèùçâêîôûëïü"
+)
+
+// ReplaceAccents replaces accent characters such as "ö" with their non-accented equivalents such as "o"
+// from https://twin.sh/articles/33/remove-accents-from-characters-in-go
+func ReplaceAccents(s string) (res string, err error) {
+	t := transform.Chain(norm.NFD, runes.Remove(runes.In(unicode.Mn)), norm.NFC)
+	res, _, err = transform.String(t, s)
+	return res, err
 }
 
 // Title returns s in title case using non-specific language rules
