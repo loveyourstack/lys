@@ -6,6 +6,18 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestDeDuplicateSuccess(t *testing.T) {
+	s1 := []int{2, 3, 1, 3, 2}
+	s1a := DeDuplicate(s1)
+	assert.Equal(t, []int{2, 3, 1, 3, 2}, s1)
+	assert.Equal(t, []int{2, 3, 1}, s1a)
+
+	s2 := []string{"b", "c", "a", "b", "a"}
+	s2a := DeDuplicate(s2)
+	assert.Equal(t, []string{"b", "c", "a", "b", "a"}, s2)
+	assert.Equal(t, []string{"b", "c", "a"}, s2a)
+}
+
 func TestEqualUnorderedSuccess(t *testing.T) {
 	s1 := []int{1, 2, 3}
 	s2 := []int{3, 1, 2}
@@ -38,4 +50,16 @@ func TestEqualUnorderedFailure(t *testing.T) {
 	sd := []string{"a", "b", "d"}
 	eq = EqualUnordered(sc, sd)
 	assert.Equal(t, false, eq)
+}
+
+func TestSortAndDeDuplicateSuccess(t *testing.T) {
+	s1 := []int{2, 3, 1, 3, 2}
+	s1a := SortAndDeDuplicate(s1)
+	assert.Equal(t, []int{2, 3, 1, 3, 2}, s1)
+	assert.Equal(t, []int{1, 2, 3}, s1a)
+
+	s2 := []string{"b", "c", "a", "b", "a"}
+	s2a := SortAndDeDuplicate(s2)
+	assert.Equal(t, []string{"b", "c", "a", "b", "a"}, s2)
+	assert.Equal(t, []string{"a", "b", "c"}, s2a)
 }
