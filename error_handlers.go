@@ -3,7 +3,6 @@ package lys
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 
@@ -60,8 +59,6 @@ func HandleDbError(ctx context.Context, stmt string, err error, errorLog *slog.L
 	var pgErr *pgconn.PgError
 	if errors.As(err, &pgErr) {
 
-		fmt.Println("DbErr > PgErr")
-
 		switch pgErr.Code {
 
 		// handle expected errors that can be attributed to bad requests
@@ -115,7 +112,6 @@ func HandleError(ctx context.Context, err error, errorLog *slog.Logger, w http.R
 	// see if err can be unwrapped to a userErr
 	userErr := lyserr.User{}
 	if errors.As(err, &userErr) {
-		fmt.Println("HandleError > UserError")
 		HandleUserError(userErr.StatusCode, userErr.Message, w)
 		return
 	}
@@ -123,7 +119,6 @@ func HandleError(ctx context.Context, err error, errorLog *slog.Logger, w http.R
 	// see if err can be unwrapped to an extErr
 	extErr := lyserr.Ext{}
 	if errors.As(err, &extErr) {
-		fmt.Println("HandleError > ExtError")
 		// pass err, not extErr, to keep full context
 		HandleExtError(ctx, extErr.Message, err, errorLog, w)
 		return
@@ -132,7 +127,6 @@ func HandleError(ctx context.Context, err error, errorLog *slog.Logger, w http.R
 	// see if err can be unwrapped to a dbErr or pgx PgError
 	dbErr := lyserr.Db{}
 	if errors.As(err, &dbErr) {
-		fmt.Println("HandleError > DbErr")
 		// pass err, not dbErr, to keep full context
 		HandleDbError(ctx, dbErr.Stmt, err, errorLog, w)
 		return
