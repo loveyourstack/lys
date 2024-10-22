@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysmeta"
 )
 
@@ -25,27 +26,27 @@ func getInsertStmt(schemaName, tableName, pkColName string, inputFields []string
 // Insert inserts a single record and then returns it
 // inputT must be a struct with "db" tags
 func Insert[inputT any, itemT any](ctx context.Context, db PoolOrTx, schemaName, tableName, viewName, pkColName string, allFields []string,
-	input inputT) (newItem itemT, stmt string, err error) {
+	input inputT) (newItem itemT, err error) {
 
 	// get input db struct tags
 	inputReflVals := reflect.ValueOf(input)
 	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
 	if err != nil {
-		return newItem, "", fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
+		return newItem, fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
 	}
 
 	if len(meta.DbTags) == 0 {
-		return newItem, "", fmt.Errorf("input type does not have db tags")
+		return newItem, fmt.Errorf("input type does not have db tags")
 	}
 
 	// get the input values via reflection
 	inputVals := getInputValsFromStruct(inputReflVals, nil)
 
-	stmt = getInsertStmt(schemaName, tableName, pkColName, meta.DbTags)
+	stmt := getInsertStmt(schemaName, tableName, pkColName, meta.DbTags)
 
 	var newPk any
 	if err = db.QueryRow(ctx, stmt, inputVals...).Scan(&newPk); err != nil {
-		return newItem, stmt, fmt.Errorf(ErrDescInsertScanFailed+": %w", err)
+		return newItem, lyserr.Db{Err: fmt.Errorf(ErrDescInsertScanFailed+": %w", err), Stmt: stmt}
 	}
 
 	return SelectUnique[itemT](ctx, db, schemaName, viewName, pkColName, nil, allFields, newPk)

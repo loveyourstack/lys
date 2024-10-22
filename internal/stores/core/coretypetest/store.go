@@ -88,7 +88,7 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
-func (s Store) Delete(ctx context.Context, id int64) (stmt string, err error) {
+func (s Store) Delete(ctx context.Context, id int64) error {
 	return lyspg.DeleteUnique(ctx, s.Db, schemaName, tableName, pkColName, id)
 }
 
@@ -189,27 +189,27 @@ func (s Store) GetName() string {
 	return name
 }
 
-func (s Store) Insert(ctx context.Context, input Input) (newItem Model, stmt string, err error) {
+func (s Store) Insert(ctx context.Context, input Input) (newItem Model, err error) {
 	return lyspg.Insert[Input, Model](ctx, s.Db, schemaName, tableName, viewName, pkColName, meta.DbTags, input)
 }
 
-func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, stmt string, err error) {
+func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {
 	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, meta.DbTags, params)
 }
 
-func (s Store) SelectById(ctx context.Context, fields []string, id int64) (item Model, stmt string, err error) {
+func (s Store) SelectById(ctx context.Context, fields []string, id int64) (item Model, err error) {
 	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, pkColName, fields, meta.DbTags, id)
 }
 
-func (s Store) SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item Model, stmt string, err error) {
+func (s Store) SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item Model, err error) {
 	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, "id_uu", fields, meta.DbTags, id)
 }
 
-func (s Store) Update(ctx context.Context, input Input, id int64) (stmt string, err error) {
+func (s Store) Update(ctx context.Context, input Input, id int64) error {
 	return lyspg.Update(ctx, s.Db, schemaName, tableName, pkColName, input, id)
 }
 
-func (s Store) UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id int64) (stmt string, err error) {
+func (s Store) UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id int64) error {
 	return lyspg.UpdatePartial(ctx, s.Db, schemaName, tableName, pkColName, inputMeta.DbTags, assignmentsMap, id)
 }
 

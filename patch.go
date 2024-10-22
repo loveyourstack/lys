@@ -7,17 +7,14 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-	"strings"
 
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/loveyourstack/lys/lyserr"
 )
 
 // iPatchable is a store that can be used by Patch
 type iPatchable interface {
-	UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id int64) (stmt string, err error)
+	UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id int64) error
 }
 
 // Patch handles changing some of an item's fields using the supplied store
@@ -58,35 +55,9 @@ func Patch(env Env, store iPatchable) http.HandlerFunc {
 		}
 
 		// try to update the item in db
-		stmt, err := store.UpdatePartial(r.Context(), assignmentsMap, id)
+		err = store.UpdatePartial(r.Context(), assignmentsMap, id)
 		if err != nil {
-
-			// expected error: request canceled
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-
-			// expected error: Id does not exist
-			if errors.Is(err, pgx.ErrNoRows) {
-				HandleUserError(http.StatusBadRequest, ErrDescInvalidId, w)
-				return
-			}
-
-			// expected error: invalid field
-			if strings.Contains(err.Error(), "invalid field") {
-				HandleUserError(http.StatusBadRequest, err.Error(), w)
-				return
-			}
-
-			// handle errors from postgres
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) {
-				HandlePostgresError(r.Context(), stmt, "Patch: store.UpdatePartial", pgErr, env.ErrorLog, w)
-				return
-			}
-
-			// unknown db error
-			HandleDbError(r.Context(), stmt, fmt.Errorf("Patch: store.UpdatePartial failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("Patch: store.UpdatePartial failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

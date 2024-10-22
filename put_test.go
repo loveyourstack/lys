@@ -72,5 +72,5 @@ func TestPutFailure(t *testing.T) {
 
 	// invalid id
 	_, err = lysclient.PostToValueTester[coretypetest.Input, string](srvApp.getRouter(), "PUT", "/type-test/100000", minInput)
-	assert.EqualValues(t, "invalid id", err.Error(), "invalid id")
+	assert.EqualValues(t, "row(s) not found", err.Error(), "invalid id")
 }

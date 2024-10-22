@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lystype"
 )
 
@@ -21,7 +22,7 @@ type StatActivity struct {
 }
 
 // https://www.postgresql.org/docs/current/monitoring-stats.html#MONITORING-PG-STAT-ACTIVITY-VIEW
-func GetStatActivity(ctx context.Context, db *pgxpool.Pool, dbName string) (items []StatActivity, stmt string, err error) {
+func GetStatActivity(ctx context.Context, db *pgxpool.Pool, dbName string) (items []StatActivity, err error) {
 
 	fields := []string{
 		"application_name",
@@ -33,12 +34,12 @@ func GetStatActivity(ctx context.Context, db *pgxpool.Pool, dbName string) (item
 		"usename",
 	}
 
-	stmt = "SELECT " + strings.Join(fields, ",") + " FROM pg_stat_activity WHERE state IS NOT NULL AND query NOT LIKE '%pg_stat_activity%' AND datname = $1 ORDER BY query_start DESC;"
+	stmt := "SELECT " + strings.Join(fields, ",") + " FROM pg_stat_activity WHERE state IS NOT NULL AND query NOT LIKE '%pg_stat_activity%' AND datname = $1 ORDER BY query_start DESC;"
 	rows, _ := db.Query(ctx, stmt, dbName)
 	items, err = pgx.CollectRows(rows, pgx.RowToStructByNameLax[StatActivity])
 	if err != nil {
-		return nil, stmt, fmt.Errorf("pgx.CollectRows failed: %w", err)
+		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
 	}
 
-	return items, "", nil
+	return items, nil
 }

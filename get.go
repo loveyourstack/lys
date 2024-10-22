@@ -2,13 +2,11 @@ package lys
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
 
 	"github.com/loveyourstack/lys/lyscsv"
-	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysexcel"
 	"github.com/loveyourstack/lys/lysmeta"
 	"github.com/loveyourstack/lys/lyspg"
@@ -19,11 +17,11 @@ import (
 type iGetable[T any] interface {
 	GetMeta() lysmeta.Result
 	GetName() string // file output: for setting filename
-	Select(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, stmt string, err error)
+	Select(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error)
 }
 
 type GetOption struct {
-	GetLastSyncAt func(ctx context.Context) (lastSyncAt lystype.Datetime, stmt string, err error) // for external data: func to get the last synced timestamp
+	GetLastSyncAt func(ctx context.Context) (lastSyncAt lystype.Datetime, err error) // for external data: func to get the last synced timestamp
 }
 
 // Get handles retrieval of multiple items from the supplied store
@@ -34,12 +32,13 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFu
 		// get request modifiers from url params
 		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetMeta().JsonTags, env.GetOptions)
 		if err != nil {
-			var userErr lyserr.User
+			/*var userErr lyserr.User
 			if errors.As(err, &userErr) {
 				HandleUserError(http.StatusBadRequest, userErr.Message, w)
 			} else {
 				HandleInternalError(r.Context(), fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.ErrorLog, w)
-			}
+			}*/
+			HandleError(r.Context(), fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
@@ -67,16 +66,10 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFu
 		}
 
 		// select items from db
-		items, unpagedCount, stmt, err := store.Select(r.Context(), selectParams)
+		items, unpagedCount, err := store.Select(r.Context(), selectParams)
 		if err != nil {
 
-			// expected error: request canceled
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-
-			// unknown db error
-			HandleDbError(r.Context(), stmt, fmt.Errorf("Get: store.Select failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("Get: store.Select failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
@@ -159,9 +152,9 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFu
 			// if GetLastSyncAt func was passed, call it and add timestamp to resp
 			for _, option := range options {
 				if option.GetLastSyncAt != nil {
-					lastSyncAt, stmt, err := option.GetLastSyncAt(r.Context())
+					lastSyncAt, err := option.GetLastSyncAt(r.Context())
 					if err != nil {
-						HandleDbError(r.Context(), stmt, fmt.Errorf("Get: option.GetLastSyncAt failed: %w", err), env.ErrorLog, w)
+						HandleError(r.Context(), fmt.Errorf("Get: option.GetLastSyncAt failed: %w", err), env.ErrorLog, w)
 						return
 					}
 					resp.LastSyncAt = &lastSyncAt
@@ -180,7 +173,7 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFu
 // iGetableWithLastSync is a store that can be used by GetWithLastSync
 type iGetableWithLastSync[T any] interface {
 	iGetable[T]
-	GetLastSyncAt(ctx context.Context) (lastSyncAt lystype.Datetime, stmt string, err error)
+	GetLastSyncAt(ctx context.Context) (lastSyncAt lystype.Datetime, err error)
 }
 
 // GetWithLastSync is a wrapper for Get which adds the lastSyncAt timestamp from the supplied func to the JSON response

@@ -1,4 +1,4 @@
-package lyscli
+package main
 
 import (
 	"context"

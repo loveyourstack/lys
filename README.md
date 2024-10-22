@@ -42,15 +42,15 @@ type Store struct {
 // define functions for this table as methods of the Store struct
 // use lyspg generic functions if possible, but can also write custom implementations
 
-func (s Store) Delete(ctx context.Context, id int64) (stmt string, err error) {
+func (s Store) Delete(ctx context.Context, id int64) error {
 	return lyspg.DeleteUnique(ctx, s.Db, schemaName, tableName, pkColName, id)
 }
 
-func (s Store) Insert(ctx context.Context, input Input) (newItem Model, stmt string, err error) {
+func (s Store) Insert(ctx context.Context, input Input) (newItem Model, err error) {
 	return lyspg.Insert[Input, Model](ctx, s.Db, schemaName, tableName, viewName, pkColName, gDbTags, input)
 }
 
-func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, stmt string, err error) {
+func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {
 	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, gDbTags, params)
 }
 

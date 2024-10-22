@@ -46,7 +46,7 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]string, filePa
 	// open file for writing
 	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err != nil {
-		return fmt.Errorf("os.Open failed: %w", err)
+		return fmt.Errorf("os.OpenFile failed: %w", err)
 	}
 	defer f.Close()
 

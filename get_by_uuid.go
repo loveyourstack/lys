@@ -2,21 +2,18 @@ package lys
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/jackc/pgx/v5"
-	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysmeta"
 )
 
 // iGetableByUuid is a store that can be used by GetByUuid
 type iGetableByUuid[T any] interface {
 	GetMeta() lysmeta.Result
-	SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item T, stmt string, err error)
+	SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item T, err error)
 }
 
 // GetByUuid handles retrieval of a single item from the supplied store using a text id
@@ -40,32 +37,20 @@ func GetByUuid[T any](env Env, store iGetableByUuid[T]) http.HandlerFunc {
 		// get fields param if present (e.g. &xfields=)
 		fields, err := ExtractFields(r, store.GetMeta().JsonTags, env.GetOptions.FieldsParamName)
 		if err != nil {
-			var userErr lyserr.User
+			/*var userErr lyserr.User
 			if errors.As(err, &userErr) {
 				HandleUserError(http.StatusBadRequest, userErr.Message, w)
 			} else {
 				HandleInternalError(r.Context(), fmt.Errorf("GetByUuid: ExtractFields failed: %w", err), env.ErrorLog, w)
-			}
+			}*/
+			HandleError(r.Context(), fmt.Errorf("GetByUuid: ExtractFields failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
 		// select item from Db
-		item, stmt, err := store.SelectByUuid(r.Context(), fields, idUu)
+		item, err := store.SelectByUuid(r.Context(), fields, idUu)
 		if err != nil {
-
-			// expected error: request canceled
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-
-			// expected error: Id does not exist
-			if errors.Is(err, pgx.ErrNoRows) {
-				HandleUserError(http.StatusBadRequest, ErrDescInvalidId, w)
-				return
-			}
-
-			// unknown db error
-			HandleDbError(r.Context(), stmt, fmt.Errorf("GetByUuid: store.SelectByUuid failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("GetByUuid: store.SelectByUuid failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

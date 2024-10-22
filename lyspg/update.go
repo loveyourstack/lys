@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysmeta"
 )
 
@@ -35,7 +36,7 @@ type UpdateOption struct {
 // Update changes a single record with the values contained in input
 // T must be a struct with "db" tags
 // pkVal is type "any" so that both int and string PKs can be used
-func Update[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal any, options ...UpdateOption) (stmt string, err error) {
+func Update[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal any, options ...UpdateOption) error {
 
 	var updateFields, omitFields []string
 
@@ -50,7 +51,7 @@ func Update[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, pkCo
 	inputReflVals := reflect.ValueOf(input)
 	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
 	if err != nil {
-		return "", fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
+		return fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
 	}
 
 	// updateFields is dbTags with omitted fields removed
@@ -70,18 +71,18 @@ func Update[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, pkCo
 	// get input values by reflecting input T
 	inputVals := getInputValsFromStruct(inputReflVals, omitFields)
 
-	stmt = getUpdateStmt(schemaName, tableName, pkColName, updateFields)
+	stmt := getUpdateStmt(schemaName, tableName, pkColName, updateFields)
 	inputVals = append(inputVals, pkVal)
 
 	cmdTag, err := db.Exec(ctx, stmt, inputVals...)
 	if err != nil {
-		return stmt, fmt.Errorf(ErrDescUpdateExecFailed+": %w", err)
+		return lyserr.Db{Err: fmt.Errorf(ErrDescUpdateExecFailed+": %w", err), Stmt: stmt}
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return stmt, pgx.ErrNoRows
+		return pgx.ErrNoRows
 	}
 
 	// success
-	return "", nil
+	return nil
 }

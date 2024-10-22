@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/loveyourstack/lys/lyserr"
 )
 
 // experimental
@@ -20,70 +21,70 @@ var (
 // the archived table must have the same columns as the source table and also the ArchivedTableCols defined above
 // the column order does not need to be the same in the source and archived tables
 // if this func returns an error, rollback the tx
-func Archive(ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName string, pkVal any, isCascaded bool) (stmt string, err error) {
+func Archive(ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName string, pkVal any, isCascaded bool) error {
 
 	// get main table cols from info schema
-	tableCols, stmt, err := GetTableColumnNames(ctx, tx, schemaName, tableName)
+	tableCols, err := GetTableColumnNames(ctx, tx, schemaName, tableName)
 	if err != nil {
-		return stmt, fmt.Errorf("GetTableColumnNames failed: %w", err)
+		return fmt.Errorf("GetTableColumnNames failed: %w", err)
 	}
 
 	// insert record(s) into archived table
 	archivedTableCols := append(tableCols, ArchivedTableCols...)
 
-	stmt = fmt.Sprintf("INSERT INTO %s.%s (%s) SELECT %s, now(), %t FROM %s.%s WHERE %s = $1;",
+	stmt := fmt.Sprintf("INSERT INTO %s.%s (%s) SELECT %s, now(), %t FROM %s.%s WHERE %s = $1;",
 		schemaName, tableName+ArchivedTableSuffix, strings.Join(archivedTableCols, ","),
 		strings.Join(tableCols, ","), isCascaded, schemaName, tableName, pKColName)
 	cmdTag, err := tx.Exec(ctx, stmt, pkVal)
 	if err != nil {
-		return stmt, fmt.Errorf("tx.Exec (Insert) failed: %w", err)
+		return lyserr.Db{Err: fmt.Errorf("tx.Exec (Insert) failed: %w", err), Stmt: stmt}
 	}
 
 	// if no rows affected, pkVal doesn't exist
 	if cmdTag.RowsAffected() == 0 {
-		return "", pgx.ErrNoRows
+		return pgx.ErrNoRows
 	}
 
 	// delete record(s) from main table
 	stmt = fmt.Sprintf("DELETE FROM %s.%s WHERE %s = $1;", schemaName, tableName, pKColName)
 	_, err = tx.Exec(ctx, stmt, pkVal)
 	if err != nil {
-		return stmt, fmt.Errorf("tx.Exec (Delete) failed: %w", err)
+		return lyserr.Db{Err: fmt.Errorf("tx.Exec (Delete) failed: %w", err), Stmt: stmt}
 	}
 
-	return "", nil
+	return nil
 }
 
 // Restore moves a previously archived record to the corresponding table using the supplied tx
 // if this func returns an error, rollback the tx
-func Restore(ctx context.Context, tx pgx.Tx, schemaName, tableName, pkColName string, pkVal any, isCascaded bool) (stmt string, err error) {
+func Restore(ctx context.Context, tx pgx.Tx, schemaName, tableName, pkColName string, pkVal any, isCascaded bool) error {
 
 	// get main table cols from info schema
-	tableCols, stmt, err := GetTableColumnNames(ctx, tx, schemaName, tableName)
+	tableCols, err := GetTableColumnNames(ctx, tx, schemaName, tableName)
 	if err != nil {
-		return stmt, fmt.Errorf("GetTableColumnNames failed: %w", err)
+		return fmt.Errorf("GetTableColumnNames failed: %w", err)
 	}
 
 	// insert record(s) into main table
-	stmt = fmt.Sprintf("INSERT INTO %s.%s (%s) SELECT %s FROM %s.%s WHERE archived_by_cascade = %t AND %s = $1;",
+	stmt := fmt.Sprintf("INSERT INTO %s.%s (%s) SELECT %s FROM %s.%s WHERE archived_by_cascade = %t AND %s = $1;",
 		schemaName, tableName, strings.Join(tableCols, ","),
 		strings.Join(tableCols, ","), schemaName, tableName+ArchivedTableSuffix, isCascaded, pkColName)
 	cmdTag, err := tx.Exec(ctx, stmt, pkVal)
 	if err != nil {
-		return stmt, fmt.Errorf("tx.Exec (Insert) failed: %w", err)
+		return lyserr.Db{Err: fmt.Errorf("tx.Exec (Insert) failed: %w", err), Stmt: stmt}
 	}
 
 	// if no rows affected, Id doesn't exist
 	if cmdTag.RowsAffected() == 0 {
-		return "", pgx.ErrNoRows
+		return pgx.ErrNoRows
 	}
 
 	// delete record(s) from archived table
 	stmt = fmt.Sprintf("DELETE FROM %s.%s WHERE archived_by_cascade = %t AND %s = $1;", schemaName, tableName+ArchivedTableSuffix, isCascaded, pkColName)
 	_, err = tx.Exec(ctx, stmt, pkVal)
 	if err != nil {
-		return stmt, fmt.Errorf("tx.Exec (Delete) failed: %w", err)
+		return lyserr.Db{Err: fmt.Errorf("tx.Exec (Delete) failed: %w", err), Stmt: stmt}
 	}
 
-	return "", nil
+	return nil
 }

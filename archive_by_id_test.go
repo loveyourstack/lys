@@ -26,7 +26,7 @@ func TestArchiveByIdSuccess(t *testing.T) {
 
 	// try to get id 1
 	_, err := lysclient.DoToValueTester[string](srvApp.getRouter(), "GET", targetUrl)
-	assert.EqualValues(t, "invalid id", err.Error())
+	assert.EqualValues(t, "row(s) not found", err.Error())
 
 	// restore id 1
 	_ = lysclient.MustDoToValue[string](t, srvApp.getRouter(), "POST", targetUrl+"/restore")
@@ -46,9 +46,9 @@ func TestArchiveByIdFailure(t *testing.T) {
 
 	// archive invalid id
 	_, err := lysclient.DoToValueTester[string](srvApp.getRouter(), "DELETE", targetUrl+"/archive")
-	assert.EqualValues(t, "invalid id", err.Error(), "invalid id")
+	assert.EqualValues(t, "row(s) not found", err.Error(), "invalid id")
 
 	// restore invalid id
 	_, err = lysclient.DoToValueTester[string](srvApp.getRouter(), "POST", targetUrl+"/restore")
-	assert.EqualValues(t, "invalid id", err.Error(), "invalid id")
+	assert.EqualValues(t, "row(s) not found", err.Error(), "invalid id")
 }

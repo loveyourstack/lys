@@ -11,35 +11,35 @@ import (
 
 // View generates the db view from the supplied db table
 // only handles 1 level of join, and does not coalesce nulls
-func View(ctx context.Context, db *pgxpool.Pool, schema, table string) (res string, stmt string, err error) {
+func View(ctx context.Context, db *pgxpool.Pool, schema, table string) (res string, err error) {
 
 	alias := table
 
 	// if table shortname is set via comment, use it as alias
-	shortName, stmt, err := lyspg.GetTableShortName(ctx, db, schema, table)
+	shortName, err := lyspg.GetTableShortName(ctx, db, schema, table)
 	if err != nil {
-		return "", stmt, fmt.Errorf("lyspg.GetTableShortName failed for table: %s.%s: %w", schema, table, err)
+		return "", fmt.Errorf("lyspg.GetTableShortName failed for table: %s.%s: %w", schema, table, err)
 	}
 	if shortName != "" {
 		alias = shortName
 	}
 
 	// get table columns
-	cols, stmt, err := lyspg.GetTableColumns(ctx, db, schema, table)
+	cols, err := lyspg.GetTableColumns(ctx, db, schema, table)
 	if err != nil {
-		return "", stmt, fmt.Errorf("lyspg.GetTableColumns failed: %w", err)
+		return "", fmt.Errorf("lyspg.GetTableColumns failed: %w", err)
 	}
 
 	// get table parent FKs
-	parentFks, stmt, err := lyspg.GetForeignKeys(ctx, db, schema, table)
+	parentFks, err := lyspg.GetForeignKeys(ctx, db, schema, table)
 	if err != nil {
-		return "", stmt, fmt.Errorf("lyspg.GetForeignKeys failed: %w", err)
+		return "", fmt.Errorf("lyspg.GetForeignKeys failed: %w", err)
 	}
 
 	// get table child FKs
-	childFks, stmt, err := lyspg.GetChildForeignKeys(ctx, db, schema, table)
+	childFks, err := lyspg.GetChildForeignKeys(ctx, db, schema, table)
 	if err != nil {
-		return "", stmt, fmt.Errorf("lyspg.GetChildForeignKeys failed: %w", err)
+		return "", fmt.Errorf("lyspg.GetChildForeignKeys failed: %w", err)
 	}
 
 	// build result
@@ -64,9 +64,9 @@ func View(ctx context.Context, db *pgxpool.Pool, schema, table string) (res stri
 			}
 
 			// this col is FK - get its column values and parentJoin
-			parentfkColVals, parentJoin, stmt, err := getViewParentFkInfo(ctx, db, fk, alias)
+			parentfkColVals, parentJoin, err := getViewParentFkInfo(ctx, db, fk, alias)
 			if err != nil {
-				return "", stmt, fmt.Errorf("getViewParentFkInfo failed for parent table: %s.%s: %w", fk.ParentSchema, fk.ParentTable, err)
+				return "", fmt.Errorf("getViewParentFkInfo failed for parent table: %s.%s: %w", fk.ParentSchema, fk.ParentTable, err)
 			}
 
 			colVals = append(colVals, parentfkColVals...)
@@ -76,9 +76,9 @@ func View(ctx context.Context, db *pgxpool.Pool, schema, table string) (res stri
 
 	// append child FK info, if any
 	for _, fk := range childFks {
-		childfkColVal, childJoin, stmt, err := getViewChildFkInfo(ctx, db, fk, alias)
+		childfkColVal, childJoin, err := getViewChildFkInfo(ctx, db, fk, alias)
 		if err != nil {
-			return "", stmt, fmt.Errorf("getViewChildFkInfo failed for child table: %s.%s: %w", fk.ChildSchema, fk.ChildTable, err)
+			return "", fmt.Errorf("getViewChildFkInfo failed for child table: %s.%s: %w", fk.ChildSchema, fk.ChildTable, err)
 		}
 		colVals = append(colVals, childfkColVal)
 		joins = append(joins, childJoin)
@@ -94,20 +94,20 @@ func View(ctx context.Context, db *pgxpool.Pool, schema, table string) (res stri
 	// write to clipboard for convenience
 	err = WriteToClipboard(res)
 	if err != nil {
-		return "", "", fmt.Errorf("WriteToClipboard failed: %w", err)
+		return "", fmt.Errorf("WriteToClipboard failed: %w", err)
 	}
 
-	return "\n" + res + "\n", "", nil
+	return "\n" + res + "\n", nil
 }
 
-func getViewParentFkInfo(ctx context.Context, db *pgxpool.Pool, fk lyspg.ForeignKey, mainAlias string) (colVals []string, join, stmt string, err error) {
+func getViewParentFkInfo(ctx context.Context, db *pgxpool.Pool, fk lyspg.ForeignKey, mainAlias string) (colVals []string, join string, err error) {
 
 	parentAlias := fk.ParentTable
 
 	// get parent table shortname, if exists
-	parentShortName, stmt, err := lyspg.GetTableShortName(ctx, db, fk.ParentSchema, fk.ParentTable)
+	parentShortName, err := lyspg.GetTableShortName(ctx, db, fk.ParentSchema, fk.ParentTable)
 	if err != nil {
-		return nil, "", stmt, fmt.Errorf("lyspg.GetTableShortName failed: %w", err)
+		return nil, "", fmt.Errorf("lyspg.GetTableShortName failed: %w", err)
 	}
 	if parentShortName != "" {
 		parentAlias = parentShortName
@@ -117,9 +117,9 @@ func getViewParentFkInfo(ctx context.Context, db *pgxpool.Pool, fk lyspg.Foreign
 	join = fmt.Sprintf("  JOIN %s.%s %s ON %s.%s = %s.%s", fk.ParentSchema, fk.ParentTable, parentAlias, mainAlias, fk.ChildColumn, parentAlias, fk.ParentColumn)
 
 	// get parent cols
-	parentCols, stmt, err := lyspg.GetTableColumns(ctx, db, fk.ParentSchema, fk.ParentTable)
+	parentCols, err := lyspg.GetTableColumns(ctx, db, fk.ParentSchema, fk.ParentTable)
 	if err != nil {
-		return nil, "", stmt, fmt.Errorf("lyspg.GetTableColumns failed for table: %s.%s: %w", fk.ParentSchema, fk.ParentTable, err)
+		return nil, "", fmt.Errorf("lyspg.GetTableColumns failed for table: %s.%s: %w", fk.ParentSchema, fk.ParentTable, err)
 	}
 
 	// define parent colVals
@@ -134,17 +134,17 @@ func getViewParentFkInfo(ctx context.Context, db *pgxpool.Pool, fk lyspg.Foreign
 		colVals = append(colVals, colVal)
 	}
 
-	return colVals, join, "", nil
+	return colVals, join, nil
 }
 
-func getViewChildFkInfo(ctx context.Context, db *pgxpool.Pool, fk lyspg.ForeignKey, mainAlias string) (colVal string, join, stmt string, err error) {
+func getViewChildFkInfo(ctx context.Context, db *pgxpool.Pool, fk lyspg.ForeignKey, mainAlias string) (colVal string, join string, err error) {
 
 	childAlias := fk.ChildTable
 
 	// get child table shortname, if exists
-	childShortName, stmt, err := lyspg.GetTableShortName(ctx, db, fk.ChildSchema, fk.ChildTable)
+	childShortName, err := lyspg.GetTableShortName(ctx, db, fk.ChildSchema, fk.ChildTable)
 	if err != nil {
-		return "", "", stmt, fmt.Errorf("lyspg.GetTableShortName failed: %w", err)
+		return "", "", fmt.Errorf("lyspg.GetTableShortName failed: %w", err)
 	}
 	if childShortName != "" {
 		childAlias = childShortName
@@ -157,5 +157,5 @@ func getViewChildFkInfo(ctx context.Context, db *pgxpool.Pool, fk lyspg.ForeignK
 	join = fmt.Sprintf("  LEFT JOIN (SELECT %s, count(*) AS %s_count FROM %s.%s GROUP BY 1) %s ON %s.%s = %s.%s",
 		fk.ChildColumn, fk.ChildTable, fk.ChildSchema, fk.ChildTable, childAlias, childAlias, fk.ChildColumn, mainAlias, fk.ParentColumn)
 
-	return colVal, join, "", nil
+	return colVal, join, nil
 }

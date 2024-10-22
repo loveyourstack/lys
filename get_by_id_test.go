@@ -32,5 +32,5 @@ func TestGetByIdFailure(t *testing.T) {
 	// id doesn't exist
 	targetUrl = "/type-test/100000"
 	_, err = lysclient.DoToValueTester[coretypetest.Model](srvApp.getRouter(), "GET", targetUrl)
-	assert.EqualValues(t, "invalid id", err.Error())
+	assert.EqualValues(t, "row(s) not found", err.Error())
 }

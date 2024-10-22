@@ -2,21 +2,19 @@ package lys
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // iArchiveable is a store that can be used by Archive and Restore
 type iArchiveableById interface {
-	ArchiveById(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error)
-	RestoreById(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error)
+	ArchiveById(ctx context.Context, tx pgx.Tx, id int64) error
+	RestoreById(ctx context.Context, tx pgx.Tx, id int64) error
 }
 
 // Archive handles moving a record from the supplied store into its archived table
@@ -30,7 +28,7 @@ func RestoreById(env Env, db *pgxpool.Pool, store iArchiveableById) http.Handler
 }
 
 // MoveRecordsById handles moving record(s) back and forth between the main table and its corresponding archived table
-func MoveRecordsById(env Env, db *pgxpool.Pool, moveFunc func(context.Context, pgx.Tx, int64) (string, error), msg string) http.HandlerFunc {
+func MoveRecordsById(env Env, db *pgxpool.Pool, moveFunc func(context.Context, pgx.Tx, int64) error, msg string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -51,29 +49,9 @@ func MoveRecordsById(env Env, db *pgxpool.Pool, moveFunc func(context.Context, p
 		defer tx.Rollback(r.Context())
 
 		// try the operation
-		stmt, err := moveFunc(r.Context(), tx, id)
+		err = moveFunc(r.Context(), tx, id)
 		if err != nil {
-
-			// expected error: request canceled
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-
-			// expected error: id does not exist
-			if errors.Is(err, pgx.ErrNoRows) {
-				HandleUserError(http.StatusBadRequest, ErrDescInvalidId, w)
-				return
-			}
-
-			// handle errors from postgres
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) {
-				HandlePostgresError(r.Context(), stmt, "MoveRecordsById: moveFunc", pgErr, env.ErrorLog, w)
-				return
-			}
-
-			// unknown db error
-			HandleDbError(r.Context(), stmt, fmt.Errorf("MoveRecordsById: moveFunc failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("MoveRecordsById: moveFunc failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

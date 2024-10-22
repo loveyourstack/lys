@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/loveyourstack/lys/lyserr"
 )
 
 // TotalCount contains the total number of table records. If IsEstimated is true, the Value was estimated using db statistics rather than calculated using a record count
@@ -17,14 +18,14 @@ type TotalCount struct {
 // fastRowCount returns a fast rowcount of the specified db table
 // the result may be exact or inexact, depending on the size of the table and whether or not any query conditions are present
 // query must be select stmt with placeholders, without order by, limit, or offset
-func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string, conditions []Condition, query string) (totalCount TotalCount, stmt string, err error) {
+func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string, conditions []Condition, query string) (totalCount TotalCount, err error) {
 
 	var threshold int64 = 10000
 
 	// get rowcount from info schema stats
-	statsRowCount, stmt, err := GetStatsRowCount(ctx, db, schemaName, tableName)
+	statsRowCount, err := GetStatsRowCount(ctx, db, schemaName, tableName)
 	if err != nil {
-		return TotalCount{}, stmt, fmt.Errorf("GetStatsRowCount failed: %w", err)
+		return TotalCount{}, fmt.Errorf("GetStatsRowCount failed: %w", err)
 	}
 
 	// if table is relatively small (rowcount below threshold), get the exact count
@@ -32,65 +33,65 @@ func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string
 
 		// if no conditions, straight rowcount
 		if len(conditions) == 0 {
-			rowCount, stmt, err := GetRowCount(ctx, db, schemaName, tableName)
+			rowCount, err := GetRowCount(ctx, db, schemaName, tableName)
 			if err != nil {
-				return TotalCount{}, stmt, fmt.Errorf("GetRowCount failed: %w", err)
+				return TotalCount{}, fmt.Errorf("GetRowCount failed: %w", err)
 			}
-			return TotalCount{Value: rowCount, IsEstimated: false}, "", nil
+			return TotalCount{Value: rowCount, IsEstimated: false}, nil
 		}
 
 		// has conditions: get count from unpaged query result
 		paramValues := getSelectParamValues(conditions, false, 0, 0)
-		rowCount, stmt, err := GetRowCountPlaceholderQry(ctx, db, query, paramValues)
+		rowCount, err := GetRowCountPlaceholderQry(ctx, db, query, paramValues)
 		if err != nil {
-			return TotalCount{}, stmt, fmt.Errorf("GetRowCountPlaceholderQry failed: %w", err)
+			return TotalCount{}, fmt.Errorf("GetRowCountPlaceholderQry failed: %w", err)
 		}
-		return TotalCount{Value: rowCount, IsEstimated: false}, "", nil
+		return TotalCount{Value: rowCount, IsEstimated: false}, nil
 	}
 
 	// large table (rowcount above threshold)
 
 	// if no conditions, just return est rowcount from stats
 	if len(conditions) == 0 {
-		return TotalCount{Value: statsRowCount, IsEstimated: true}, "", nil
+		return TotalCount{Value: statsRowCount, IsEstimated: true}, nil
 	}
 
 	// has conditions: get est rowcount from query plan
 	// from https://www.cybertec-postgresql.com/en/postgresql-count-made-fast/
 	paramValues := getSelectParamValues(conditions, false, 0, 0)
-	rowCount, stmt, err := GetRowCountExplain(ctx, db, query, paramValues)
+	rowCount, err := GetRowCountExplain(ctx, db, query, paramValues)
 	if err != nil {
-		return TotalCount{}, stmt, fmt.Errorf("GetRowCountExplain failed: %w", err)
+		return TotalCount{}, fmt.Errorf("GetRowCountExplain failed: %w", err)
 	}
 
-	return TotalCount{Value: rowCount, IsEstimated: true}, "", nil
+	return TotalCount{Value: rowCount, IsEstimated: true}, nil
 }
 
 // GetRowCount returns a straight rowcount of the supplied table
-func GetRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string) (rowCount int64, stmt string, err error) {
+func GetRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string) (rowCount int64, err error) {
 
-	stmt = fmt.Sprintf("SELECT count(*) FROM %s.%s;", schemaName, tableName)
+	stmt := fmt.Sprintf("SELECT count(*) FROM %s.%s;", schemaName, tableName)
 	rows, _ := db.Query(ctx, stmt)
 	rowCount, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[int64])
 	if err != nil {
-		return 0, stmt, fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err)
+		return 0, lyserr.Db{Err: fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err), Stmt: stmt}
 	}
 
-	return rowCount, "", nil
+	return rowCount, nil
 }
 
 // GetRowCountPlaceholderQry returns the exact rowcount of the supplied qry
 // qry must use placeholders for params, and paramValues must be supplied
-func GetRowCountPlaceholderQry(ctx context.Context, db PoolOrTx, qry string, paramValues []any) (rowCount int64, stmt string, err error) {
+func GetRowCountPlaceholderQry(ctx context.Context, db PoolOrTx, qry string, paramValues []any) (rowCount int64, err error) {
 
-	stmt = fmt.Sprintf("SELECT count(*) FROM (%s) res;", qry)
+	stmt := fmt.Sprintf("SELECT count(*) FROM (%s) res;", qry)
 	rows, _ := db.Query(ctx, stmt, paramValues...)
 	rowCount, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[int64])
 	if err != nil {
-		return 0, stmt, fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err)
+		return 0, lyserr.Db{Err: fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err), Stmt: stmt}
 	}
 
-	return rowCount, "", nil
+	return rowCount, nil
 }
 
 type explainResp []struct {
@@ -109,24 +110,24 @@ type explainResp []struct {
 
 // GetRowCountExplain returns the estimated rowcount of the supplied qry using the query planner EXPLAIN output
 // qry must use placeholders for params, and paramValues must be supplied
-func GetRowCountExplain(ctx context.Context, db PoolOrTx, qry string, paramValues []any) (rowCount int64, stmt string, err error) {
+func GetRowCountExplain(ctx context.Context, db PoolOrTx, qry string, paramValues []any) (rowCount int64, err error) {
 
 	// get plan in json format
-	stmt = fmt.Sprintf("EXPLAIN (FORMAT JSON) %s;", qry)
+	stmt := fmt.Sprintf("EXPLAIN (FORMAT JSON) %s;", qry)
 	rows, _ := db.Query(ctx, stmt, paramValues...)
 	plan, err := pgx.CollectExactlyOneRow(rows, pgx.RowTo[string])
 	if err != nil {
-		return 0, stmt, fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err)
+		return 0, lyserr.Db{Err: fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err), Stmt: stmt}
 	}
 
 	// unmarshal into ExplainResp
 	expl := explainResp{}
 	err = json.Unmarshal([]byte(plan), &expl)
 	if err != nil {
-		return 0, stmt, fmt.Errorf("json.Unmarshal failed: %w", err)
+		return 0, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
 
 	rowCount = expl[0].Plan.PlanRows
 
-	return rowCount, "", nil
+	return rowCount, nil
 }

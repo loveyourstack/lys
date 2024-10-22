@@ -12,24 +12,24 @@ import (
 
 // InputModel generates the store Input and Model structs from the supplied db table
 // only handles 1 level of join, and does not coalesce nulls
-func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (res string, stmt string, err error) {
+func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (res string, err error) {
 
 	// get table columns
-	cols, stmt, err := lyspg.GetTableColumns(ctx, db, schema, table)
+	cols, err := lyspg.GetTableColumns(ctx, db, schema, table)
 	if err != nil {
-		return "", stmt, fmt.Errorf("lyspg.GetTableColumns failed: %w", err)
+		return "", fmt.Errorf("lyspg.GetTableColumns failed: %w", err)
 	}
 
 	// get table parent FKs
-	parentFks, stmt, err := lyspg.GetForeignKeys(ctx, db, schema, table)
+	parentFks, err := lyspg.GetForeignKeys(ctx, db, schema, table)
 	if err != nil {
-		return "", stmt, fmt.Errorf("lyspg.GetForeignKeys failed: %w", err)
+		return "", fmt.Errorf("lyspg.GetForeignKeys failed: %w", err)
 	}
 
 	// get table child FKs
-	childFks, stmt, err := lyspg.GetChildForeignKeys(ctx, db, schema, table)
+	childFks, err := lyspg.GetChildForeignKeys(ctx, db, schema, table)
 	if err != nil {
-		return "", stmt, fmt.Errorf("lyspg.GetChildForeignKeys failed: %w", err)
+		return "", fmt.Errorf("lyspg.GetChildForeignKeys failed: %w", err)
 	}
 
 	// input
@@ -55,7 +55,7 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 		// get Go data type
 		goDataType, err := GetGoDataTypeFromPg(col.DataType)
 		if err != nil {
-			return "", "", fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
+			return "", fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
 		}
 
 		// add line for column
@@ -87,7 +87,7 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 		// get Go data type
 		goDataType, err := GetGoDataTypeFromPg(col.DataType)
 		if err != nil {
-			return "", "", fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
+			return "", fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
 		}
 
 		// add line for column
@@ -99,9 +99,9 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 	for _, fk := range parentFks {
 
 		// get parent cols
-		parentCols, stmt, err := lyspg.GetTableColumns(ctx, db, fk.ParentSchema, fk.ParentTable)
+		parentCols, err := lyspg.GetTableColumns(ctx, db, fk.ParentSchema, fk.ParentTable)
 		if err != nil {
-			return "", stmt, fmt.Errorf("lyspg.GetTableColumns failed for table: %s.%s: %w", fk.ParentSchema, fk.ParentTable, err)
+			return "", fmt.Errorf("lyspg.GetTableColumns failed for table: %s.%s: %w", fk.ParentSchema, fk.ParentTable, err)
 		}
 
 		// for each parent col
@@ -121,7 +121,7 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 			// get Go data type
 			goDataType, err := GetGoDataTypeFromPg(parCol.DataType)
 			if err != nil {
-				return "", "", fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
+				return "", fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
 			}
 
 			// add line for column
@@ -149,8 +149,8 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 	// write to clipboard for convenience
 	err = WriteToClipboard(res)
 	if err != nil {
-		return "", "", fmt.Errorf("WriteToClipboard failed: %w", err)
+		return "", fmt.Errorf("WriteToClipboard failed: %w", err)
 	}
 
-	return "\n" + res + "\n", "", nil
+	return "\n" + res + "\n", nil
 }

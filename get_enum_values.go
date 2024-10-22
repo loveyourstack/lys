@@ -1,14 +1,12 @@
 package lys
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lyspg"
@@ -44,23 +42,9 @@ func GetEnumValues(env Env, db *pgxpool.Pool, schema, enum string) http.HandlerF
 		}
 
 		// select enum from db
-		vals, stmt, err := lyspg.SelectEnum(r.Context(), db, schema+"."+enum, includeVals, excludeVals, sortVal)
+		vals, err := lyspg.SelectEnum(r.Context(), db, schema+"."+enum, includeVals, excludeVals, sortVal)
 		if err != nil {
-
-			// expected error: request canceled
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-
-			// handle errors from postgres
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) {
-				HandlePostgresError(r.Context(), stmt, "GetEnumValues: lyspg.SelectEnum", pgErr, env.ErrorLog, w)
-				return
-			}
-
-			// unknown db error
-			HandleDbError(r.Context(), stmt, fmt.Errorf("GetEnumValues: lyspg.SelectEnum failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("GetEnumValues: lyspg.SelectEnum failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

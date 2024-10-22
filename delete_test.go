@@ -26,7 +26,7 @@ func TestDeleteSuccess(t *testing.T) {
 
 	// try to select it
 	_, err := lysclient.DoToValueTester[string](srvApp.getRouter(), "GET", targetUrl)
-	assert.EqualValues(t, "invalid id", err.Error())
+	assert.EqualValues(t, "row(s) not found", err.Error())
 }
 
 func TestDeleteFailure(t *testing.T) {
@@ -40,5 +40,5 @@ func TestDeleteFailure(t *testing.T) {
 
 	// invalid id
 	_, err = lysclient.DoToValueTester[string](srvApp.getRouter(), "DELETE", "/type-test/100000")
-	assert.EqualValues(t, "invalid id", err.Error(), "invalid id")
+	assert.EqualValues(t, "row(s) not found", err.Error(), "invalid id")
 }

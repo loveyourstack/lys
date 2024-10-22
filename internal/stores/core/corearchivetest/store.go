@@ -48,11 +48,11 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
-func (s Store) ArchiveById(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error) {
+func (s Store) ArchiveById(ctx context.Context, tx pgx.Tx, id int64) error {
 	return lyspg.Archive(ctx, tx, schemaName, tableName, pkColName, id, false)
 }
 
-func (s Store) ArchiveByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) (stmt string, err error) {
+func (s Store) ArchiveByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
 	return lyspg.Archive(ctx, tx, schemaName, tableName, "id_uu", id, false)
 }
 
@@ -63,22 +63,22 @@ func (s Store) GetName() string {
 	return name
 }
 
-func (s Store) RestoreById(ctx context.Context, tx pgx.Tx, id int64) (stmt string, err error) {
+func (s Store) RestoreById(ctx context.Context, tx pgx.Tx, id int64) error {
 	return lyspg.Restore(ctx, tx, schemaName, tableName, pkColName, id, false)
 }
 
-func (s Store) RestoreByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) (stmt string, err error) {
+func (s Store) RestoreByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
 	return lyspg.Restore(ctx, tx, schemaName, tableName, "id_uu", id, false)
 }
 
-func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, stmt string, err error) {
+func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {
 	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, meta.DbTags, params)
 }
 
-func (s Store) SelectById(ctx context.Context, fields []string, id int64) (item Model, stmt string, err error) {
+func (s Store) SelectById(ctx context.Context, fields []string, id int64) (item Model, err error) {
 	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, pkColName, fields, meta.DbTags, id)
 }
 
-func (s Store) SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item Model, stmt string, err error) {
+func (s Store) SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item Model, err error) {
 	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, "id_uu", fields, meta.DbTags, id)
 }

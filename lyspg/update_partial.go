@@ -7,13 +7,13 @@ import (
 	"slices"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/loveyourstack/lys/lyserr"
 )
 
 // UpdatePartial updates only the supplied columns of the record
 // assignmentsMap is a map of k = column name, v = new value
 // pkVal is type "any" so that both int and string PKs can be used
-func UpdatePartial(ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, allowedFields []string, assignmentsMap map[string]any,
-	pkVal any) (stmt string, err error) {
+func UpdatePartial(ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, allowedFields []string, assignmentsMap map[string]any, pkVal any) error {
 
 	// get keys (column names) and input values from assignmentsMap
 	var keys []string
@@ -26,23 +26,23 @@ func UpdatePartial(ctx context.Context, db PoolOrTx, schemaName, tableName, pkCo
 	// ensure that each map key is among the allowed fields
 	for _, k := range keys {
 		if !slices.Contains(allowedFields, k) {
-			return "", fmt.Errorf("invalid field: %s", k)
+			return lyserr.User{Message: fmt.Sprintf("invalid field: %s", k)}
 		}
 	}
 
-	stmt = getUpdateStmt(schemaName, tableName, pkColName, keys)
+	stmt := getUpdateStmt(schemaName, tableName, pkColName, keys)
 
 	inputVals = append(inputVals, pkVal)
 
 	cmdTag, err := db.Exec(ctx, stmt, inputVals...)
 	if err != nil {
-		return stmt, fmt.Errorf(ErrDescUpdateExecFailed+": %w", err)
+		return lyserr.Db{Err: fmt.Errorf(ErrDescUpdateExecFailed+": %w", err), Stmt: stmt}
 	}
 
 	if cmdTag.RowsAffected() == 0 {
-		return stmt, pgx.ErrNoRows
+		return pgx.ErrNoRows
 	}
 
 	// success
-	return "", nil
+	return nil
 }
