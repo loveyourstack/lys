@@ -62,6 +62,13 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	paramTestStore := coreparamtest.Store{Db: srvApp.Db}
 	r.HandleFunc(endpoint, Get[coreparamtest.Model](apiEnv, paramTestStore)).Methods("GET")
 
+	endpoint = "/process-slice-test"
+
+	processSliceFunc := func(ctx context.Context, vals []int) (int64, error) {
+		return int64(len(vals)), nil
+	}
+	r.HandleFunc(endpoint, ProcessSlice(apiEnv, processSliceFunc)).Methods("POST")
+
 	endpoint = "/type-test"
 
 	typeTestStore := coretypetest.Store{Db: srvApp.Db}
