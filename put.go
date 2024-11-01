@@ -2,14 +2,12 @@ package lys
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
-	"github.com/loveyourstack/lys/lyserr"
 )
 
 // iPutable is a store that can be used by Put
@@ -34,24 +32,14 @@ func Put[T any](env Env, store iPutable[T]) http.HandlerFunc {
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			var userErr lyserr.User
-			if errors.As(err, &userErr) {
-				HandleUserError(http.StatusBadRequest, userErr.Message, w)
-			} else {
-				HandleInternalError(r.Context(), fmt.Errorf("Put: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
-			}
+			HandleError(r.Context(), fmt.Errorf("Put: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
 		// unmarshal the body
 		input, err := DecodeJsonBody[T](body)
 		if err != nil {
-			var userErr lyserr.User
-			if errors.As(err, &userErr) {
-				HandleUserError(http.StatusBadRequest, userErr.Message, w)
-			} else {
-				HandleInternalError(r.Context(), fmt.Errorf("Put: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
-			}
+			HandleError(r.Context(), fmt.Errorf("Put: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

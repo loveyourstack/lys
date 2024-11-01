@@ -2,6 +2,7 @@ package lys
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -33,6 +34,12 @@ func ExtractJsonBody(r *http.Request, maxBodySize int64) (body []byte, err error
 	if len(body) == 0 {
 		return nil, lyserr.User{
 			Message: ErrDescBodyMissing}
+	}
+
+	// ensure body is valid JSON
+	if !json.Valid(body) {
+		return nil, lyserr.User{
+			Message: ErrDescInvalidJson}
 	}
 
 	// replace empty string with null so that json key/value pairs are returned with value null

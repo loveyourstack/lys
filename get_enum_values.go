@@ -1,7 +1,6 @@
 package lys
 
 import (
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -20,24 +19,14 @@ func GetEnumValues(env Env, db *pgxpool.Pool, schema, enum string) http.HandlerF
 		// get include or exclude filters, if any
 		includeVals, excludeVals, err := extractEnumFilters(r.URL.Query(), env.GetOptions.SortParamName)
 		if err != nil {
-			var userErr lyserr.User
-			if errors.As(err, &userErr) {
-				HandleUserError(http.StatusBadRequest, userErr.Message, w)
-			} else {
-				HandleInternalError(r.Context(), fmt.Errorf("GetEnumValues: extractEnumFilters failed: %w", err), env.ErrorLog, w)
-			}
+			HandleError(r.Context(), fmt.Errorf("GetEnumValues: extractEnumFilters failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
 		// get sort instruction, if any
 		sortVal, err := extractEnumSort(r.URL.Query(), env.GetOptions.SortParamName)
 		if err != nil {
-			var userErr lyserr.User
-			if errors.As(err, &userErr) {
-				HandleUserError(http.StatusBadRequest, userErr.Message, w)
-			} else {
-				HandleInternalError(r.Context(), fmt.Errorf("GetEnumValues: extractEnumSort failed: %w", err), env.ErrorLog, w)
-			}
+			HandleError(r.Context(), fmt.Errorf("GetEnumValues: extractEnumSort failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

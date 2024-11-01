@@ -3,13 +3,11 @@ package lys
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/loveyourstack/lys/lyserr"
 )
 
 // iPatchable is a store that can be used by Patch
@@ -33,12 +31,7 @@ func Patch(env Env, store iPatchable) http.HandlerFunc {
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			var userErr lyserr.User
-			if errors.As(err, &userErr) {
-				HandleUserError(http.StatusBadRequest, userErr.Message, w)
-			} else {
-				HandleInternalError(r.Context(), fmt.Errorf("Patch: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
-			}
+			HandleError(r.Context(), fmt.Errorf("Patch: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

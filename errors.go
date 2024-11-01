@@ -9,6 +9,7 @@ const (
 	ErrDescIdNotUnique        string = "id not unique" // the handling func was expecting id to be unique, but it is not
 	ErrDescInvalidContentType string = "content type must be application/json"
 	ErrDescInvalidId          string = "invalid id" // the Id sent is not present in the relevant table
+	ErrDescInvalidJson        string = "invalid json"
 	ErrDescRouteNotFound      string = "route not found"
 	ErrDescUserInfoMissing    string = "userInfo missing"  // failed to get ReqUserInfo from context
 	ErrDescPermissionDenied   string = "permission denied" // authorization failed

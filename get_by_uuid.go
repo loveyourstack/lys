@@ -37,12 +37,6 @@ func GetByUuid[T any](env Env, store iGetableByUuid[T]) http.HandlerFunc {
 		// get fields param if present (e.g. &xfields=)
 		fields, err := ExtractFields(r, store.GetMeta().JsonTags, env.GetOptions.FieldsParamName)
 		if err != nil {
-			/*var userErr lyserr.User
-			if errors.As(err, &userErr) {
-				HandleUserError(http.StatusBadRequest, userErr.Message, w)
-			} else {
-				HandleInternalError(r.Context(), fmt.Errorf("GetByUuid: ExtractFields failed: %w", err), env.ErrorLog, w)
-			}*/
 			HandleError(r.Context(), fmt.Errorf("GetByUuid: ExtractFields failed: %w", err), env.ErrorLog, w)
 			return
 		}

@@ -35,14 +35,23 @@ func TestExtractJsonBodyFailure(t *testing.T) {
 	_, err = ExtractJsonBody(&http.Request{}, 1024*1024)
 	assert.EqualValues(t, "content type must be application/json", err.Error())
 
+	// body missing
 	rawBody := ``
 	req, err := http.NewRequest("GET", "", bytes.NewReader([]byte(rawBody)))
 	if err != nil {
 		t.Fatalf("http.NewRequest failed: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-
-	// body missing
 	_, err = ExtractJsonBody(req, 1024*1024)
 	assert.EqualValues(t, "request body missing", err.Error())
+
+	// invalid json
+	rawBody = `"a":"b",`
+	req, err = http.NewRequest("GET", "", bytes.NewReader([]byte(rawBody)))
+	if err != nil {
+		t.Fatalf("http.NewRequest failed: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	_, err = ExtractJsonBody(req, 1024*1024)
+	assert.EqualValues(t, "invalid json", err.Error())
 }
