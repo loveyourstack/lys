@@ -35,8 +35,7 @@ type UpdateOption struct {
 
 // Update changes a single record with the values contained in input
 // T must be a struct with "db" tags
-// pkVal is type "any" so that both int and string PKs can be used
-func Update[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal any, options ...UpdateOption) error {
+func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT, options ...UpdateOption) error {
 
 	var updateFields, omitFields []string
 

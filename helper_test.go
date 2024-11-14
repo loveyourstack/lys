@@ -74,7 +74,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	typeTestStore := coretypetest.Store{Db: srvApp.Db}
 	r.HandleFunc(endpoint, Get[coretypetest.Model](apiEnv, typeTestStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById[coretypetest.Model](apiEnv, typeTestStore)).Methods("GET")
-	r.HandleFunc(endpoint, Post[coretypetest.Input, coretypetest.Model](apiEnv, typeTestStore)).Methods("POST")
+	r.HandleFunc(endpoint, Post[coretypetest.Input, int64](apiEnv, typeTestStore)).Methods("POST")
 	r.HandleFunc(endpoint+"/{id}", Put[coretypetest.Input](apiEnv, typeTestStore)).Methods("PUT")
 	r.HandleFunc(endpoint+"/{id}", Patch(apiEnv, typeTestStore)).Methods("PATCH")
 	r.HandleFunc(endpoint+"/{id}", Delete(apiEnv, typeTestStore)).Methods("DELETE")
@@ -89,7 +89,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	r.HandleFunc(endpoint, Get[corevolumetest.Model](apiEnv, volTestStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/any-10", GetSimple(apiEnv, volTestStore.Select10)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById[corevolumetest.Model](apiEnv, volTestStore)).Methods("GET")
-	r.HandleFunc(endpoint, Post[corevolumetest.Input, corevolumetest.Model](apiEnv, volTestStore)).Methods("POST")
+	r.HandleFunc(endpoint, Post[corevolumetest.Input, int64](apiEnv, volTestStore)).Methods("POST")
 	r.HandleFunc(endpoint+"/{id}", Put[corevolumetest.Input](apiEnv, volTestStore)).Methods("PUT")
 	r.HandleFunc(endpoint+"/{id}", Patch(apiEnv, volTestStore)).Methods("PATCH")
 	r.HandleFunc(endpoint+"/{id}", Delete(apiEnv, volTestStore)).Methods("DELETE")

@@ -5,9 +5,11 @@ import (
 	"reflect"
 	"slices"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/loveyourstack/lys/lystype"
+	"golang.org/x/exp/constraints"
 )
 
 func init() {
@@ -46,6 +48,11 @@ type PoolOrTx interface {
 	CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error)
 	Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+}
+
+// PrimaryKeyType defines the type constraint of DB primary keys
+type PrimaryKeyType interface {
+	constraints.Integer | uuid.UUID | ~string
 }
 
 // getInputValsFromStruct returns input values for pg operations from the supplied reflected struct variable

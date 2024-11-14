@@ -23,9 +23,36 @@ func getInsertStmt(schemaName, tableName, pkColName string, inputFields []string
 		schemaName, tableName, strings.Join(inputFields, ", "), strings.Join(paramPlaceholders, ", "), pkColName)
 }
 
-// Insert inserts a single record and then returns it
+// Insert inserts a single record and then returns the new primary key, whose type is pkT
 // inputT must be a struct with "db" tags
-func Insert[inputT any, itemT any](ctx context.Context, db PoolOrTx, schemaName, tableName, viewName, pkColName string, allFields []string,
+func Insert[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input inputT) (newPk pkT, err error) {
+
+	// get input db struct tags
+	inputReflVals := reflect.ValueOf(input)
+	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
+	if err != nil {
+		return newPk, fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
+	}
+
+	if len(meta.DbTags) == 0 {
+		return newPk, fmt.Errorf("input type does not have db tags")
+	}
+
+	// get the input values via reflection
+	inputVals := getInputValsFromStruct(inputReflVals, nil)
+
+	stmt := getInsertStmt(schemaName, tableName, pkColName, meta.DbTags)
+
+	if err = db.QueryRow(ctx, stmt, inputVals...).Scan(&newPk); err != nil {
+		return newPk, lyserr.Db{Err: fmt.Errorf(ErrDescInsertScanFailed+": %w", err), Stmt: stmt}
+	}
+
+	return newPk, nil
+}
+
+// InsertSelect inserts a single record and then returns it
+// inputT must be a struct with "db" tags
+func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schemaName, tableName, viewName, pkColName string, allFields []string,
 	input inputT) (newItem itemT, err error) {
 
 	// get input db struct tags

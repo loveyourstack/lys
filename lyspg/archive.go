@@ -21,7 +21,7 @@ var (
 // the archived table must have the same columns as the source table and also the ArchivedTableCols defined above
 // the column order does not need to be the same in the source and archived tables
 // if this func returns an error, rollback the tx
-func Archive(ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName string, pkVal any, isCascaded bool) error {
+func Archive[pkT PrimaryKeyType](ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName string, pkVal pkT, isCascaded bool) error {
 
 	// get main table cols from info schema
 	tableCols, err := GetTableColumnNames(ctx, tx, schemaName, tableName)
@@ -57,7 +57,7 @@ func Archive(ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName st
 
 // Restore moves a previously archived record to the corresponding table using the supplied tx
 // if this func returns an error, rollback the tx
-func Restore(ctx context.Context, tx pgx.Tx, schemaName, tableName, pkColName string, pkVal any, isCascaded bool) error {
+func Restore[pkT PrimaryKeyType](ctx context.Context, tx pgx.Tx, schemaName, tableName, pkColName string, pkVal pkT, isCascaded bool) error {
 
 	// get main table cols from info schema
 	tableCols, err := GetTableColumnNames(ctx, tx, schemaName, tableName)

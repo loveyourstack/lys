@@ -2,6 +2,7 @@ package lys
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -19,7 +20,8 @@ func TestPostEmptySuccess(t *testing.T) {
 	defer srvApp.Db.Close()
 
 	input := coretypetest.GetEmptyInput()
-	item := lysclient.MustPostToValue[coretypetest.Input, coretypetest.Model](t, srvApp.getRouter(), "POST", "/type-test", input)
+	newId := lysclient.MustPostToValue[coretypetest.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", input)
+	item := lysclient.MustDoToValue[coretypetest.Model](t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
 
 	// check nullable fields are nil
 	assert.Nil(t, item.CBoolN, "CBoolN")
@@ -58,7 +60,8 @@ func TestPostFilledSuccess(t *testing.T) {
 	if err != nil {
 		t.Fatalf("coretypetest.GetFilledInput failed: %v", err)
 	}
-	item := lysclient.MustPostToValue[coretypetest.Input, coretypetest.Model](t, srvApp.getRouter(), "POST", "/type-test", input)
+	newId := lysclient.MustPostToValue[coretypetest.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", input)
+	item := lysclient.MustDoToValue[coretypetest.Model](t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
 	testFilledInput(t, item.Input)
 }
 

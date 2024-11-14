@@ -12,8 +12,7 @@ import (
 
 // UpdatePartial updates only the supplied columns of the record
 // assignmentsMap is a map of k = column name, v = new value
-// pkVal is type "any" so that both int and string PKs can be used
-func UpdatePartial(ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, allowedFields []string, assignmentsMap map[string]any, pkVal any) error {
+func UpdatePartial[pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, allowedFields []string, assignmentsMap map[string]any, pkVal pkT) error {
 
 	// get keys (column names) and input values from assignmentsMap
 	var keys []string

@@ -17,9 +17,9 @@ func TestPutSuccess(t *testing.T) {
 
 	// create a record with minimal values
 	minInput := coretypetest.GetEmptyInput()
-	minItem := lysclient.MustPostToValue[coretypetest.Input, coretypetest.Model](t, srvApp.getRouter(), "POST", "/type-test", minInput)
+	newId := lysclient.MustPostToValue[coretypetest.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", minInput)
 
-	targetUrl := "/type-test/" + strconv.FormatInt(minItem.Id, 10)
+	targetUrl := "/type-test/" + strconv.FormatInt(newId, 10)
 
 	// get filled type test input
 	filledInput, err := coretypetest.GetFilledInput()
@@ -43,9 +43,9 @@ func TestPutFailure(t *testing.T) {
 	defer srvApp.Db.Close()
 
 	minInput := coretypetest.GetEmptyInput()
-	minItem := lysclient.MustPostToValue[coretypetest.Input, coretypetest.Model](t, srvApp.getRouter(), "POST", "/type-test", minInput)
+	newId := lysclient.MustPostToValue[coretypetest.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", minInput)
 
-	targetUrl := "/type-test/" + strconv.FormatInt(minItem.Id, 10)
+	targetUrl := "/type-test/" + strconv.FormatInt(newId, 10)
 
 	// struct with unknown field
 	type testS struct {
