@@ -46,8 +46,8 @@ func (s Store) Delete(ctx context.Context, id int64) error {
 	return lyspg.DeleteUnique(ctx, s.Db, schemaName, tableName, pkColName, id)
 }
 
-func (s Store) Insert(ctx context.Context, input Input) (newItem Model, err error) {
-	return lyspg.Insert[Input, Model](ctx, s.Db, schemaName, tableName, viewName, pkColName, gDbTags, input)
+func (s Store) Insert(ctx context.Context, input Input) (newId int64, err error) {
+	return lyspg.Insert[Input, int64](ctx, s.Db, schemaName, tableName, pkColName, input)
 }
 
 func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {
@@ -75,7 +75,7 @@ func (srvApp *httpServerApplication) getRoutes(apiEnv lys.Env) http.Handler {
 	categoryStore := corecategory.Store{Db: srvApp.Db}
 	r.HandleFunc(endpoint, lys.Get[corecategory.Model](apiEnv, categoryStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", lys.GetById[corecategory.Model](apiEnv, categoryStore)).Methods("GET")
-	r.HandleFunc(endpoint, lys.Post[corecategory.Input, corecategory.Model](apiEnv, categoryStore)).Methods("POST")
+	r.HandleFunc(endpoint, lys.Post[corecategory.Input, int64](apiEnv, categoryStore)).Methods("POST")
 	r.HandleFunc(endpoint+"/{id}", lys.Put[corecategory.Input](apiEnv, categoryStore)).Methods("PUT")
 	r.HandleFunc(endpoint+"/{id}", lys.Patch(apiEnv, categoryStore)).Methods("PATCH")
 	r.HandleFunc(endpoint+"/{id}", lys.Delete(apiEnv, categoryStore)).Methods("DELETE")

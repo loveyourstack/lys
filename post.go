@@ -9,13 +9,13 @@ import (
 )
 
 // iPostable is a store that can be used by Post
-type iPostable[inputT any, pkT any] interface {
-	Insert(ctx context.Context, input inputT) (newId pkT, err error)
+type iPostable[inputT any, outputT any] interface {
+	Insert(ctx context.Context, input inputT) (newVal outputT, err error)
 	Validate(validate *validator.Validate, input inputT) error
 }
 
-// Post handles creating a new item using the supplied store and returning it in the response
-func Post[inputT any, pkT any](env Env, store iPostable[inputT, pkT]) http.HandlerFunc {
+// Post handles creating a new item using the supplied store and returning an output (the new item or its ID) in the response
+func Post[inputT any, outputT any](env Env, store iPostable[inputT, outputT]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -40,7 +40,7 @@ func Post[inputT any, pkT any](env Env, store iPostable[inputT, pkT]) http.Handl
 		}
 
 		// try to insert the item into db
-		newId, err := store.Insert(r.Context(), input)
+		newVal, err := store.Insert(r.Context(), input)
 		if err != nil {
 			HandleError(r.Context(), fmt.Errorf("Post: store.Insert failed: %w", err), env.ErrorLog, w)
 			return
@@ -49,7 +49,7 @@ func Post[inputT any, pkT any](env Env, store iPostable[inputT, pkT]) http.Handl
 		// success
 		resp := StdResponse{
 			Status: ReqSucceeded,
-			Data:   newId,
+			Data:   newVal,
 		}
 		JsonResponse(resp, http.StatusCreated, w)
 	}

@@ -12,7 +12,7 @@ import (
 
 // InputModel generates the store Input and Model structs from the supplied db table
 // only handles 1 level of join, and does not coalesce nulls
-func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (res string, err error) {
+func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string, withValidation bool) (res string, err error) {
 
 	// get table columns
 	cols, err := lyspg.GetTableColumns(ctx, db, schema, table)
@@ -26,17 +26,57 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 		return "", fmt.Errorf("lyspg.GetForeignKeys failed: %w", err)
 	}
 
+	parentCols := []lyspg.Column{}
+
+	// for each parent FK
+	for _, fk := range parentFks {
+
+		// get parent cols
+		fkCols, err := lyspg.GetTableColumns(ctx, db, fk.ParentSchema, fk.ParentTable)
+		if err != nil {
+			return "", fmt.Errorf("lyspg.GetTableColumns failed for table: %s.%s: %w", fk.ParentSchema, fk.ParentTable, err)
+		}
+		parentCols = append(parentCols, fkCols...)
+	}
+
 	// get table child FKs
 	childFks, err := lyspg.GetChildForeignKeys(ctx, db, schema, table)
 	if err != nil {
 		return "", fmt.Errorf("lyspg.GetChildForeignKeys failed: %w", err)
 	}
 
-	// input
-	// ********************************************************************************
-
 	// build result
 	resA := []string{}
+
+	// input
+	inputResA, err := getInput(cols, withValidation)
+	if err != nil {
+		return "", fmt.Errorf("getInput failed: %w", err)
+	}
+	resA = append(resA, inputResA...)
+
+	resA = append(resA, "")
+
+	// model
+	modelResA, err := getModel(cols, parentCols, childFks)
+	if err != nil {
+		return "", fmt.Errorf("getModel failed: %w", err)
+	}
+	resA = append(resA, modelResA...)
+
+	res = strings.Join(resA, "\n")
+
+	// write to clipboard for convenience
+	err = WriteToClipboard(res)
+	if err != nil {
+		return "", fmt.Errorf("WriteToClipboard failed: %w", err)
+	}
+
+	return "\n" + res + "\n", nil
+}
+
+func getInput(cols []lyspg.Column, withValidation bool) (resA []string, err error) {
+
 	resA = append(resA, "type Input struct {")
 
 	var colVals []string
@@ -55,23 +95,30 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 		// get Go data type
 		goDataType, err := GetGoDataTypeFromPg(col.DataType)
 		if err != nil {
-			return "", fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
+			return nil, fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
 		}
 
 		// add line for column
-		colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s\" validate:\"required\"`", goName, goDataType, col.Name, col.Name)
+		colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s\"", goName, goDataType, col.Name, col.Name)
+		if withValidation {
+			colVal += " validate:\"required\""
+		}
+		colVal += "`"
+
 		colVals = append(colVals, colVal)
 	}
 
-	resA = append(resA, strings.Join(colVals, "\n"))
+	resA = append(resA, colVals...)
 	resA = append(resA, "}")
 
-	// model
-	// ********************************************************************************
+	return resA, nil
+}
 
-	resA = append(resA, "\ntype Model struct {")
+func getModel(cols []lyspg.Column, parentCols []lyspg.Column, childFks []lyspg.ForeignKey) (resA []string, err error) {
 
-	colVals = []string{}
+	resA = append(resA, "type Model struct {")
+
+	colVals := []string{}
 
 	// for each column in main table
 	for _, col := range cols {
@@ -87,7 +134,7 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 		// get Go data type
 		goDataType, err := GetGoDataTypeFromPg(col.DataType)
 		if err != nil {
-			return "", fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
+			return nil, fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
 		}
 
 		// add line for column
@@ -95,39 +142,29 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 		colVals = append(colVals, colVal)
 	}
 
-	// for each parent FK
-	for _, fk := range parentFks {
+	// for each parent col
+	for _, parCol := range parentCols {
 
-		// get parent cols
-		parentCols, err := lyspg.GetTableColumns(ctx, db, fk.ParentSchema, fk.ParentTable)
+		// skip identity and tracking cols
+		if parCol.IsIdentity || parCol.IsTracking {
+			continue
+		}
+
+		// prefix table name to col
+		prefixedColName := parCol.TableName + "_" + parCol.Name
+
+		// convert snake case to pascal case
+		goName := lysstring.Convert(prefixedColName, "_", "", lysstring.Title)
+
+		// get Go data type
+		goDataType, err := GetGoDataTypeFromPg(parCol.DataType)
 		if err != nil {
-			return "", fmt.Errorf("lyspg.GetTableColumns failed for table: %s.%s: %w", fk.ParentSchema, fk.ParentTable, err)
+			return nil, fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
 		}
 
-		// for each parent col
-		for _, parCol := range parentCols {
-
-			// skip identity and tracking cols
-			if parCol.IsIdentity || parCol.IsTracking {
-				continue
-			}
-
-			// prefix table name to col
-			prefixedColName := fk.ParentTable + "_" + parCol.Name
-
-			// convert snake case to pascal case
-			goName := lysstring.Convert(prefixedColName, "_", "", lysstring.Title)
-
-			// get Go data type
-			goDataType, err := GetGoDataTypeFromPg(parCol.DataType)
-			if err != nil {
-				return "", fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
-			}
-
-			// add line for column
-			colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s\"`", goName, goDataType, prefixedColName, prefixedColName)
-			colVals = append(colVals, colVal)
-		}
+		// add line for column
+		colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s\"`", goName, goDataType, prefixedColName, prefixedColName)
+		colVals = append(colVals, colVal)
 	}
 
 	// for each child FK
@@ -141,16 +178,9 @@ func InputModel(ctx context.Context, db *pgxpool.Pool, schema, table string) (re
 		colVals = append(colVals, colVal)
 	}
 
-	resA = append(resA, strings.Join(colVals, "\n"))
-	resA = append(resA, "    Input\n}")
+	resA = append(resA, colVals...)
+	resA = append(resA, "    Input")
+	resA = append(resA, "}")
 
-	res = strings.Join(resA, "\n")
-
-	// write to clipboard for convenience
-	err = WriteToClipboard(res)
-	if err != nil {
-		return "", fmt.Errorf("WriteToClipboard failed: %w", err)
-	}
-
-	return "\n" + res + "\n", nil
+	return resA, nil
 }

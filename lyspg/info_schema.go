@@ -11,6 +11,8 @@ import (
 )
 
 type Column struct {
+	SchemaName  string
+	TableName   string
 	Name        string `db:"column_name"`
 	DataType    string `db:"data_type"`
 	IsNullable  bool   `db:"is_nullable"`
@@ -30,6 +32,7 @@ type ForeignKey struct {
 }
 
 // GetChildForeignKeys returns the child FKs of the supplied table
+// requires table owner: GRANT SELECT is not enough
 func GetChildForeignKeys(ctx context.Context, db PoolOrTx, schemaName, tableName string) (fks []ForeignKey, err error) {
 
 	stmt := `SELECT tc.constraint_name, tc.table_schema AS child_schema, tc.table_name AS child_table, kcu.column_name AS child_column, ccu.table_schema AS parent_schema, 
@@ -84,8 +87,12 @@ func GetTableColumns(ctx context.Context, db PoolOrTx, schemaName, tableName str
 		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
 	}
 
-	// assign tracking cols
 	for i := range cols {
+
+		cols[i].SchemaName = schemaName
+		cols[i].TableName = tableName
+
+		// assign tracking cols
 		if slices.Contains([]string{"entry_at", "entry_by", "last_modified_at", "last_modified_by"}, cols[i].Name) {
 			cols[i].IsTracking = true
 		}
