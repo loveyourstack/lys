@@ -22,7 +22,7 @@ func TestExtractJsonBodySuccess(t *testing.T) {
 		t.Fatalf("ExtractJsonBody failed: %v", err)
 	}
 
-	assert.EqualValues(t, `{"a":1,"b":null}`, string(body))
+	assert.EqualValues(t, `{"a":1,"b":""}`, string(body))
 }
 
 func TestExtractJsonBodyFailure(t *testing.T) {

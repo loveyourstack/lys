@@ -18,6 +18,8 @@ func UpdatePartial[pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaN
 	var keys []string
 	var inputVals []any
 	for k, v := range assignmentsMap {
+		//fmt.Printf("%s: %v\n", k, v)
+
 		keys = append(keys, k)
 		inputVals = append(inputVals, getInputValue(v, reflect.TypeOf(v)))
 	}

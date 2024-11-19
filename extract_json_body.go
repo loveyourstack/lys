@@ -1,7 +1,6 @@
 package lys
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -41,10 +40,6 @@ func ExtractJsonBody(r *http.Request, maxBodySize int64) (body []byte, err error
 		return nil, lyserr.User{
 			Message: ErrDescInvalidJson}
 	}
-
-	// replace empty string with null so that json key/value pairs are returned with value null
-	// e.g. {"a":""} becomes {"a":null}
-	body = bytes.Replace(body, []byte(`""`), []byte("null"), -1)
 
 	return body, nil
 }

@@ -62,10 +62,10 @@ func TestPatchFailure(t *testing.T) {
 	_, err = lysclient.PostToValueTester[any, string](srvApp.getRouter(), "PATCH", targetUrl, nil)
 	assert.EqualValues(t, "no assignments found", err.Error(), "nil")
 
-	// empty struct (fails on not null constraint of c_boola)
+	// empty struct
 	inputTT := coretypetest.Input{}
 	_, err = lysclient.PostToValueTester[coretypetest.Input, string](srvApp.getRouter(), "PATCH", targetUrl, inputTT)
-	assert.EqualValues(t, "A database error occurred", err.Error(), "empty struct")
+	assert.EqualValues(t, "invalid text: invalid input value for enum core.weekday: \"\"", err.Error(), "empty struct")
 
 	// id wrong type
 	_, err = lysclient.PostToValueTester[coretypetest.Input, string](srvApp.getRouter(), "PATCH", "/type-test/a", minInput)
