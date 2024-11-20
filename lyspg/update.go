@@ -37,15 +37,6 @@ type UpdateOption struct {
 // T must be a struct with "db" tags
 func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT, options ...UpdateOption) error {
 
-	var updateFields, omitFields []string
-
-	for _, option := range options {
-		if len(option.OmitFields) == 0 {
-			continue
-		}
-		omitFields = append(omitFields, option.OmitFields...)
-	}
-
 	// get columns to update by reflecting input T
 	inputReflVals := reflect.ValueOf(input)
 	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
@@ -53,19 +44,11 @@ func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaN
 		return fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
 	}
 
-	// updateFields is dbTags with omitted fields removed
-	for _, dbTag := range meta.DbTags {
-		found := false
-		for _, omitField := range omitFields {
-			if dbTag == omitField {
-				found = true
-				break
-			}
-		}
-		if !found {
-			updateFields = append(updateFields, dbTag)
-		}
-	}
+	// get fields to omit from the update, if any
+	omitFields := getOmitFields(options...)
+
+	// get updateFields (dbTags with omitted fields removed)
+	updateFields := getUpdateFields(meta.DbTags, omitFields)
 
 	// get input values by reflecting input T
 	inputVals := getInputValsFromStruct(inputReflVals, omitFields)
@@ -84,4 +67,34 @@ func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaN
 
 	// success
 	return nil
+}
+
+func getOmitFields(options ...UpdateOption) (omitFields []string) {
+
+	for _, option := range options {
+		if len(option.OmitFields) == 0 {
+			continue
+		}
+		omitFields = append(omitFields, option.OmitFields...)
+	}
+
+	return omitFields
+}
+
+func getUpdateFields(dbTags, omitFields []string) (updateFields []string) {
+
+	for _, dbTag := range dbTags {
+		found := false
+		for _, omitField := range omitFields {
+			if dbTag == omitField {
+				found = true
+				break
+			}
+		}
+		if !found {
+			updateFields = append(updateFields, dbTag)
+		}
+	}
+
+	return updateFields
 }

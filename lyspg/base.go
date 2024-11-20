@@ -48,6 +48,7 @@ type PoolOrTx interface {
 	CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error)
 	Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
+	SendBatch(ctx context.Context, b *pgx.Batch) (br pgx.BatchResults)
 }
 
 // PrimaryKeyType defines the type constraint of DB primary keys
