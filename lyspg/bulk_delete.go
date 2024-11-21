@@ -3,41 +3,52 @@ package lyspg
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/loveyourstack/lys/lyserr"
 )
 
 // BulkDelete deletes multiple records in the same table based on a column value
-func BulkDelete[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, columnName string, vals []T) (rowsAffected int64, err error) {
+// partial success possible: if some vals are not found, an error will be returned containing the failed vals, but the other rows will be deleted
+func BulkDelete[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, columnName string, vals []T) error {
 
 	if len(vals) == 0 {
-		return 0, fmt.Errorf("len(vals) is %v", len(vals))
+		return fmt.Errorf("len(vals) is %v", len(vals))
 	}
 
 	stmt := fmt.Sprintf("DELETE FROM %s.%s WHERE %s = $1;", schemaName, tableName, columnName)
 	batch := &pgx.Batch{}
+	invalidVals := []T{}
 
 	// for each value to be deleted
 	for _, v := range vals {
 
 		// queue the query
-		batch.Queue(stmt, v)
+		batch.Queue(stmt, v).Exec(func(ct pgconn.CommandTag) error {
+			if ct.RowsAffected() == 0 {
+				invalidVals = append(invalidVals, v)
+			}
+			return nil
+		})
 	}
 
 	// send all queries to db
-	batchRes := db.SendBatch(ctx, batch)
-	defer batchRes.Close()
-
-	// exec all queries
-	cmdTag, err := batchRes.Exec()
+	// any SQL syntax errors will fail here and no rows will be deleted
+	err := db.SendBatch(ctx, batch).Close()
 	if err != nil {
-		return 0, lyserr.Db{Err: fmt.Errorf("batchRes.Exec (delete %v recs) failed: %w", batch.Len(), err)}
+		return lyserr.Db{Err: fmt.Errorf("db.SendBatch.Close failed: %w", err)}
 	}
 
-	if cmdTag.RowsAffected() == 0 {
-		return 0, pgx.ErrNoRows
+	// if some vals were invalid, return them
+	if len(invalidVals) > 0 {
+		rets := []string{}
+		for _, v := range invalidVals {
+			rets = append(rets, fmt.Sprintf("%v", v))
+		}
+		return lyserr.Db{Err: fmt.Errorf("partial success: invalid vals: %s", strings.Join(rets, ", "))}
 	}
 
-	return cmdTag.RowsAffected(), nil
+	return nil
 }
