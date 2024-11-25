@@ -108,7 +108,7 @@ See the [Northwind sample application](https://github.com/loveyourstack/northwin
 * Fast rowcount function, including estimated count for large tables with query conditions
 * Struct validation using [validator](https://github.com/go-playground/validator)
 * Distinction between user errors (unlogged, reported to user) and application errors (logged, hidden from user)
-* Provides useful bulk insert (COPY) wrapper
+* Provides useful bulk insert (COPY) wrapper, and bulk update/delete (batch) wrappers
 * Support for getting and filtering enum values
 * Database creation function from embedded SQL files
 * Archive (soft delete) + restore functions

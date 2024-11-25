@@ -3,6 +3,9 @@ package lyscmd
 import (
 	"fmt"
 	"os"
+	"path/filepath"
+	"runtime"
+	"testing"
 
 	"github.com/BurntSushi/toml"
 	"github.com/loveyourstack/lys/lyspgdb"
@@ -30,4 +33,19 @@ func (c *Config) LoadFromFile(configFilePath string) (err error) {
 	}
 
 	return nil
+}
+
+func MustGetConfig(t testing.TB) Config {
+
+	_, b, _, _ := runtime.Caller(0)
+	projectRootDir := filepath.Join(filepath.Dir(b), "../..")
+	configFilePath := projectRootDir + "/lys_config.toml"
+
+	conf := Config{}
+	err := conf.LoadFromFile(configFilePath)
+	if err != nil {
+		t.Fatalf("%s not found: %v", configFilePath, err)
+	}
+
+	return conf
 }

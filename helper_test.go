@@ -7,7 +7,6 @@ import (
 	"net/url"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
@@ -16,11 +15,10 @@ import (
 	"github.com/loveyourstack/lys/internal/stores/core/corearchivetest"
 	"github.com/loveyourstack/lys/internal/stores/core/coreparamtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
+	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/internal/stores/core/corevolumetest"
 	"github.com/loveyourstack/lys/lyspg"
 	"github.com/loveyourstack/lys/lyspgdb"
-	"github.com/loveyourstack/lys/lystype"
-	"github.com/stretchr/testify/assert"
 )
 
 type httpServerApplication struct {
@@ -72,16 +70,16 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	endpoint = "/type-test"
 
 	typeTestStore := coretypetest.Store{Db: srvApp.Db}
-	r.HandleFunc(endpoint, Get[coretypetest.Model](apiEnv, typeTestStore)).Methods("GET")
-	r.HandleFunc(endpoint+"/{id}", GetById[coretypetest.Model](apiEnv, typeTestStore)).Methods("GET")
-	r.HandleFunc(endpoint, Post[coretypetest.Input, int64](apiEnv, typeTestStore)).Methods("POST")
-	r.HandleFunc(endpoint+"/{id}", Put[coretypetest.Input](apiEnv, typeTestStore)).Methods("PUT")
+	r.HandleFunc(endpoint, Get[coretypetestm.Model](apiEnv, typeTestStore)).Methods("GET")
+	r.HandleFunc(endpoint+"/{id}", GetById[coretypetestm.Model](apiEnv, typeTestStore)).Methods("GET")
+	r.HandleFunc(endpoint, Post[coretypetestm.Input, int64](apiEnv, typeTestStore)).Methods("POST")
+	r.HandleFunc(endpoint+"/{id}", Put[coretypetestm.Input](apiEnv, typeTestStore)).Methods("PUT")
 	r.HandleFunc(endpoint+"/{id}", Patch(apiEnv, typeTestStore)).Methods("PATCH")
 	r.HandleFunc(endpoint+"/{id}", Delete(apiEnv, typeTestStore)).Methods("DELETE")
 
 	endpoint = "/type-test-uuid"
 
-	r.HandleFunc(endpoint+"/{id}", GetByUuid[coretypetest.Model](apiEnv, typeTestStore)).Methods("GET")
+	r.HandleFunc(endpoint+"/{id}", GetByUuid[coretypetestm.Model](apiEnv, typeTestStore)).Methods("GET")
 
 	endpoint = "/volume-test"
 
@@ -100,18 +98,9 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	return r
 }
 
-func mustGetConfig(t testing.TB) lyscmd.Config {
-	conf := lyscmd.Config{}
-	err := conf.LoadFromFile("lys_config.toml")
-	if err != nil {
-		t.Fatalf("lys_config.toml not found: %v", err)
-	}
-	return conf
-}
-
 func mustGetSrvApp(t testing.TB, ctx context.Context) *httpServerApplication {
 
-	conf := mustGetConfig(t)
+	conf := lyscmd.MustGetConfig(t)
 
 	app := &cmd.Application{
 		Config:   &conf,
@@ -160,86 +149,4 @@ func mustExtractFilters(t testing.TB, urlValues url.Values, validJsonFields []st
 	}
 
 	return conds
-}
-
-func mustParseTime(t testing.TB, layout, value string) time.Time {
-
-	timeV, err := time.Parse(layout, value)
-	if err != nil {
-		t.Fatalf("time.Parse failed: %v", err)
-	}
-
-	return timeV
-}
-
-func testFilledInput(t testing.TB, item coretypetest.Input) {
-
-	// boolean
-	assert.EqualValues(t, false, item.CBool, "CBool")
-	assert.EqualValues(t, true, *item.CBoolN, "CBoolN")
-	expectedCBoolA := []bool{false, true}
-	for i := range item.CBoolA {
-		assert.EqualValues(t, expectedCBoolA[i], item.CBoolA[i], "CBoolA", i)
-	}
-
-	// int
-	assert.EqualValues(t, int64(1), item.CInt, "CInt")
-	assert.EqualValues(t, int64(2), *item.CIntN, "CIntN")
-	expectedCIntA := []int64{1, 2}
-	for i := range item.CIntA {
-		assert.EqualValues(t, expectedCIntA[i], item.CIntA[i], "CIntA", i)
-	}
-
-	// double
-	assert.EqualValues(t, float32(1.1), item.CDouble, "CDouble")
-	assert.EqualValues(t, float32(2.1), *item.CDoubleN, "CDoubleN")
-	expectedCDoubleA := []float32{1.1, 2.1}
-	for i := range item.CDoubleA {
-		assert.EqualValues(t, expectedCDoubleA[i], item.CDoubleA[i], "CDoubleA", i)
-	}
-
-	// numeric
-	assert.EqualValues(t, float32(1.11), item.CNumeric, "CNumeric")
-	assert.EqualValues(t, float32(2.11), *item.CNumericN, "CNumericN")
-	expectedCNumericA := []float32{1.11, 2.11}
-	for i := range item.CNumericA {
-		assert.EqualValues(t, expectedCNumericA[i], item.CNumericA[i], "CNumericA", i)
-	}
-
-	// date
-	d1 := mustParseTime(t, lystype.DateFormat, "2001-02-03")
-	d2 := mustParseTime(t, lystype.DateFormat, "2002-03-04")
-	assert.EqualValues(t, lystype.Date(d1), item.CDate, "CDate")
-	assert.EqualValues(t, lystype.Date(d2), *item.CDateN, "CDateN")
-	// TODO item.CDateA
-
-	// time
-	t1 := mustParseTime(t, lystype.TimeFormat, "12:01")
-	t2 := mustParseTime(t, lystype.TimeFormat, "12:02")
-	assert.EqualValues(t, lystype.Time(t1), item.CTime, "CTime")
-	assert.EqualValues(t, lystype.Time(t2), *item.CTimeN, "CTimeN")
-	// TODO item.CTimeA
-
-	// datetime
-	dt1 := mustParseTime(t, lystype.DatetimeFormat, "2001-02-03 12:01:00+01")
-	dt2 := mustParseTime(t, lystype.DatetimeFormat, "2002-03-04 12:02:00+01")
-	assert.EqualValues(t, lystype.Datetime(dt1), item.CDatetime, "CDatetime")
-	assert.EqualValues(t, lystype.Datetime(dt2), *item.CDatetimeN, "CDatetimeN")
-	// TODO item.CDatetimeA
-
-	// enum
-	assert.EqualValues(t, "Monday", item.CEnum, "CEnum")
-	assert.EqualValues(t, "Tuesday", *item.CEnumN, "CEnumN")
-	expectedCEnumA := []string{"Monday", "Tuesday"}
-	for i := range item.CEnumA {
-		assert.EqualValues(t, expectedCEnumA[i], item.CEnumA[i], "CEnumA", i)
-	}
-
-	// text
-	assert.EqualValues(t, "a b", item.CText, "CText")
-	assert.EqualValues(t, "b c", *item.CTextN, "CTextN")
-	expectedCTextA := []string{"a b", "b c"}
-	for i := range item.CTextA {
-		assert.EqualValues(t, expectedCTextA[i], item.CTextA[i], "CTextA", i)
-	}
 }

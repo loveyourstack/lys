@@ -12,11 +12,20 @@ import (
 )
 
 // Exists returns true if 1+ records exist given the supplied criterion (columnName + val)
+// pass val = nil to check for NULL
 func Exists(ctx context.Context, db PoolOrTx, schemaName, tableName, columnName string, val any) (ret bool, err error) {
 
-	stmt := fmt.Sprintf("SELECT EXISTS (SELECT 1 FROM %s.%s WHERE %s = $1);", schemaName, tableName, columnName)
+	stmt := fmt.Sprintf("SELECT EXISTS (SELECT 1 FROM %s.%s ", schemaName, tableName)
 
-	rows, _ := db.Query(ctx, stmt, val)
+	var rows pgx.Rows
+	if val == nil {
+		stmt += fmt.Sprintf("WHERE %s IS NULL);", columnName)
+		rows, _ = db.Query(ctx, stmt)
+	} else {
+		stmt += fmt.Sprintf("WHERE %s = $1);", columnName)
+		rows, _ = db.Query(ctx, stmt, val)
+	}
+
 	ret, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[bool])
 	if err != nil {
 		return false, lyserr.Db{Err: fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err), Stmt: stmt}
@@ -27,8 +36,10 @@ func Exists(ctx context.Context, db PoolOrTx, schemaName, tableName, columnName 
 
 // ExistsConditions returns true if 1+ records exist matching all/any the supplied criteria, depending on match param
 // match must be AND or OR
+// pass val = nil to check for NULL
 func ExistsConditions(ctx context.Context, db PoolOrTx, schemaName, tableName, match string, colValMap map[string]any) (ret bool, err error) {
 
+	match = strings.ToUpper(match)
 	if !slices.Contains([]string{"AND", "OR"}, match) {
 		return false, fmt.Errorf("match must be 'AND' or 'OR'")
 	}
@@ -39,10 +50,15 @@ func ExistsConditions(ctx context.Context, db PoolOrTx, schemaName, tableName, m
 	i := 0
 
 	for col, val := range colValMap {
-		i++
-		cond := col + " = $" + strconv.Itoa(i)
+		var cond string
+		if val == nil {
+			cond = col + " IS NULL"
+		} else {
+			i++
+			cond = col + " = $" + strconv.Itoa(i)
+			vals = append(vals, val)
+		}
 		conds = append(conds, cond)
-		vals = append(vals, val)
 	}
 	whereClause = strings.Join(conds, " "+match+" ")
 

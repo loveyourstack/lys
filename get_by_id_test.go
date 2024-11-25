@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
+	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -15,7 +15,7 @@ func TestGetByIdSuccess(t *testing.T) {
 	defer srvApp.Db.Close()
 
 	targetUrl := "/type-test/1"
-	item := lysclient.MustDoToValue[coretypetest.Model](t, srvApp.getRouter(), "GET", targetUrl)
+	item := lysclient.MustDoToValue[coretypetestm.Model](t, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, true, item.CBool)
 }
 
@@ -26,11 +26,11 @@ func TestGetByIdFailure(t *testing.T) {
 
 	// id wrong type
 	targetUrl := "/type-test/a"
-	_, err := lysclient.DoToValueTester[coretypetest.Model](srvApp.getRouter(), "GET", targetUrl)
+	_, err := lysclient.DoToValueTester[coretypetestm.Model](srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, "id not an integer", err.Error())
 
 	// id doesn't exist
 	targetUrl = "/type-test/100000"
-	_, err = lysclient.DoToValueTester[coretypetest.Model](srvApp.getRouter(), "GET", targetUrl)
+	_, err = lysclient.DoToValueTester[coretypetestm.Model](srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, "row(s) not found", err.Error())
 }

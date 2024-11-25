@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
+	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,8 +16,8 @@ func TestDeleteSuccess(t *testing.T) {
 	defer srvApp.Db.Close()
 
 	// create record
-	minInput := coretypetest.GetEmptyInput()
-	newId := lysclient.MustPostToValue[coretypetest.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", minInput)
+	minInput := coretypetestm.GetEmptyInput()
+	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", minInput)
 
 	targetUrl := "/type-test/" + strconv.FormatInt(newId, 10)
 

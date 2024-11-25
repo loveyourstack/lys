@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
+	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,25 +16,25 @@ func TestPutSuccess(t *testing.T) {
 	defer srvApp.Db.Close()
 
 	// create a record with minimal values
-	minInput := coretypetest.GetEmptyInput()
-	newId := lysclient.MustPostToValue[coretypetest.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", minInput)
+	minInput := coretypetestm.GetEmptyInput()
+	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", minInput)
 
 	targetUrl := "/type-test/" + strconv.FormatInt(newId, 10)
 
 	// get filled type test input
-	filledInput, err := coretypetest.GetFilledInput()
+	filledInput, err := coretypetestm.GetFilledInput()
 	if err != nil {
-		t.Fatalf("coretypetest.GetFilledInput failed: %v", err)
+		t.Fatalf("coretypetestm.GetFilledInput failed: %v", err)
 	}
 
 	// PUT the filled input to the minimal record
-	_ = lysclient.MustPostToValue[coretypetest.Input, string](t, srvApp.getRouter(), "PUT", targetUrl, filledInput)
+	_ = lysclient.MustPostToValue[coretypetestm.Input, string](t, srvApp.getRouter(), "PUT", targetUrl, filledInput)
 
 	// get changed record
-	filledItem := lysclient.MustDoToValue[coretypetest.Model](t, srvApp.getRouter(), "GET", targetUrl)
+	filledItem := lysclient.MustDoToValue[coretypetestm.Model](t, srvApp.getRouter(), "GET", targetUrl)
 
 	// check changed record
-	testFilledInput(t, filledItem.Input)
+	coretypetestm.TestFilledInput(t, filledItem.Input)
 }
 
 func TestPutFailure(t *testing.T) {
@@ -42,8 +42,8 @@ func TestPutFailure(t *testing.T) {
 	srvApp := mustGetSrvApp(t, context.Background())
 	defer srvApp.Db.Close()
 
-	minInput := coretypetest.GetEmptyInput()
-	newId := lysclient.MustPostToValue[coretypetest.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", minInput)
+	minInput := coretypetestm.GetEmptyInput()
+	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", minInput)
 
 	targetUrl := "/type-test/" + strconv.FormatInt(newId, 10)
 
@@ -62,15 +62,15 @@ func TestPutFailure(t *testing.T) {
 	assert.EqualValues(t, `invalid text: invalid input value for enum core.weekday: ""`, err.Error(), "nil")
 
 	// empty struct (fails on mandatory enum val)
-	inputTT := coretypetest.Input{}
-	_, err = lysclient.PostToValueTester[coretypetest.Input, string](srvApp.getRouter(), "PUT", targetUrl, inputTT)
+	inputTT := coretypetestm.Input{}
+	_, err = lysclient.PostToValueTester[coretypetestm.Input, string](srvApp.getRouter(), "PUT", targetUrl, inputTT)
 	assert.EqualValues(t, `invalid text: invalid input value for enum core.weekday: ""`, err.Error(), "empty struct")
 
 	// id wrong type
-	_, err = lysclient.PostToValueTester[coretypetest.Input, string](srvApp.getRouter(), "PUT", "/type-test/a", minInput)
+	_, err = lysclient.PostToValueTester[coretypetestm.Input, string](srvApp.getRouter(), "PUT", "/type-test/a", minInput)
 	assert.EqualValues(t, "id not an integer", err.Error(), "id wrong type")
 
 	// invalid id
-	_, err = lysclient.PostToValueTester[coretypetest.Input, string](srvApp.getRouter(), "PUT", "/type-test/100000", minInput)
+	_, err = lysclient.PostToValueTester[coretypetestm.Input, string](srvApp.getRouter(), "PUT", "/type-test/100000", minInput)
 	assert.EqualValues(t, "row(s) not found", err.Error(), "invalid id")
 }

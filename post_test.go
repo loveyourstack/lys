@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
+	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/loveyourstack/lys/lystype"
 	"github.com/stretchr/testify/assert"
@@ -19,9 +19,9 @@ func TestPostEmptySuccess(t *testing.T) {
 	srvApp := mustGetSrvApp(t, context.Background())
 	defer srvApp.Db.Close()
 
-	input := coretypetest.GetEmptyInput()
-	newId := lysclient.MustPostToValue[coretypetest.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", input)
-	item := lysclient.MustDoToValue[coretypetest.Model](t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
+	input := coretypetestm.GetEmptyInput()
+	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", input)
+	item := lysclient.MustDoToValue[coretypetestm.Model](t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
 
 	// check nullable fields are nil
 	assert.Nil(t, item.CBoolN, "CBoolN")
@@ -56,13 +56,13 @@ func TestPostFilledSuccess(t *testing.T) {
 	srvApp := mustGetSrvApp(t, context.Background())
 	defer srvApp.Db.Close()
 
-	input, err := coretypetest.GetFilledInput()
+	input, err := coretypetestm.GetFilledInput()
 	if err != nil {
-		t.Fatalf("coretypetest.GetFilledInput failed: %v", err)
+		t.Fatalf("coretypetestm.GetFilledInput failed: %v", err)
 	}
-	newId := lysclient.MustPostToValue[coretypetest.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", input)
-	item := lysclient.MustDoToValue[coretypetest.Model](t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
-	testFilledInput(t, item.Input)
+	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", input)
+	item := lysclient.MustDoToValue[coretypetestm.Model](t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
+	coretypetestm.TestFilledInput(t, item.Input)
 }
 
 func TestPostFailure(t *testing.T) {
@@ -77,15 +77,15 @@ func TestPostFailure(t *testing.T) {
 	inputTestS := testS{
 		Val: "a",
 	}
-	_, err := lysclient.PostToValueTester[testS, coretypetest.Model](srvApp.getRouter(), "POST", "/type-test", inputTestS)
+	_, err := lysclient.PostToValueTester[testS, coretypetestm.Model](srvApp.getRouter(), "POST", "/type-test", inputTestS)
 	assert.EqualValues(t, "unknown field: Val", err.Error(), "unknown field")
 
 	// nil input (fails on mandatory enum val)
-	_, err = lysclient.PostToValueTester[any, coretypetest.Model](srvApp.getRouter(), "POST", "/type-test", nil)
+	_, err = lysclient.PostToValueTester[any, coretypetestm.Model](srvApp.getRouter(), "POST", "/type-test", nil)
 	assert.EqualValues(t, `invalid text: invalid input value for enum core.weekday: ""`, err.Error(), "nil")
 
 	// empty struct (fails on mandatory enum val)
-	inputTT := coretypetest.Input{}
-	_, err = lysclient.PostToValueTester[coretypetest.Input, coretypetest.Model](srvApp.getRouter(), "POST", "/type-test", inputTT)
+	inputTT := coretypetestm.Input{}
+	_, err = lysclient.PostToValueTester[coretypetestm.Input, coretypetestm.Model](srvApp.getRouter(), "POST", "/type-test", inputTT)
 	assert.EqualValues(t, `invalid text: invalid input value for enum core.weekday: ""`, err.Error(), "empty struct")
 }
