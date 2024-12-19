@@ -48,13 +48,13 @@ type SelectParams struct {
 }
 
 // getSelectStem returns the stem of a SELECT statement using the supplied params
-func getSelectStem(selectCols string, schemaName string, viewName string, whereClause string) string {
+func GetSelectStem(selectCols string, schemaName string, viewName string, whereClause string) string {
 
 	return fmt.Sprintf("SELECT %s FROM %s.%s WHERE 1=1%s", selectCols, schemaName, viewName, whereClause)
 }
 
 // getOrderBy returns an SQL ORDER BY clause from a slice of sort strings
-func getOrderBy(sorts []string, defaultOrderBy string) string {
+func GetOrderBy(sorts []string, defaultOrderBy string) string {
 
 	if len(sorts) == 0 {
 		if defaultOrderBy == "" {
@@ -66,13 +66,13 @@ func getOrderBy(sorts []string, defaultOrderBy string) string {
 }
 
 // getLimitOffsetClause returns a SELECT statement's LIMIT and OFFSET clauses
-func getLimitOffsetClause(placeholderCount int) string {
+func GetLimitOffsetClause(placeholderCount int) string {
 
 	return fmt.Sprintf(" LIMIT $%d OFFSET $%d;", placeholderCount+1, placeholderCount+2)
 }
 
 // getSelectParamValues returns the array of param values needed for a SELECT query
-func getSelectParamValues(conds []Condition, includeLimitOffset bool, limit, offset int) (paramValues []any) {
+func GetSelectParamValues(conds []Condition, includeLimitOffset bool, limit, offset int) (paramValues []any) {
 
 	for _, cond := range conds {
 		switch cond.Operator {
@@ -106,7 +106,7 @@ func getSelectParamValues(conds []Condition, includeLimitOffset bool, limit, off
 }
 
 // getLimit returns the LIMIT for a select
-func getLimit(limitParam int) int {
+func GetLimit(limitParam int) int {
 
 	// if limit param was not sent (is 0), return all records
 	// note that pg uses "LIMIT ALL" to return all records, but instead return the max int32 value so the datatype is always int

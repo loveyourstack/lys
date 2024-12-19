@@ -41,7 +41,7 @@ func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string
 		}
 
 		// has conditions: get count from unpaged query result
-		paramValues := getSelectParamValues(conditions, false, 0, 0)
+		paramValues := GetSelectParamValues(conditions, false, 0, 0)
 		rowCount, err := GetRowCountPlaceholderQry(ctx, db, query, paramValues)
 		if err != nil {
 			return TotalCount{}, fmt.Errorf("GetRowCountPlaceholderQry failed: %w", err)
@@ -58,7 +58,7 @@ func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string
 
 	// has conditions: get est rowcount from query plan
 	// from https://www.cybertec-postgresql.com/en/postgresql-count-made-fast/
-	paramValues := getSelectParamValues(conditions, false, 0, 0)
+	paramValues := GetSelectParamValues(conditions, false, 0, 0)
 	rowCount, err := GetRowCountExplain(ctx, db, query, paramValues)
 	if err != nil {
 		return TotalCount{}, fmt.Errorf("GetRowCountExplain failed: %w", err)

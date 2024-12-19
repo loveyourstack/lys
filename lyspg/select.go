@@ -24,7 +24,7 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 	// build select stmt with placeholders for conditions
 	selectCols := strings.Join(fields, ",")
 	whereClause, numPlaceholders := GetWhereClause(params.Conditions)
-	stmt := getSelectStem(selectCols, schemaName, viewName, whereClause)
+	stmt := GetSelectStem(selectCols, schemaName, viewName, whereClause)
 
 	// if unpagedCount is requested
 	if params.GetUnpagedCount && tableName != "" {
@@ -36,11 +36,11 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 		}
 	}
 
-	stmt += getOrderBy(params.Sorts, defaultOrderBy)
-	stmt += getLimitOffsetClause(numPlaceholders)
+	stmt += GetOrderBy(params.Sorts, defaultOrderBy)
+	stmt += GetLimitOffsetClause(numPlaceholders)
 
 	// get params for stmt placeholders
-	paramValues := getSelectParamValues(params.Conditions, true, getLimit(params.Limit), params.Offset)
+	paramValues := GetSelectParamValues(params.Conditions, true, GetLimit(params.Limit), params.Offset)
 
 	// using RowToStructByNameLax below because the fields param might restrict the number of columns selected
 	// causing a mismatch between # of columns returned and the # of fields in the dest struct
