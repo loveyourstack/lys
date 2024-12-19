@@ -5,8 +5,8 @@ import (
 	"strings"
 )
 
-// getWhereClause returns an SQL WHERE clause using placeholders such as $1, $2 etc from the supplied conds
-func getWhereClause(conds []Condition) (res string, numPlaceholders int) {
+// GetWhereClause returns an SQL WHERE clause using placeholders such as $1, $2 etc from the supplied conds
+func GetWhereClause(conds []Condition) (res string, numPlaceholders int) {
 
 	i := 0
 	for _, cond := range conds {

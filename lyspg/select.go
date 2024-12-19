@@ -23,7 +23,7 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 
 	// build select stmt with placeholders for conditions
 	selectCols := strings.Join(fields, ",")
-	whereClause, numPlaceholders := getWhereClause(params.Conditions)
+	whereClause, numPlaceholders := GetWhereClause(params.Conditions)
 	stmt := getSelectStem(selectCols, schemaName, viewName, whereClause)
 
 	// if unpagedCount is requested
