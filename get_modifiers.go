@@ -180,10 +180,20 @@ func processFilterParam(field, rawValue string, validJsonFields []string, getOpt
 	// extract the operator and target value. Note: <= and >= are not allowed, since "=" is reserved for key/value separation
 	switch {
 
+	// greater than or equals (>eq at start)
+	case len(rawValue) > 3 && rawValue[:3] == ">eq":
+		cond.Operator = lyspg.OpGreaterThanEquals
+		cond.Value = rawValue[3:]
+
 	// greater than (> at start)
 	case len(rawValue) > 1 && rawValue[:1] == ">":
 		cond.Operator = lyspg.OpGreaterThan
 		cond.Value = rawValue[1:]
+
+	// less than or equals (<eq at start)
+	case len(rawValue) > 3 && rawValue[:3] == "<eq":
+		cond.Operator = lyspg.OpLessThanEquals
+		cond.Value = rawValue[3:]
 
 	// less than (< at start)
 	case len(rawValue) > 1 && rawValue[:1] == "<":

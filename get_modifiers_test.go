@@ -60,12 +60,26 @@ func TestExtractFiltersOptionsSuccess(t *testing.T) {
 	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpNotEquals, Value: "1"}
 	assert.EqualValues(t, cond, conds[0], "not equals")
 
+	// greater than or equals
+	urlValues = url.Values{}
+	urlValues.Add("a", ">eq1")
+	conds = mustExtractFilters(t, urlValues, validJsonFields, getOptions)
+	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpGreaterThanEquals, Value: "1"}
+	assert.EqualValues(t, cond, conds[0], "greater than or equals")
+
 	// greater than
 	urlValues = url.Values{}
 	urlValues.Add("a", ">1")
 	conds = mustExtractFilters(t, urlValues, validJsonFields, getOptions)
 	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpGreaterThan, Value: "1"}
 	assert.EqualValues(t, cond, conds[0], "greater than")
+
+	// less than or equals
+	urlValues = url.Values{}
+	urlValues.Add("a", "<eq1")
+	conds = mustExtractFilters(t, urlValues, validJsonFields, getOptions)
+	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpLessThanEquals, Value: "1"}
+	assert.EqualValues(t, cond, conds[0], "less than or equals")
 
 	// less than
 	urlValues = url.Values{}
