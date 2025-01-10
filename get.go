@@ -20,12 +20,13 @@ type iGetable[T any] interface {
 	Select(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error)
 }
 
-type GetOption struct {
-	GetLastSyncAt func(ctx context.Context) (lastSyncAt lystype.Datetime, err error) // for external data: func to get the last synced timestamp
+type GetOption[T any] struct {
+	GetLastSyncAt func(ctx context.Context) (lastSyncAt lystype.Datetime, err error)                                         // for external data: func to get the last synced timestamp
+	SelectFunc    func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error) // if passed, override the default Select() func
 }
 
 // Get handles retrieval of multiple items from the supplied store
-func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFunc {
+func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -59,11 +60,21 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption) http.HandlerFu
 			selectParams.Limit = env.GetOptions.MaxFileRecs
 		}
 
+		// default select func is Select() in store
+		storeSelectFunc := store.Select
+
+		// if a select func with the same signature was sent via options, use it
+		for _, option := range options {
+			if option.SelectFunc != nil {
+				storeSelectFunc = option.SelectFunc
+			}
+		}
+
 		// select items from db
-		items, unpagedCount, err := store.Select(r.Context(), selectParams)
+		items, unpagedCount, err := storeSelectFunc(r.Context(), selectParams)
 		if err != nil {
 
-			HandleError(r.Context(), fmt.Errorf("Get: store.Select failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("Get: storeSelectFunc failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
@@ -172,5 +183,10 @@ type iGetableWithLastSync[T any] interface {
 
 // GetWithLastSync is a wrapper for Get which adds the lastSyncAt timestamp from the supplied func to the JSON response
 func GetWithLastSync[T any](env Env, store iGetableWithLastSync[T]) http.HandlerFunc {
-	return Get[T](env, store, GetOption{GetLastSyncAt: store.GetLastSyncAt})
+	return Get[T](env, store, GetOption[T]{GetLastSyncAt: store.GetLastSyncAt})
+}
+
+// GetFunc is a wrapper for Get allows passing an alternative Select func with the same signature
+func GetFunc[T any](env Env, store iGetable[T], selectFunc func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error)) http.HandlerFunc {
+	return Get[T](env, store, GetOption[T]{SelectFunc: selectFunc})
 }
