@@ -41,6 +41,7 @@ type Condition struct {
 type SelectParams struct {
 	Fields          []string
 	Conditions      []Condition
+	OrConditionSets [][]Condition // sets of OR conditions. To be used by stores: is currently not available via API query params
 	Sorts           []string
 	Limit           int
 	Offset          int
@@ -72,8 +73,9 @@ func GetLimitOffsetClause(placeholderCount int) string {
 }
 
 // getSelectParamValues returns the array of param values needed for a SELECT query
-func GetSelectParamValues(conds []Condition, includeLimitOffset bool, limit, offset int) (paramValues []any) {
+func GetSelectParamValues(conds []Condition, orCondSets [][]Condition, includeLimitOffset bool, limit, offset int) (paramValues []any) {
 
+	// regular (AND) conditions
 	for _, cond := range conds {
 		switch cond.Operator {
 
@@ -94,6 +96,25 @@ func GetSelectParamValues(conds []Condition, includeLimitOffset bool, limit, off
 		// otherwise just allow pgx to handle the value
 		default:
 			paramValues = append(paramValues, cond.Value)
+		}
+	}
+
+	// sets of OR conditions
+	for _, orCondSet := range orCondSets {
+		for _, orCond := range orCondSet {
+
+			switch orCond.Operator {
+			case OpContainsAny:
+				for _, val := range orCond.InValues {
+					paramValues = append(paramValues, val)
+				}
+			case OpIn, OpNotIn:
+				paramValues = append(paramValues, orCond.InValues)
+			case OpNull, OpNotNull:
+				paramValues = append(paramValues, nil)
+			default:
+				paramValues = append(paramValues, orCond.Value)
+			}
 		}
 	}
 
