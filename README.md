@@ -110,6 +110,7 @@ See the [Northwind sample application](https://github.com/loveyourstack/northwin
 * Distinction between user errors (unlogged, reported to user) and application errors (logged, hidden from user)
 * Provides useful bulk insert (COPY) wrapper, and bulk update/delete (batch) wrappers
 * Support for getting and filtering enum values
+* Support for selection from database set-returning functions
 * Database creation function from embedded SQL files
 * Archive (soft delete) + restore functions
 * and more. See the [wiki](https://github.com/loveyourstack/lys/wiki)

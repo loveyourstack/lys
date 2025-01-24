@@ -141,9 +141,9 @@ func mustCreateGetReq(t testing.TB, targetUrl string) *http.Request {
 	return req
 }
 
-func mustExtractFilters(t testing.TB, urlValues url.Values, validJsonFields []string, getOptions GetOptions) []lyspg.Condition {
+func mustExtractFilters(t testing.TB, urlValues url.Values, validJsonFields, setFuncUrlParamNames []string, getOptions GetOptions) []lyspg.Condition {
 
-	conds, err := ExtractFilters(urlValues, validJsonFields, getOptions)
+	conds, err := ExtractFilters(urlValues, validJsonFields, setFuncUrlParamNames, getOptions)
 	if err != nil {
 		t.Fatalf("ExtractFilters failed: %v", err)
 	}

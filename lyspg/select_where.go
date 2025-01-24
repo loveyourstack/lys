@@ -6,9 +6,9 @@ import (
 )
 
 // GetWhereClause returns an SQL WHERE clause using placeholders such as $1, $2 etc from the supplied conds
-func GetWhereClause(conds []Condition, orCondSets [][]Condition) (res string, numPlaceholders int) {
+func GetWhereClause(setFuncParamValuesCount int, conds []Condition, orCondSets [][]Condition) (res string, numPlaceholders int) {
 
-	i := 0
+	i := setFuncParamValuesCount
 
 	// append each regular AND condition to the WHERE clause
 	for _, cond := range conds {

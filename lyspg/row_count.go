@@ -18,7 +18,8 @@ type TotalCount struct {
 // fastRowCount returns a fast rowcount of the specified db table
 // the result may be exact or inexact, depending on the size of the table and whether or not any query conditions are present
 // query must be select stmt with placeholders, without order by, limit, or offset
-func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string, conds []Condition, orCondSets [][]Condition, query string) (totalCount TotalCount, err error) {
+func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string, setFuncParamValues []string, conds []Condition,
+	orCondSets [][]Condition, query string) (totalCount TotalCount, err error) {
 
 	var threshold int64 = 10000
 
@@ -41,7 +42,7 @@ func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string
 		}
 
 		// has conds: get count from unpaged query result
-		paramValues := GetSelectParamValues(conds, orCondSets, false, 0, 0)
+		paramValues := GetSelectParamValues(setFuncParamValues, conds, orCondSets, false, 0, 0)
 		rowCount, err := GetRowCountPlaceholderQry(ctx, db, query, paramValues)
 		if err != nil {
 			return TotalCount{}, fmt.Errorf("GetRowCountPlaceholderQry failed: %w", err)
@@ -58,7 +59,7 @@ func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string
 
 	// has conditions: get est rowcount from query plan
 	// from https://www.cybertec-postgresql.com/en/postgresql-count-made-fast/
-	paramValues := GetSelectParamValues(conds, orCondSets, false, 0, 0)
+	paramValues := GetSelectParamValues(setFuncParamValues, conds, orCondSets, false, 0, 0)
 	rowCount, err := GetRowCountExplain(ctx, db, query, paramValues)
 	if err != nil {
 		return TotalCount{}, fmt.Errorf("GetRowCountExplain failed: %w", err)

@@ -25,27 +25,34 @@ var (
 
 // GetReqModifiers contains data from a GET request's Url params which is used to modify a database SELECT statement
 type GetReqModifiers struct {
-	Format     string
-	Fields     []string
-	Conditions []lyspg.Condition
-	Page       int
-	PerPage    int
-	Sorts      []string
+	Format             string
+	Fields             []string
+	Conditions         []lyspg.Condition
+	Page               int
+	PerPage            int
+	Sorts              []string
+	SetFuncParamValues []string
 }
 
 // ExtractGetRequestModifiers reads the Url params of the supplied GET request and converts them into a GetReqModifiers
-func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOptions GetOptions) (getReqModifiers GetReqModifiers, err error) {
+func ExtractGetRequestModifiers(r *http.Request, validJsonFields, setFuncUrlParamNames []string, getOptions GetOptions) (getReqModifiers GetReqModifiers, err error) {
 
-	// format
+	// format (output format of GET req)
 	getReqModifiers.Format, err = ExtractFormat(r, getOptions.FormatParamName)
 	if err != nil {
 		return GetReqModifiers{}, fmt.Errorf("ExtractFormat failed: %w", err)
 	}
 
 	// filters (become WHERE clause conditions)
-	getReqModifiers.Conditions, err = ExtractFilters(r.URL.Query(), validJsonFields, getOptions)
+	getReqModifiers.Conditions, err = ExtractFilters(r.URL.Query(), validJsonFields, setFuncUrlParamNames, getOptions)
 	if err != nil {
 		return GetReqModifiers{}, fmt.Errorf("ExtractFilters failed: %w", err)
+	}
+
+	// setFunc params (if setFunc is used, are passed as param values)
+	getReqModifiers.SetFuncParamValues, err = ExtractSetFuncParamValues(r, setFuncUrlParamNames)
+	if err != nil {
+		return GetReqModifiers{}, fmt.Errorf("ExtractSetFuncParamValues failed: %w", err)
 	}
 
 	// sorts (become ORDER BY)
@@ -76,7 +83,7 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields []string, getOp
 	return getReqModifiers, nil
 }
 
-// ExtractFormat returns
+// ExtractFormat returns the output format for the GET req
 func ExtractFormat(r *http.Request, formatReqParamName string) (format string, err error) {
 
 	// formatReqParamName: e.g. "xformat"
@@ -133,13 +140,14 @@ func ExtractFields(r *http.Request, validJsonFields []string, fieldsReqParamName
 
 // ExtractFilters returns a slice of conditions parsed from the request's params
 // to get urlValues from a request: r.Url.Query()
-func ExtractFilters(urlValues url.Values, validJsonFields []string, getOptions GetOptions) (conds []lyspg.Condition, err error) {
+func ExtractFilters(urlValues url.Values, validJsonFields, setFuncUrlParamNames []string, getOptions GetOptions) (conds []lyspg.Condition, err error) {
 
 	// for each Url value
 	for key, vals := range urlValues {
 
-		// skip if this is a Url key assigned to one of the other purposes (.e.g paging, sorting)
+		// skip if this is a Url key assigned to one of the other purposes (.e.g paging, sorting) or is expected as a setFunc url param
 		specialParams := []string{getOptions.FormatParamName, getOptions.FieldsParamName, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.SortParamName}
+		specialParams = append(specialParams, setFuncUrlParamNames...)
 		if slices.Contains(specialParams, key) {
 			continue
 		}
@@ -351,4 +359,21 @@ func ExtractSorts(r *http.Request, validJsonFields []string, sortReqParamName st
 	}
 
 	return sortCols, nil
+}
+
+// ExtractSetFuncParamValues returns the values to be passed to the SQL setFunc
+// each param is currently treated as mandatory
+func ExtractSetFuncParamValues(r *http.Request, setFuncUrlParamNames []string) (setFuncUrlParamValues []string, err error) {
+
+	for _, paramName := range setFuncUrlParamNames {
+
+		paramValue := r.FormValue(paramName)
+		if paramValue == "" {
+			return nil, lyserr.User{Message: fmt.Sprintf("setFunc param name %s is missing", paramName)}
+		}
+
+		setFuncUrlParamValues = append(setFuncUrlParamValues, paramValue)
+	}
+
+	return setFuncUrlParamValues, nil
 }

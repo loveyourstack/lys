@@ -23,14 +23,15 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 
 	// build select stmt with placeholders for conditions
 	selectCols := strings.Join(fields, ",")
-	whereClause, numPlaceholders := GetWhereClause(params.Conditions, params.OrConditionSets)
-	stmt := GetSelectStem(selectCols, schemaName, viewName, whereClause)
+	whereClause, numPlaceholders := GetWhereClause(len(params.SetFuncParamValues), params.Conditions, params.OrConditionSets)
+	sourceName := GetSourceName(viewName, len(params.SetFuncParamValues))
+	stmt := GetSelectStem(selectCols, schemaName, sourceName, whereClause)
 
 	// if unpagedCount is requested
 	if params.GetUnpagedCount && tableName != "" {
 
 		// get a fast recordcount
-		unpagedCount, err = fastRowCount(ctx, db, schemaName, tableName, params.Conditions, params.OrConditionSets, stmt)
+		unpagedCount, err = fastRowCount(ctx, db, schemaName, tableName, params.SetFuncParamValues, params.Conditions, params.OrConditionSets, stmt)
 		if err != nil {
 			return nil, TotalCount{}, fmt.Errorf("fastRowCount failed: %w", err)
 		}
@@ -40,7 +41,7 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 	stmt += GetLimitOffsetClause(numPlaceholders)
 
 	// get params for stmt placeholders
-	paramValues := GetSelectParamValues(params.Conditions, params.OrConditionSets, true, GetLimit(params.Limit), params.Offset)
+	paramValues := GetSelectParamValues(params.SetFuncParamValues, params.Conditions, params.OrConditionSets, true, GetLimit(params.Limit), params.Offset)
 
 	// using RowToStructByNameLax below because the fields param might restrict the number of columns selected
 	// causing a mismatch between # of columns returned and the # of fields in the dest struct

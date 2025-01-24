@@ -39,22 +39,40 @@ type Condition struct {
 
 // SelectParams holds the fields needed to modify a SELECT query
 type SelectParams struct {
-	Fields          []string
-	Conditions      []Condition
-	OrConditionSets [][]Condition // sets of OR conditions. To be used by stores: is currently not available via API query params
-	Sorts           []string
-	Limit           int
-	Offset          int
-	GetUnpagedCount bool // if true, will estimate the total number of records returned by this query regardless of paging
+	Fields             []string
+	Conditions         []Condition
+	OrConditionSets    [][]Condition // sets of OR conditions. To be used by stores: is currently not available via API query params
+	Sorts              []string
+	Limit              int
+	Offset             int
+	SetFuncParamValues []string // if selecting from a setFunc, the param values that will be passed
+	GetUnpagedCount    bool     // if true, will estimate the total number of records returned by this query regardless of paging
 }
 
-// getSelectStem returns the stem of a SELECT statement using the supplied params
-func GetSelectStem(selectCols string, schemaName string, viewName string, whereClause string) string {
+// GetSourceName returns viewName unless a set-returning func is used, in which case it assumes viewName is a func and appends the func param placeholders, e.g. myfunc($1,$2)
+func GetSourceName(viewName string, setFuncParamValuesCount int) string {
 
-	return fmt.Sprintf("SELECT %s FROM %s.%s WHERE 1=1%s", selectCols, schemaName, viewName, whereClause)
+	// if setFunc params are needed
+	if setFuncParamValuesCount > 0 {
+
+		// viewName is the setFunc: append param placeholders
+		paramPlaceholders := []string{}
+		for i := 0; i < setFuncParamValuesCount; i++ {
+			paramPlaceholders = append(paramPlaceholders, fmt.Sprintf("$%v", i+1))
+		}
+		viewName = fmt.Sprintf("%s(%s)", viewName, strings.Join(paramPlaceholders, ","))
+	}
+
+	return viewName
 }
 
-// getOrderBy returns an SQL ORDER BY clause from a slice of sort strings
+// GetSelectStem returns the stem of a SELECT statement using the supplied params
+func GetSelectStem(selectCols string, schemaName string, sourceName string, whereClause string) string {
+
+	return fmt.Sprintf("SELECT %s FROM %s.%s WHERE 1=1%s", selectCols, schemaName, sourceName, whereClause)
+}
+
+// GetOrderBy returns an SQL ORDER BY clause from a slice of sort strings
 func GetOrderBy(sorts []string, defaultOrderBy string) string {
 
 	if len(sorts) == 0 {
@@ -66,14 +84,19 @@ func GetOrderBy(sorts []string, defaultOrderBy string) string {
 	return " ORDER BY " + strings.Join(sorts, ", ")
 }
 
-// getLimitOffsetClause returns a SELECT statement's LIMIT and OFFSET clauses
+// GetLimitOffsetClause returns a SELECT statement's LIMIT and OFFSET clauses
 func GetLimitOffsetClause(placeholderCount int) string {
 
 	return fmt.Sprintf(" LIMIT $%d OFFSET $%d;", placeholderCount+1, placeholderCount+2)
 }
 
-// getSelectParamValues returns the array of param values needed for a SELECT query
-func GetSelectParamValues(conds []Condition, orCondSets [][]Condition, includeLimitOffset bool, limit, offset int) (paramValues []any) {
+// GetSelectParamValues returns the array of param values needed for a SELECT query
+func GetSelectParamValues(setFuncParamValues []string, conds []Condition, orCondSets [][]Condition, includeLimitOffset bool, limit, offset int) (paramValues []any) {
+
+	// setFunc param values
+	for _, paramVal := range setFuncParamValues {
+		paramValues = append(paramValues, paramVal)
+	}
 
 	// regular (AND) conditions
 	for _, cond := range conds {

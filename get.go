@@ -21,8 +21,9 @@ type iGetable[T any] interface {
 }
 
 type GetOption[T any] struct {
-	GetLastSyncAt func(ctx context.Context) (lastSyncAt lystype.Datetime, err error)                                         // for external data: func to get the last synced timestamp
-	SelectFunc    func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error) // if passed, override the default Select() func
+	GetLastSyncAt        func(ctx context.Context) (lastSyncAt lystype.Datetime, err error)                                         // for external data: func to get the last synced timestamp
+	SelectFunc           func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error) // if passed, override the default Select() func
+	SetFuncUrlParamNames []string                                                                                                   // if selecting from a setFunc rather than a view: the names of the url params that must be passed and that will be passed, in order, to the setFunc
 }
 
 // Get handles retrieval of multiple items from the supplied store
@@ -30,8 +31,16 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
+		// get setFuncUrlParamNames from options if it was passed
+		setFuncUrlParamNames := []string{}
+		for _, option := range options {
+			if len(option.SetFuncUrlParamNames) > 0 {
+				setFuncUrlParamNames = option.SetFuncUrlParamNames
+			}
+		}
+
 		// get request modifiers from url params
-		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetMeta().JsonTags, env.GetOptions)
+		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetMeta().JsonTags, setFuncUrlParamNames, env.GetOptions)
 		if err != nil {
 			HandleError(r.Context(), fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.ErrorLog, w)
 			return
@@ -39,8 +48,9 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 
 		// define params for store select func
 		selectParams := lyspg.SelectParams{
-			Conditions: getReqModifiers.Conditions,
-			Sorts:      getReqModifiers.Sorts,
+			Conditions:         getReqModifiers.Conditions,
+			Sorts:              getReqModifiers.Sorts,
+			SetFuncParamValues: getReqModifiers.SetFuncParamValues,
 		}
 
 		// if returning json, use fields and paging
