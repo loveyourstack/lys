@@ -185,6 +185,18 @@ func processFilterParam(field, rawValue string, validJsonFields []string, getOpt
 
 	cond.Field = field
 
+	// check for presence of appended metadata in rawValue
+	if strings.Contains(rawValue, getOptions.MetadataSeparator) {
+
+		rawValueA := strings.Split(rawValue, getOptions.MetadataSeparator)
+		rawValue = rawValueA[0]
+
+		// if metadata is not empty, add it to cond
+		if len(rawValueA) > 1 {
+			cond.Metadata = strings.Join(rawValueA[1:], "")
+		}
+	}
+
 	// extract the operator and target value. Note: <= and >= are not allowed, since "=" is reserved for key/value separation
 	switch {
 

@@ -35,6 +35,7 @@ type Condition struct {
 	Operator Operator // must be one of the Operator consts. if "IN" or "NOT IN", fill InValues, not Value
 	Value    string
 	InValues []string
+	Metadata string // optional data passed via API query param
 }
 
 // SelectParams holds the fields needed to modify a SELECT query
