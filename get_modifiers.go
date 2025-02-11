@@ -31,7 +31,7 @@ type GetReqModifiers struct {
 	Page               int
 	PerPage            int
 	Sorts              []string
-	SetFuncParamValues []string
+	SetFuncParamValues []any
 }
 
 // ExtractGetRequestModifiers reads the Url params of the supplied GET request and converts them into a GetReqModifiers
@@ -375,7 +375,7 @@ func ExtractSorts(r *http.Request, validJsonFields []string, sortReqParamName st
 
 // ExtractSetFuncParamValues returns the values to be passed to the SQL setFunc
 // each param is currently treated as mandatory
-func ExtractSetFuncParamValues(r *http.Request, setFuncUrlParamNames []string) (setFuncUrlParamValues []string, err error) {
+func ExtractSetFuncParamValues(r *http.Request, setFuncUrlParamNames []string) (setFuncUrlParamValues []any, err error) {
 
 	for _, paramName := range setFuncUrlParamNames {
 

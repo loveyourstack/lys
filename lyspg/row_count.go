@@ -18,7 +18,7 @@ type TotalCount struct {
 // fastRowCount returns a fast rowcount of the specified db table
 // the result may be exact or inexact, depending on the size of the table and whether or not any query conditions are present
 // query must be select stmt with placeholders, without order by, limit, or offset
-func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string, setFuncParamValues []string, conds []Condition,
+func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string, setFuncParamValues []any, conds []Condition,
 	orCondSets [][]Condition, query string) (totalCount TotalCount, err error) {
 
 	var threshold int64 = 10000

@@ -378,7 +378,7 @@ func TestExtractSetFuncParamValuesSuccess(t *testing.T) {
 	if err != nil {
 		t.Errorf("ExtractSetFuncParamValues failed: %v", err)
 	}
-	assert.EqualValues(t, []string{"1", "2"}, setFuncParamValues)
+	assert.EqualValues(t, []any{"1", "2"}, setFuncParamValues)
 }
 
 func TestExtractSetFuncParamValuesFailure(t *testing.T) {

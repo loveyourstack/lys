@@ -46,8 +46,8 @@ type SelectParams struct {
 	Sorts              []string
 	Limit              int
 	Offset             int
-	SetFuncParamValues []string // if selecting from a setFunc, the param values that will be passed
-	GetUnpagedCount    bool     // if true, will estimate the total number of records returned by this query regardless of paging
+	SetFuncParamValues []any // if selecting from a setFunc, the param values that will be passed
+	GetUnpagedCount    bool  // if true, will estimate the total number of records returned by this query regardless of paging
 }
 
 // GetSourceName returns viewName unless a set-returning func is used, in which case it assumes viewName is a func and appends the func param placeholders, e.g. myfunc($1,$2)
@@ -92,12 +92,10 @@ func GetLimitOffsetClause(placeholderCount int) string {
 }
 
 // GetSelectParamValues returns the array of param values needed for a SELECT query
-func GetSelectParamValues(setFuncParamValues []string, conds []Condition, orCondSets [][]Condition, includeLimitOffset bool, limit, offset int) (paramValues []any) {
+func GetSelectParamValues(setFuncParamValues []any, conds []Condition, orCondSets [][]Condition, includeLimitOffset bool, limit, offset int) (paramValues []any) {
 
 	// setFunc param values
-	for _, paramVal := range setFuncParamValues {
-		paramValues = append(paramValues, paramVal)
-	}
+	paramValues = append(paramValues, setFuncParamValues...)
 
 	// regular (AND) conditions
 	for _, cond := range conds {
