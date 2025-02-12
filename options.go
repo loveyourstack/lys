@@ -9,7 +9,7 @@ type GetOptions struct {
 	PerPageParamName       string // param name to define the number of records returned by a paged GET request, e.g. "xper_page"
 	SortParamName          string // param name to identify the sort param used by a GET request, e.g. "xsort"
 	MultipleValueSeparator string // the string used by a GET request to separate values in a filter where each value should be returned, e.g. "|", usage: "name=Bill|Sam"
-	MetadataSeparator      string // the string used to separate any extra data appended to a GET request query filter, e.g. "##", usage: "sales=>100##Last 7 days"
+	MetadataSeparator      string // the string used to separate any extra data appended to a GET request query filter, e.g. "^", usage: "sales=>100^Last 7 days"
 	DefaultPerPage         int    // default number of results returned by a paged GET request, e.g. 20
 	MaxPerPage             int    // max number of results returned per paged GET request, regardless of what the caller enters in the "PerPageParamName" param, e.g. 500
 	MaxFileRecs            int    // max number of records contained in a file output
@@ -37,7 +37,7 @@ func FillGetOptions(input GetOptions) (ret GetOptions) {
 		ret.MultipleValueSeparator = "|"
 	}
 	if input.MetadataSeparator == "" {
-		ret.MetadataSeparator = "##"
+		ret.MetadataSeparator = "^"
 	}
 	if input.DefaultPerPage == 0 {
 		ret.DefaultPerPage = 20

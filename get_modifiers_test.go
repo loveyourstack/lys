@@ -238,21 +238,21 @@ func TestExtractFiltersOtherSuccess(t *testing.T) {
 
 	// empty metadata
 	urlValues = url.Values{}
-	urlValues.Add("a", "1##")
+	urlValues.Add("a", "1^")
 	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
 	cond := lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "1", Metadata: ""}
 	assert.EqualValues(t, cond, conds[0], "empty metadata")
 
 	// metadata
 	urlValues = url.Values{}
-	urlValues.Add("a", "1##b")
+	urlValues.Add("a", "1^b")
 	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
 	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "1", Metadata: "b"}
 	assert.EqualValues(t, cond, conds[0], "metadata")
 
 	// metadata separator repeated
 	urlValues = url.Values{}
-	urlValues.Add("a", "1##b##c")
+	urlValues.Add("a", "1^b^c")
 	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
 	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "1", Metadata: "bc"}
 	assert.EqualValues(t, cond, conds[0], "metadata separator repeated")
