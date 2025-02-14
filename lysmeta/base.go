@@ -49,8 +49,10 @@ func AnalyzeStructs(reflVals ...reflect.Value) (res Result, err error) {
 
 				res.JsonTagTypeMap[jsonTag] = fmt.Sprintf("%v", reflType.Field(i).Type)
 			}
-		}
-	}
+
+		} // next field
+
+	} // next struct
 
 	// check for dups
 	errA := []string{}
@@ -67,7 +69,7 @@ func AnalyzeStructs(reflVals ...reflect.Value) (res Result, err error) {
 
 	// return errors, if any
 	if len(errA) > 0 {
-		return Result{}, fmt.Errorf(strings.Join(errA, ", "))
+		return Result{}, fmt.Errorf("%s", strings.Join(errA, ", "))
 	}
 
 	return res, nil

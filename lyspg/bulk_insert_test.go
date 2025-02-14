@@ -14,7 +14,7 @@ func TestBulkInsertSuccess(t *testing.T) {
 	db := mustGetDb(t, context.Background())
 	defer db.Close()
 
-	// empty inputs
+	// with empty inputs
 	inputs := []coretypetestm.Input{}
 	for i := 0; i < 10; i++ {
 		input := coretypetestm.GetEmptyInput()
@@ -27,7 +27,7 @@ func TestBulkInsertSuccess(t *testing.T) {
 	}
 	assert.EqualValues(t, 10, rowsAffected, "type test - empty")
 
-	// filled inputs
+	// with filled inputs
 	inputs = []coretypetestm.Input{}
 	for i := 0; i < 10; i++ {
 		input, err := coretypetestm.GetFilledInput()
@@ -51,4 +51,24 @@ func TestBulkInsertSuccess(t *testing.T) {
 		t.Fatalf("pgx.CollectExactlyOneRow failed: %v", err)
 	}
 	coretypetestm.TestFilledInput(t, item.Input)
+}
+
+func TestBulkInsertFailure(t *testing.T) {
+
+	db := mustGetDb(t, context.Background())
+	defer db.Close()
+
+	// inputs have no db tags
+	type s struct {
+		A string
+	}
+	inputs := []s{
+		{A: "1"},
+	}
+	_, err := BulkInsert(context.Background(), db, "core", "bulk_insert_test", inputs)
+	assert.EqualError(t, err, "input type does not have db tags")
+
+	// empty input slice
+	_, err = BulkInsert(context.Background(), db, "core", "bulk_insert_test", []s{})
+	assert.EqualError(t, err, "inputs has len 0")
 }

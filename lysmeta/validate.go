@@ -42,7 +42,7 @@ func Validate[T any](validate *validator.Validate, input T) (err error) {
 			msgs = append(msgs, msg)
 		}
 
-		return fmt.Errorf(strings.Join(msgs, " | "))
+		return fmt.Errorf("%s", strings.Join(msgs, " | "))
 	}
 
 	return nil
