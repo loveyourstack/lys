@@ -154,6 +154,24 @@ func TestGetSuccessPaging(t *testing.T) {
 	assert.EqualValues(t, "b", items[0]["c_text"].(string), "page 2 limit 1")
 }
 
+func TestGetSetfuncSuccess(t *testing.T) {
+
+	srvApp := mustGetSrvApp(t, context.Background())
+	defer srvApp.Db.Close()
+
+	// passing setfunc params only
+	targetUrl := "/setfunc-test?p_text=a&p_int=1&p_inta=1,2"
+	items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 2, len(items), "len")
+	assert.EqualValues(t, "a", items[0]["text_val"], "text val")
+	assert.EqualValues(t, 2, items[0]["int_val"], "int val 1")
+	assert.EqualValues(t, 3, items[1]["int_val"], "int val 2")
+
+	// TODO filtering
+
+	// TODO sorting
+}
+
 func TestGetSuccessSorts(t *testing.T) {
 
 	srvApp := mustGetSrvApp(t, context.Background())

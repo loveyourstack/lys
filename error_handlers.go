@@ -65,6 +65,9 @@ func HandleDbError(ctx context.Context, stmt string, err error, errorLog *slog.L
 		case pgerrcode.CheckViolation:
 			HandleUserError(http.StatusBadRequest, "check constraint violation: "+pgErr.ConstraintName, w)
 			return
+		case pgerrcode.ExclusionViolation:
+			HandleUserError(http.StatusConflict, "exclusion constraint violation: "+pgErr.Detail, w)
+			return
 		case pgerrcode.ForeignKeyViolation:
 			HandleUserError(http.StatusBadRequest, "foreign key violation: "+pgErr.Detail, w)
 			return

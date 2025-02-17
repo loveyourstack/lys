@@ -15,6 +15,7 @@ import (
 	"github.com/loveyourstack/lys/internal/stores/core/corearchivetest"
 	"github.com/loveyourstack/lys/internal/stores/core/corearchivetestm"
 	"github.com/loveyourstack/lys/internal/stores/core/coreparamtest"
+	"github.com/loveyourstack/lys/internal/stores/core/coresetfunc"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/internal/stores/core/corevolumetest"
@@ -67,6 +68,13 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 		return int64(len(vals)), nil
 	}
 	r.HandleFunc(endpoint, ProcessSlice(apiEnv, processSliceFunc)).Methods("POST")
+
+	endpoint = "/setfunc-test"
+
+	setfuncTestStore := coresetfunc.Store{Db: srvApp.Db}
+	r.HandleFunc(endpoint, Get[coresetfunc.Model](apiEnv, setfuncTestStore, GetOption[coresetfunc.Model]{
+		SetFuncUrlParamNames: setfuncTestStore.GetSetFuncUrlParamNames(),
+	})).Methods("GET")
 
 	endpoint = "/type-test"
 
