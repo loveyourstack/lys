@@ -12,7 +12,7 @@ import (
 	"github.com/loveyourstack/lys/lysmeta"
 )
 
-// BulkUpdate changes multiple records in the same table identified by pkVals with the values contained in inputs
+// BulkUpdate changes multiple records in the same table in a single pg batch. The records are identified by pkVals with the values contained in inputs
 // T must be a struct with "db" tags
 // partial success possible: if some pkVals are not found, an error will be returned containing the failed pks, but the other rows will be updated
 func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, inputs []T, pkVals []pkT,

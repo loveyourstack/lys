@@ -148,6 +148,56 @@ func mustParseTime(t testing.TB, layout, value string) time.Time {
 	return timeV
 }
 
+func TestEmptyInput(t testing.TB, item Input) {
+
+	// boolean
+	assert.EqualValues(t, false, item.CBool, "CBool")
+	assert.EqualValues(t, (*bool)(nil), item.CBoolN, "CBoolN")
+	assert.EqualValues(t, []bool{}, item.CBoolA, "CBoolA")
+
+	// int
+	assert.EqualValues(t, 0, item.CInt, "CInt")
+	assert.EqualValues(t, (*int64)(nil), item.CIntN, "CIntN")
+	assert.EqualValues(t, []int64{}, item.CIntA, "CIntA")
+
+	// double
+	assert.EqualValues(t, float32(0.0), item.CDouble, "CDouble")
+	assert.EqualValues(t, (*float32)(nil), item.CDoubleN, "CDoubleN")
+	assert.EqualValues(t, []float32{}, item.CDoubleA, "CDoubleA")
+
+	// numeric
+	assert.EqualValues(t, float32(0.0), item.CNumeric, "CNumeric")
+	assert.EqualValues(t, (*float32)(nil), item.CNumericN, "CNumericN")
+	assert.EqualValues(t, []float32{}, item.CNumericA, "CNumericA")
+
+	// date
+	assert.EqualValues(t, lystype.Date{}, item.CDate, "CDate")
+	assert.EqualValues(t, (*lystype.Date)(nil), item.CDateN, "CDateN")
+	// TODO item.CDateA
+
+	// time
+	t1 := mustParseTime(t, lystype.TimeFormat, "00:00")
+	assert.EqualValues(t, t1, item.CTime, "CTime")
+	assert.EqualValues(t, (*lystype.Time)(nil), item.CTimeN, "CTimeN")
+	// TODO item.CTimeA
+
+	// datetime
+	dt1 := mustParseTime(t, lystype.DatetimeFormat, "0001-01-01 12:00:00+00")
+	assert.EqualValues(t, dt1.Format(lystype.DateFormat), item.CDatetime.Format(lystype.DateFormat), "CDatetime")
+	assert.EqualValues(t, (*lystype.Datetime)(nil), item.CDatetimeN, "CDatetimeN")
+	// TODO item.CDatetimeA
+
+	// enum
+	assert.EqualValues(t, "Monday", item.CEnum, "CEnum")
+	assert.EqualValues(t, (*string)(nil), item.CEnumN, "CEnumN")
+	assert.EqualValues(t, []string{}, item.CEnumA, "CEnumA")
+
+	// text
+	assert.EqualValues(t, "", item.CText, "CText")
+	assert.EqualValues(t, (*string)(nil), item.CTextN, "CTextN")
+	assert.EqualValues(t, []string{}, item.CTextA, "CTextA")
+}
+
 func TestFilledInput(t testing.TB, item Input) {
 
 	// boolean
