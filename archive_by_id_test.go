@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/loveyourstack/lys/internal/stores/core/corearchivetest"
+	"github.com/loveyourstack/lys/internal/stores/core/corearchivetestm"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -17,7 +17,7 @@ func TestArchiveByIdSuccess(t *testing.T) {
 	targetUrl := "/archive-test/1"
 
 	// get id 1
-	item := lysclient.MustDoToValue[corearchivetest.Model](t, srvApp.getRouter(), "GET", targetUrl)
+	item := lysclient.MustDoToValue[corearchivetestm.Model](t, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, 1, *item.CInt, "before archive")
 	assert.Nil(t, item.CText, "before archive")
 
@@ -32,7 +32,7 @@ func TestArchiveByIdSuccess(t *testing.T) {
 	_ = lysclient.MustDoToValue[string](t, srvApp.getRouter(), "POST", targetUrl+"/restore")
 
 	// get id 1
-	item = lysclient.MustDoToValue[corearchivetest.Model](t, srvApp.getRouter(), "GET", targetUrl)
+	item = lysclient.MustDoToValue[corearchivetestm.Model](t, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, 1, *item.CInt, "after archive")
 	assert.Nil(t, item.CText, "after archive")
 }

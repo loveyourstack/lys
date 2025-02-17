@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
-	"github.com/loveyourstack/lys/internal/stores/core/corearchivetest"
+	"github.com/loveyourstack/lys/internal/stores/core/corearchivetestm"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -16,12 +16,12 @@ func TestArchiveByUuidSuccess(t *testing.T) {
 	defer srvApp.Db.Close()
 
 	// first, get id 1's uuid
-	item := lysclient.MustDoToValue[corearchivetest.Model](t, srvApp.getRouter(), "GET", "/archive-test/1")
+	item := lysclient.MustDoToValue[corearchivetestm.Model](t, srvApp.getRouter(), "GET", "/archive-test/1")
 
 	targetUrl := "/archive-test-uuid/" + item.Iduu.String()
 
 	// get id 1
-	item = lysclient.MustDoToValue[corearchivetest.Model](t, srvApp.getRouter(), "GET", targetUrl)
+	item = lysclient.MustDoToValue[corearchivetestm.Model](t, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, 1, *item.CInt, "before archive")
 	assert.Nil(t, item.CText, "before archive")
 
@@ -36,7 +36,7 @@ func TestArchiveByUuidSuccess(t *testing.T) {
 	_ = lysclient.MustDoToValue[string](t, srvApp.getRouter(), "POST", targetUrl+"/restore")
 
 	// get id 1
-	item = lysclient.MustDoToValue[corearchivetest.Model](t, srvApp.getRouter(), "GET", targetUrl)
+	item = lysclient.MustDoToValue[corearchivetestm.Model](t, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, 1, *item.CInt, "after archive")
 	assert.Nil(t, item.CText, "after archive")
 }

@@ -26,7 +26,6 @@ func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName s
 	if err != nil {
 		return 0, fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
 	}
-
 	if len(meta.DbTags) == 0 {
 		return 0, fmt.Errorf("input type does not have db tags")
 	}

@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/loveyourstack/lys/internal/stores/core/corearchivetestm"
 	"github.com/loveyourstack/lys/lysmeta"
 	"github.com/loveyourstack/lys/lyspg"
 )
@@ -21,16 +22,7 @@ const (
 	defaultOrderBy string = "id"
 )
 
-type Input struct {
-	CInt  *int64  `db:"c_int" json:"c_int,omitempty"`
-	CText *string `db:"c_text" json:"c_text,omitempty"`
-}
-
-type Model struct {
-	Id   int64     `db:"id" json:"id,omitempty"`
-	Iduu uuid.UUID `db:"id_uu" json:"id_uu,omitempty"`
-	Input
-}
+// Input and Model are in a separate package, corearchivetestm, so that they can be used for testing in lyspg
 
 var (
 	meta lysmeta.Result
@@ -38,7 +30,7 @@ var (
 
 func init() {
 	var err error
-	meta, err = lysmeta.AnalyzeStructs(reflect.ValueOf(&Input{}).Elem(), reflect.ValueOf(&Model{}).Elem())
+	meta, err = lysmeta.AnalyzeStructs(reflect.ValueOf(&corearchivetestm.Input{}).Elem(), reflect.ValueOf(&corearchivetestm.Model{}).Elem())
 	if err != nil {
 		log.Fatalf("lysmeta.AnalyzeStructs failed for %s.%s: %s", schemaName, tableName, err.Error())
 	}
@@ -71,14 +63,14 @@ func (s Store) RestoreByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 	return lyspg.Restore(ctx, tx, schemaName, tableName, "id_uu", id, false)
 }
 
-func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {
-	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, meta.DbTags, params)
+func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []corearchivetestm.Model, unpagedCount lyspg.TotalCount, err error) {
+	return lyspg.Select[corearchivetestm.Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, meta.DbTags, params)
 }
 
-func (s Store) SelectById(ctx context.Context, fields []string, id int64) (item Model, err error) {
-	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, pkColName, fields, meta.DbTags, id)
+func (s Store) SelectById(ctx context.Context, fields []string, id int64) (item corearchivetestm.Model, err error) {
+	return lyspg.SelectUnique[corearchivetestm.Model](ctx, s.Db, schemaName, viewName, pkColName, fields, meta.DbTags, id)
 }
 
-func (s Store) SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item Model, err error) {
-	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, "id_uu", fields, meta.DbTags, id)
+func (s Store) SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item corearchivetestm.Model, err error) {
+	return lyspg.SelectUnique[corearchivetestm.Model](ctx, s.Db, schemaName, viewName, "id_uu", fields, meta.DbTags, id)
 }
