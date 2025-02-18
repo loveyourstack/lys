@@ -21,15 +21,24 @@ type iGetable[T any] interface {
 }
 
 type GetOption[T any] struct {
-	GetLastSyncAt        func(ctx context.Context) (lastSyncAt lystype.Datetime, err error)                                         // for external data: func to get the last synced timestamp
-	SelectFunc           func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error) // if passed, override the default Select() func
-	SetFuncUrlParamNames []string                                                                                                   // if selecting from a setFunc rather than a view: the names of the url params that must be passed and that will be passed, in order, to the setFunc
+	AdditionalFilterParamNames []string                                                                                                   // param names that are not part of the store's meta json tags, but should be allowed anyway. Must be handled by store's Select func
+	GetLastSyncAt              func(ctx context.Context) (lastSyncAt lystype.Datetime, err error)                                         // for external data: func to get the last synced timestamp
+	SelectFunc                 func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error) // if passed, override the default Select() func
+	SetFuncUrlParamNames       []string                                                                                                   // if selecting from a setFunc rather than a view: the names of the url params that must be passed and that will be passed, in order, to the setFunc
 }
 
 // Get handles retrieval of multiple items from the supplied store
 func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		// get additionalFilterParamNames from options if it was passed
+		additionalFilterParamNames := []string{}
+		for _, option := range options {
+			if len(option.AdditionalFilterParamNames) > 0 {
+				additionalFilterParamNames = option.AdditionalFilterParamNames
+			}
+		}
 
 		// get setFuncUrlParamNames from options if it was passed
 		setFuncUrlParamNames := []string{}
@@ -40,7 +49,7 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 		}
 
 		// get request modifiers from url params
-		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetMeta().JsonTags, setFuncUrlParamNames, env.GetOptions)
+		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetMeta().JsonTags, setFuncUrlParamNames, additionalFilterParamNames, env.GetOptions)
 		if err != nil {
 			HandleError(r.Context(), fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.ErrorLog, w)
 			return

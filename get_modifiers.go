@@ -35,7 +35,7 @@ type GetReqModifiers struct {
 }
 
 // ExtractGetRequestModifiers reads the Url params of the supplied GET request and converts them into a GetReqModifiers
-func ExtractGetRequestModifiers(r *http.Request, validJsonFields, setFuncUrlParamNames []string, getOptions GetOptions) (getReqModifiers GetReqModifiers, err error) {
+func ExtractGetRequestModifiers(r *http.Request, validJsonFields, setFuncUrlParamNames, additionalFilterParamNames []string, getOptions GetOptions) (getReqModifiers GetReqModifiers, err error) {
 
 	// format (output format of GET req)
 	getReqModifiers.Format, err = ExtractFormat(r, getOptions.FormatParamName)
@@ -44,7 +44,8 @@ func ExtractGetRequestModifiers(r *http.Request, validJsonFields, setFuncUrlPara
 	}
 
 	// filters (become WHERE clause conditions)
-	getReqModifiers.Conditions, err = ExtractFilters(r.URL.Query(), validJsonFields, setFuncUrlParamNames, getOptions)
+	// if additionalFilterParamNames were passed, append them to validJsonFields for filtering, but not for sorting
+	getReqModifiers.Conditions, err = ExtractFilters(r.URL.Query(), append(validJsonFields, additionalFilterParamNames...), setFuncUrlParamNames, getOptions)
 	if err != nil {
 		return GetReqModifiers{}, fmt.Errorf("ExtractFilters failed: %w", err)
 	}
