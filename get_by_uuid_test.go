@@ -24,6 +24,7 @@ func TestGetByUuidSuccess(t *testing.T) {
 	targetUrl = "/type-test-uuid/" + item.Iduu.String()
 	itemUuid := lysclient.MustDoToValue[coretypetestm.Model](t, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, true, itemUuid.CBool)
+	assert.EqualValues(t, "a b", itemUuid.CText)
 }
 
 func TestGetByUuidFailure(t *testing.T) {

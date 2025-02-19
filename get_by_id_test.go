@@ -17,6 +17,7 @@ func TestGetByIdSuccess(t *testing.T) {
 	targetUrl := "/type-test/1"
 	item := lysclient.MustDoToValue[coretypetestm.Model](t, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, true, item.CBool)
+	assert.EqualValues(t, "a b", item.CText)
 }
 
 func TestGetByIdFailure(t *testing.T) {

@@ -7,12 +7,10 @@ import (
 	"strconv"
 
 	"github.com/gorilla/mux"
-	"github.com/loveyourstack/lys/lysmeta"
 )
 
 // iGetableById is a store that can be used by GetById
 type iGetableById[T any] interface {
-	GetMeta() lysmeta.Result
 	SelectById(ctx context.Context, id int64) (item T, err error)
 }
 

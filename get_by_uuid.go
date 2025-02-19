@@ -7,12 +7,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/loveyourstack/lys/lysmeta"
 )
 
 // iGetableByUuid is a store that can be used by GetByUuid
 type iGetableByUuid[T any] interface {
-	GetMeta() lysmeta.Result
 	SelectByUuid(ctx context.Context, id uuid.UUID) (item T, err error)
 }
 
