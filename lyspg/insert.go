@@ -52,8 +52,7 @@ func Insert[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sc
 
 // InsertSelect inserts a single record and then returns it
 // inputT must be a struct with "db" tags
-func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schemaName, tableName, viewName, pkColName string, allFields []string,
-	input inputT) (newItem itemT, err error) {
+func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schemaName, tableName, viewName, pkColName string, input inputT) (newItem itemT, err error) {
 
 	// get input db struct tags
 	inputReflVals := reflect.ValueOf(input)
@@ -76,5 +75,5 @@ func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schem
 		return newItem, lyserr.Db{Err: fmt.Errorf(ErrDescInsertScanFailed+": %w", err), Stmt: stmt}
 	}
 
-	return SelectUnique[itemT](ctx, db, schemaName, viewName, pkColName, nil, allFields, newPk)
+	return SelectUnique[itemT](ctx, db, schemaName, viewName, pkColName, newPk)
 }

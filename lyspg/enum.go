@@ -38,12 +38,15 @@ func SelectEnum(ctx context.Context, db PoolOrTx, enumName string, includeVals, 
 		inputVals = append(inputVals, excludeVals)
 	}
 
-	// process sorts
+	// process sort
 	switch sortVal {
+	case "":
 	case "val":
 		stmt += " ORDER BY val"
 	case "-val":
 		stmt += " ORDER BY val DESC"
+	default:
+		return nil, lyserr.User{Message: fmt.Sprintf("invalid sort val '%s'", sortVal)}
 	}
 
 	rows, _ := db.Query(ctx, stmt, inputVals...)

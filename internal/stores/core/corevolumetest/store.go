@@ -81,8 +81,8 @@ func (s Store) Select10(ctx context.Context) (vals []int, err error) {
 	return vals, nil
 }
 
-func (s Store) SelectById(ctx context.Context, fields []string, id int64) (item Model, err error) {
-	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, pkColName, fields, meta.DbTags, id)
+func (s Store) SelectById(ctx context.Context, id int64) (item Model, err error) {
+	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, pkColName, id)
 }
 
 func (s Store) Update(ctx context.Context, input Input, id int64) error {

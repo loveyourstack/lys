@@ -50,7 +50,6 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 	rows, _ := db.Query(ctx, stmt, paramValues...)
 	items, err = pgx.CollectRows(rows, pgx.RowToStructByNameLax[T])
 	if err != nil {
-		//return nil, TotalCount{}, stmt, fmt.Errorf("pgx.CollectRows failed: %w", err)
 		return nil, TotalCount{}, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
 	}
 
@@ -99,14 +98,9 @@ func SelectT[T any](ctx context.Context, db PoolOrTx, selectStmt string, params 
 }
 
 // SelectUnique returns a single row using the value of a unique column such as id
-func SelectUnique[T any](ctx context.Context, db PoolOrTx, schema, view, column string, fields, allFields []string, uniqueVal any) (item T, err error) {
+func SelectUnique[T any](ctx context.Context, db PoolOrTx, schema, view, column string, uniqueVal any) (item T, err error) {
 
-	// use allFields if the fields param was not sent
-	if fields == nil {
-		fields = allFields
-	}
-
-	stmt := fmt.Sprintf(`SELECT %s FROM %s.%s WHERE %s = $1;`, strings.Join(fields, ","), schema, view, column)
+	stmt := fmt.Sprintf(`SELECT * FROM %s.%s WHERE %s = $1;`, schema, view, column)
 
 	rows, _ := db.Query(ctx, stmt, uniqueVal)
 	item, err = pgx.CollectExactlyOneRow(rows, pgx.RowToStructByNameLax[T])

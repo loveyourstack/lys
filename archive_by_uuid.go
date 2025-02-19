@@ -11,23 +11,23 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// iArchiveable is a store that can be used by Archive and Restore
+// iArchiveableByUuid is a store that can be used by ArchiveByUuid and RestoreByUuid
 type iArchiveableByUuid interface {
 	ArchiveByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 	RestoreByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 }
 
-// Archive handles moving a record from the supplied store into its archived table
+// ArchiveByUuid handles moving a record from the supplied store into its archived table
 func ArchiveByUuid(env Env, db *pgxpool.Pool, store iArchiveableByUuid) http.HandlerFunc {
 	return MoveRecordsByUuid(env, db, store.ArchiveByUuid, DataArchived)
 }
 
-// Restore handles moving a record from the store's archived table back to the main table
+// RestoreByUuid handles moving a record from the store's archived table back to the main table
 func RestoreByUuid(env Env, db *pgxpool.Pool, store iArchiveableByUuid) http.HandlerFunc {
 	return MoveRecordsByUuid(env, db, store.RestoreByUuid, DataRestored)
 }
 
-// MoveRecordsById handles moving record(s) back and forth between the main table and its corresponding archived table
+// MoveRecordsByUuid handles moving record(s) back and forth between the main table and its corresponding archived table
 func MoveRecordsByUuid(env Env, db *pgxpool.Pool, moveFunc func(context.Context, pgx.Tx, uuid.UUID) error, msg string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {

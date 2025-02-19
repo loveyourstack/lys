@@ -11,18 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// iArchiveable is a store that can be used by Archive and Restore
+// iArchiveableById is a store that can be used by ArchiveById and RestoreById
 type iArchiveableById interface {
 	ArchiveById(ctx context.Context, tx pgx.Tx, id int64) error
 	RestoreById(ctx context.Context, tx pgx.Tx, id int64) error
 }
 
-// Archive handles moving a record from the supplied store into its archived table
+// ArchiveById handles moving a record from the supplied store into its archived table
 func ArchiveById(env Env, db *pgxpool.Pool, store iArchiveableById) http.HandlerFunc {
 	return MoveRecordsById(env, db, store.ArchiveById, DataArchived)
 }
 
-// Restore handles moving a record from the store's archived table back to the main table
+// RestoreById handles moving a record from the store's archived table back to the main table
 func RestoreById(env Env, db *pgxpool.Pool, store iArchiveableById) http.HandlerFunc {
 	return MoveRecordsById(env, db, store.RestoreById, DataRestored)
 }

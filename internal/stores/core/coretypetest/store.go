@@ -60,12 +60,12 @@ func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []c
 	return lyspg.Select[coretypetestm.Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, meta.DbTags, params)
 }
 
-func (s Store) SelectById(ctx context.Context, fields []string, id int64) (item coretypetestm.Model, err error) {
-	return lyspg.SelectUnique[coretypetestm.Model](ctx, s.Db, schemaName, viewName, pkColName, fields, meta.DbTags, id)
+func (s Store) SelectById(ctx context.Context, id int64) (item coretypetestm.Model, err error) {
+	return lyspg.SelectUnique[coretypetestm.Model](ctx, s.Db, schemaName, viewName, pkColName, id)
 }
 
-func (s Store) SelectByUuid(ctx context.Context, fields []string, id uuid.UUID) (item coretypetestm.Model, err error) {
-	return lyspg.SelectUnique[coretypetestm.Model](ctx, s.Db, schemaName, viewName, "id_uu", fields, meta.DbTags, id)
+func (s Store) SelectByUuid(ctx context.Context, id uuid.UUID) (item coretypetestm.Model, err error) {
+	return lyspg.SelectUnique[coretypetestm.Model](ctx, s.Db, schemaName, viewName, "id_uu", id)
 }
 
 func (s Store) Update(ctx context.Context, input coretypetestm.Input, id int64) error {
