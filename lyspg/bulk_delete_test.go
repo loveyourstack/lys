@@ -29,7 +29,7 @@ func TestBulkDeleteSuccess(t *testing.T) {
 
 	// insert 10 records
 	inputs := []corebulkdeletetest.Input{}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		inputs = append(inputs, corebulkdeletetest.Input{})
 	}
 	_, err = BulkInsert(ctx, db, schemaName, tableName, inputs)

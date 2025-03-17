@@ -20,8 +20,6 @@ const (
 	defaultOrderBy string = "text_val, int_val"
 )
 
-var setFuncUrlParamNames = []string{"p_text", "p_int", "p_inta"}
-
 type Model struct {
 	IntVal  int    `db:"int_val" json:"int_val"`
 	TextVal string `db:"text_val" json:"text_val"`
@@ -50,7 +48,7 @@ func (s Store) GetName() string {
 	return name
 }
 func (s Store) GetSetFuncUrlParamNames() []string {
-	return setFuncUrlParamNames
+	return []string{"p_text", "p_int", "p_inta"}
 }
 
 func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {

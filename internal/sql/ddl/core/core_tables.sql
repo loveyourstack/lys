@@ -10,11 +10,7 @@ CREATE TABLE core.archive_test
 --- change columns with ---
 CREATE TABLE core.archive_test_archived
 (
-  id bigint NOT NULL PRIMARY KEY,
-  id_uu uuid,
-  c_int int,
-  c_text text,
-  entry_at tracking_at,
+  LIKE core.archive_test,
   archived_at tracking_at,
   archived_by_cascade bool NOT NULL
 );

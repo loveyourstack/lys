@@ -202,10 +202,10 @@ type iGetableWithLastSync[T any] interface {
 
 // GetWithLastSync is a wrapper for Get which adds the lastSyncAt timestamp from the supplied func to the JSON response
 func GetWithLastSync[T any](env Env, store iGetableWithLastSync[T]) http.HandlerFunc {
-	return Get[T](env, store, GetOption[T]{GetLastSyncAt: store.GetLastSyncAt})
+	return Get(env, store, GetOption[T]{GetLastSyncAt: store.GetLastSyncAt})
 }
 
-// GetFunc is a wrapper for Get allows passing an alternative Select func with the same signature
+// GetFunc is a wrapper for Get which allows passing an alternative Select func with the same signature
 func GetFunc[T any](env Env, store iGetable[T], selectFunc func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error)) http.HandlerFunc {
-	return Get[T](env, store, GetOption[T]{SelectFunc: selectFunc})
+	return Get(env, store, GetOption[T]{SelectFunc: selectFunc})
 }

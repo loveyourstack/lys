@@ -18,8 +18,6 @@ func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName s
 		return 0, fmt.Errorf("inputs has len 0")
 	}
 
-	var recs [][]any
-
 	// get db tags of first input
 	inputReflVals := reflect.ValueOf(inputs[0])
 	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
@@ -29,6 +27,8 @@ func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName s
 	if len(meta.DbTags) == 0 {
 		return 0, fmt.Errorf("input type does not have db tags")
 	}
+
+	var recs [][]any
 
 	// for each input
 	for _, input := range inputs {

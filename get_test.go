@@ -159,17 +159,25 @@ func TestGetSetfuncSuccess(t *testing.T) {
 	srvApp := mustGetSrvApp(t, context.Background())
 	defer srvApp.Db.Close()
 
-	// passing setfunc params only
+	// basic selection passing setfunc params only
 	targetUrl := "/setfunc-test?p_text=a&p_int=1&p_inta=1,2"
 	items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, 2, len(items), "len")
-	assert.EqualValues(t, "a", items[0]["text_val"], "text val")
-	assert.EqualValues(t, 2, items[0]["int_val"], "int val 1")
-	assert.EqualValues(t, 3, items[1]["int_val"], "int val 2")
+	assert.EqualValues(t, 2, len(items), "basic: len")
+	assert.EqualValues(t, "a", items[0]["text_val"], "basic: text val")
+	assert.EqualValues(t, 2, items[0]["int_val"], "basic: int val 1")
+	assert.EqualValues(t, 3, items[1]["int_val"], "basic: int val 2")
 
-	// TODO filtering
+	// with filter param
+	targetUrl = "/setfunc-test?p_text=a&p_int=1&p_inta=1,2&int_val=2"
+	items = lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 1, len(items), "filtered: len")
+	assert.EqualValues(t, 2, items[0]["int_val"], "filtered: int val")
 
-	// TODO sorting
+	// with sort param
+	targetUrl = "/setfunc-test?p_text=a&p_int=1&p_inta=1,2&xsort=-int_val"
+	items = lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 2, len(items), "sorted: len")
+	assert.EqualValues(t, 3, items[0]["int_val"], "sorted: int val")
 }
 
 func TestGetSuccessSorts(t *testing.T) {
@@ -205,10 +213,34 @@ func TestGetFailure(t *testing.T) {
 	srvApp := mustGetSrvApp(t, context.Background())
 	defer srvApp.Db.Close()
 
-	// invalid filter field
-	targetUrl := "/param-test?a=b"
+	// invalid url
+	targetUrl := "/xx"
 	_, err := lysclient.GetItemsTester(srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, "route not found", err.Error())
+
+	// invalid filter field
+	targetUrl = "/param-test?a=b"
+	_, err = lysclient.GetItemsTester(srvApp.getRouter(), targetUrl)
 	assert.EqualValues(t, "invalid filter field: a", err.Error())
 
 	// TODO: further param tests on those functions directly
+}
+
+func TestGetSetfuncFailure(t *testing.T) {
+
+	srvApp := mustGetSrvApp(t, context.Background())
+	defer srvApp.Db.Close()
+
+	//targetUrl := "/setfunc-test?p_text=a&p_int=1&p_inta=1,2"
+
+	// param missing
+	targetUrl := "/setfunc-test?p_text=a&p_int=1"
+	_, err := lysclient.GetItemsTester(srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, "setFunc param name p_inta is missing", err.Error())
+
+	// param is wrong type
+	// TODO - not working - GetItemsTester does not return an error
+	/*targetUrl = "/setfunc-test?p_text=1&p_int=1&p_inta=1,2"
+	_, err = lysclient.GetItemsTester(srvApp.getRouter(), targetUrl)
+	assert.Error(t, err)*/
 }

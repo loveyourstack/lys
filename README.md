@@ -15,7 +15,7 @@ Boilerplate is minimized through the optional use of generic database CRUD funct
 ```go
 package corecategory
 
-// define constants for this database table, which get passed to generic database functions below
+// define constants for this database table, which get used in generic database functions below
 const (
 	schemaName     string = "core"
 	tableName      string = "category"
@@ -73,10 +73,10 @@ func (srvApp *httpServerApplication) getRoutes(apiEnv lys.Env) http.Handler {
 	// no framework: free to write custom handlers when needed
 
 	categoryStore := corecategory.Store{Db: srvApp.Db}
-	r.HandleFunc(endpoint, lys.Get[corecategory.Model](apiEnv, categoryStore)).Methods("GET")
-	r.HandleFunc(endpoint+"/{id}", lys.GetById[corecategory.Model](apiEnv, categoryStore)).Methods("GET")
-	r.HandleFunc(endpoint, lys.Post[corecategory.Input, int64](apiEnv, categoryStore)).Methods("POST")
-	r.HandleFunc(endpoint+"/{id}", lys.Put[corecategory.Input](apiEnv, categoryStore)).Methods("PUT")
+	r.HandleFunc(endpoint, lys.Get(apiEnv, categoryStore)).Methods("GET")
+	r.HandleFunc(endpoint+"/{id}", lys.GetById(apiEnv, categoryStore)).Methods("GET")
+	r.HandleFunc(endpoint, lys.Post(apiEnv, categoryStore)).Methods("POST")
+	r.HandleFunc(endpoint+"/{id}", lys.Put(apiEnv, categoryStore)).Methods("PUT")
 	r.HandleFunc(endpoint+"/{id}", lys.Patch(apiEnv, categoryStore)).Methods("PATCH")
 	r.HandleFunc(endpoint+"/{id}", lys.Delete(apiEnv, categoryStore)).Methods("DELETE")
 }

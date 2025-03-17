@@ -44,7 +44,7 @@ func TestBulkInsertSuccess(t *testing.T) {
 
 	// with filled inputs
 	inputs = []coretypetestm.Input{}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		input, err := coretypetestm.GetFilledInput()
 		if err != nil {
 			t.Fatalf("coretypetestm.GetFilledInput failed: %v", err)

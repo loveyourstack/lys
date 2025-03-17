@@ -32,7 +32,7 @@ func TestBulkUpdateSuccess(t *testing.T) {
 
 	// insert 3 records with empty inputs
 	emptyInputs := []coretypetestm.Input{}
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		input := coretypetestm.GetEmptyInput()
 		emptyInputs = append(emptyInputs, input)
 	}
@@ -50,7 +50,7 @@ func TestBulkUpdateSuccess(t *testing.T) {
 
 	// prepare 2 filled inputs for the 1st 2 records
 	updateInputs := []coretypetestm.Input{}
-	for i := 0; i < 2; i++ {
+	for range 2 {
 		input, err := coretypetestm.GetFilledInput()
 		if err != nil {
 			t.Fatalf("coretypetestm.GetFilledInput failed: %v", err)
