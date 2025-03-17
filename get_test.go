@@ -13,9 +13,31 @@ func TestGetSuccess(t *testing.T) {
 	srvApp := mustGetSrvApp(t, context.Background())
 	defer srvApp.Db.Close()
 
+	// basic test only: sorting, filtering etc is tested below
 	targetUrl := "/param-test"
-	items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, 2, len(items))
+	resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, false, resp.GetMetadata.TotalCountIsEstimated)
+	assert.EqualValues(t, 2, resp.GetMetadata.TotalCount)
+	assert.EqualValues(t, 2, resp.GetMetadata.Count)
+	assert.EqualValues(t, 2, len(resp.Data))
+}
+
+func TestGetFailure(t *testing.T) {
+
+	srvApp := mustGetSrvApp(t, context.Background())
+	defer srvApp.Db.Close()
+
+	// invalid url
+	targetUrl := "/xx"
+	_, err := lysclient.GetItemRespTester(srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, "route not found", err.Error())
+
+	// invalid filter field
+	targetUrl = "/param-test?a=b"
+	_, err = lysclient.GetItemRespTester(srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, "invalid filter field: a", err.Error())
+
+	// TODO: further param tests on those functions directly
 }
 
 func TestGetSuccessFields(t *testing.T) {
@@ -24,8 +46,8 @@ func TestGetSuccessFields(t *testing.T) {
 	defer srvApp.Db.Close()
 
 	targetUrl := "/param-test?xfields=id"
-	items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-	item := items[0]
+	resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	item := resp.Data[0]
 	_, ok := item["id"]
 	if !ok {
 		t.Errorf("id: expected in response, but missing")
@@ -114,8 +136,8 @@ func TestGetSuccessFilters(t *testing.T) {
 
 	for _, filterStr := range filterStrA {
 		targetUrl := "/param-test" + filterStr
-		items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-		assert.EqualValues(t, 1, len(items), filterStr)
+		resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+		assert.EqualValues(t, 1, len(resp.Data), filterStr)
 	}
 }
 
@@ -126,8 +148,8 @@ func TestGetSuccessFormat(t *testing.T) {
 
 	// json
 	targetUrl := "/param-test?id=1&xformat=json"
-	items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, 1, len(items), "format json")
+	resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 1, len(resp.Data), "format json")
 
 	// excel
 	targetUrl = "/param-test?id=1&xformat=excel"
@@ -143,41 +165,15 @@ func TestGetSuccessPaging(t *testing.T) {
 
 	pagingStr := "?xsort=c_text&xpage=1&xper_page=1"
 	targetUrl := "/param-test" + pagingStr
-	items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, "a", items[0]["c_text"].(string), "page 1 limit 1")
+	resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, "a", resp.Data[0]["c_text"].(string), "page 1 limit 1")
 
 	// page 2, limit 1
 
 	pagingStr = "?xsort=c_text&xpage=2&xper_page=1"
 	targetUrl = "/param-test" + pagingStr
-	items = lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, "b", items[0]["c_text"].(string), "page 2 limit 1")
-}
-
-func TestGetSetfuncSuccess(t *testing.T) {
-
-	srvApp := mustGetSrvApp(t, context.Background())
-	defer srvApp.Db.Close()
-
-	// basic selection passing setfunc params only
-	targetUrl := "/setfunc-test?p_text=a&p_int=1&p_inta=1,2"
-	items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, 2, len(items), "basic: len")
-	assert.EqualValues(t, "a", items[0]["text_val"], "basic: text val")
-	assert.EqualValues(t, 2, items[0]["int_val"], "basic: int val 1")
-	assert.EqualValues(t, 3, items[1]["int_val"], "basic: int val 2")
-
-	// with filter param
-	targetUrl = "/setfunc-test?p_text=a&p_int=1&p_inta=1,2&int_val=2"
-	items = lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, 1, len(items), "filtered: len")
-	assert.EqualValues(t, 2, items[0]["int_val"], "filtered: int val")
-
-	// with sort param
-	targetUrl = "/setfunc-test?p_text=a&p_int=1&p_inta=1,2&xsort=-int_val"
-	items = lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, 2, len(items), "sorted: len")
-	assert.EqualValues(t, 3, items[0]["int_val"], "sorted: int val")
+	resp = lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, "b", resp.Data[0]["c_text"].(string), "page 2 limit 1")
 }
 
 func TestGetSuccessSorts(t *testing.T) {
@@ -192,8 +188,8 @@ func TestGetSuccessSorts(t *testing.T) {
 	}
 	for _, sortStr := range sortStrA {
 		targetUrl := "/param-test" + sortStr
-		items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-		assert.EqualValues(t, "a", items[0]["c_text"].(string), sortStr)
+		resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+		assert.EqualValues(t, "a", resp.Data[0]["c_text"].(string), sortStr)
 	}
 
 	// descending: each sort string should return the second record
@@ -203,27 +199,35 @@ func TestGetSuccessSorts(t *testing.T) {
 	}
 	for _, sortStr := range sortStrA {
 		targetUrl := "/param-test" + sortStr
-		items := lysclient.MustGetItems(t, srvApp.getRouter(), targetUrl)
-		assert.EqualValues(t, "b", items[0]["c_text"].(string), sortStr)
+		resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+		assert.EqualValues(t, "b", resp.Data[0]["c_text"].(string), sortStr)
 	}
 }
 
-func TestGetFailure(t *testing.T) {
+func TestGetSetfuncSuccess(t *testing.T) {
 
 	srvApp := mustGetSrvApp(t, context.Background())
 	defer srvApp.Db.Close()
 
-	// invalid url
-	targetUrl := "/xx"
-	_, err := lysclient.GetItemsTester(srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, "route not found", err.Error())
+	// basic selection passing setfunc params only
+	targetUrl := "/setfunc-test?p_text=a&p_int=1&p_inta=1,2"
+	resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 2, len(resp.Data), "basic: len")
+	assert.EqualValues(t, "a", resp.Data[0]["text_val"], "basic: text val")
+	assert.EqualValues(t, 2, resp.Data[0]["int_val"], "basic: int val 1")
+	assert.EqualValues(t, 3, resp.Data[1]["int_val"], "basic: int val 2")
 
-	// invalid filter field
-	targetUrl = "/param-test?a=b"
-	_, err = lysclient.GetItemsTester(srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, "invalid filter field: a", err.Error())
+	// with filter param
+	targetUrl = "/setfunc-test?p_text=a&p_int=1&p_inta=1,2&int_val=2"
+	resp = lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 1, len(resp.Data), "filtered: len")
+	assert.EqualValues(t, 2, resp.Data[0]["int_val"], "filtered: int val")
 
-	// TODO: further param tests on those functions directly
+	// with sort param
+	targetUrl = "/setfunc-test?p_text=a&p_int=1&p_inta=1,2&xsort=-int_val"
+	resp = lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 2, len(resp.Data), "sorted: len")
+	assert.EqualValues(t, 3, resp.Data[0]["int_val"], "sorted: int val")
 }
 
 func TestGetSetfuncFailure(t *testing.T) {
@@ -235,12 +239,31 @@ func TestGetSetfuncFailure(t *testing.T) {
 
 	// param missing
 	targetUrl := "/setfunc-test?p_text=a&p_int=1"
-	_, err := lysclient.GetItemsTester(srvApp.getRouter(), targetUrl)
+	_, err := lysclient.GetItemRespTester(srvApp.getRouter(), targetUrl)
 	assert.EqualValues(t, "setFunc param name p_inta is missing", err.Error())
 
 	// param is wrong type
 	// TODO - not working - GetItemsTester does not return an error
+	// add test on db level
 	/*targetUrl = "/setfunc-test?p_text=1&p_int=1&p_inta=1,2"
 	_, err = lysclient.GetItemsTester(srvApp.getRouter(), targetUrl)
 	assert.Error(t, err)*/
+}
+
+func TestGetVolumeSuccess(t *testing.T) {
+
+	srvApp := mustGetSrvApp(t, context.Background())
+	defer srvApp.Db.Close()
+
+	// unfiltered total row count is estimated, but close to actual row count
+	targetUrl := "/volume-test"
+	resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, true, resp.GetMetadata.TotalCountIsEstimated)
+	assert.InDelta(t, 1_000_000, resp.GetMetadata.TotalCount, 10_000, "unfiltered total count")
+
+	// filtered total row count is estimated, but close to actual row count
+	targetUrl = "/volume-test?c_int=5"
+	resp = lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, true, resp.GetMetadata.TotalCountIsEstimated)
+	assert.InDelta(t, 100_000, resp.GetMetadata.TotalCount, 5_000, "filtered total count")
 }

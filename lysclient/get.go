@@ -84,49 +84,48 @@ func GetArrayTester[T any](h http.Handler, targetUrl string) (arr []T, err error
 	return res.Data, nil
 }
 
-// GetItems GETs the target Url. It expects an array of items in response
-func GetItems(client http.Client, targetUrl string) (items []map[string]any, err error) {
+// GetItemResp GETs the target Url. It expects an array of items in response
+func GetItemResp(client http.Client, targetUrl string) (itemResp ItemAResp, err error) {
 
 	resp, err := client.Get(targetUrl)
 	if err != nil {
-		return nil, fmt.Errorf("client.Get failed: %w", err)
+		return ItemAResp{}, fmt.Errorf("client.Get failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	// check status code
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, resp.StatusCode, targetUrl)
+		return ItemAResp{}, fmt.Errorf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, resp.StatusCode, targetUrl)
 	}
 
 	// read body
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("io.ReadAll failed: %w", err)
+		return ItemAResp{}, fmt.Errorf("io.ReadAll failed: %w", err)
 	}
 
 	// unmarshal
-	var res ItemAResp
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(body, &itemResp)
 	if err != nil {
-		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
+		return ItemAResp{}, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
 
 	// check status
-	if res.Status != successStatus {
-		return nil, fmt.Errorf(res.ErrDescription)
+	if itemResp.Status != successStatus {
+		return ItemAResp{}, fmt.Errorf(itemResp.ErrDescription)
 	}
 
 	// success
-	return res.Data, nil
+	return itemResp, nil
 }
 
-// GetItemsTester GETs the target Url using a test handler. It expects an array of items in response
-func GetItemsTester(h http.Handler, targetUrl string) (items []map[string]any, err error) {
+// GetItemRespTester GETs the target Url using a test handler. It expects an array of items in response
+func GetItemRespTester(h http.Handler, targetUrl string) (itemResp ItemAResp, err error) {
 
 	// create req
 	req, err := http.NewRequest("GET", targetUrl, nil)
 	if err != nil {
-		return nil, fmt.Errorf("http.NewRequest failed: %w", err)
+		return ItemAResp{}, fmt.Errorf("http.NewRequest failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -139,23 +138,22 @@ func GetItemsTester(h http.Handler, targetUrl string) (items []map[string]any, e
 	// read body
 	body, err := io.ReadAll(rr.Body)
 	if err != nil {
-		return nil, fmt.Errorf("io.ReadAll failed: %w", err)
+		return ItemAResp{}, fmt.Errorf("io.ReadAll failed: %w", err)
 	}
 
 	// unmarshal
-	var res ItemAResp
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(body, &itemResp)
 	if err != nil {
-		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
+		return ItemAResp{}, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
 
 	// check status
-	if res.Status != successStatus {
-		return nil, fmt.Errorf(res.ErrDescription)
+	if itemResp.Status != successStatus {
+		return ItemAResp{}, fmt.Errorf(itemResp.ErrDescription)
 	}
 
 	// success
-	return res.Data, nil
+	return itemResp, nil
 }
 
 // MustGetArray GETs the target Url using a test handler. It expects an array of T in response and will fail on any error
@@ -236,8 +234,8 @@ func MustGetFile(t testing.TB, h http.Handler, targetUrl string) {
 	// success
 }
 
-// MustGetItems GETs the target Url using a test handler. It expects an array of items in response and will fail on any error
-func MustGetItems(t testing.TB, h http.Handler, targetUrl string) (items []map[string]any) {
+// MustGetItemResp GETs the target Url using a test handler. It expects an array of items in response and will fail on any error
+func MustGetItemResp(t testing.TB, h http.Handler, targetUrl string) (itemResp ItemAResp) {
 
 	// create req
 	req, err := http.NewRequest("GET", targetUrl, nil)
@@ -262,17 +260,16 @@ func MustGetItems(t testing.TB, h http.Handler, targetUrl string) (items []map[s
 	}
 
 	// unmarshal
-	var res ItemAResp
-	err = json.Unmarshal(body, &res)
+	err = json.Unmarshal(body, &itemResp)
 	if err != nil {
 		t.Fatalf("json.Unmarshal failed: %v", err)
 	}
 
 	// check status
-	if res.Status != successStatus {
-		t.Fatalf(res.ErrDescription)
+	if itemResp.Status != successStatus {
+		t.Fatalf(itemResp.ErrDescription)
 	}
 
 	// success
-	return res.Data
+	return itemResp
 }

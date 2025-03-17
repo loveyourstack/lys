@@ -9,10 +9,17 @@ type ArrayResp[T any] struct {
 	ErrDescription string `json:"err_description"`
 }
 
+type GetMetadata struct {
+	Count                 int   `json:"count"`
+	TotalCount            int64 `json:"total_count"`
+	TotalCountIsEstimated bool  `json:"total_count_is_estimated"`
+}
+
 // ItemAResp is expected when StdResponse returns an array of items (db records)
 type ItemAResp struct {
 	Status         string           `json:"status"`
 	Data           []map[string]any `json:"data"`
+	GetMetadata    *GetMetadata     `json:"metadata,omitempty"` // only used for GET many
 	ErrDescription string           `json:"err_description"`
 }
 

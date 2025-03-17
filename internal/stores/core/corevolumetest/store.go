@@ -94,5 +94,5 @@ func (s Store) UpdatePartial(ctx context.Context, assignmentsMap map[string]any,
 }
 
 func (s Store) Validate(validate *validator.Validate, input Input) error {
-	return lysmeta.Validate[Input](validate, input)
+	return lysmeta.Validate(validate, input)
 }
