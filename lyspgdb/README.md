@@ -1,3 +1,3 @@
 # lyspgdb
 
-Functions for creating and monitoring Postgres databases.
+Functions for creating and connecting to Postgres databases.

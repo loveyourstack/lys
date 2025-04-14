@@ -19,7 +19,7 @@ func mustGetDb(t testing.TB, ctx context.Context) *pgxpool.Pool {
 		"core.weekday",
 		"core.weekday[]",
 	}
-	db, err := lyspgdb.GetPoolWithTypes(ctx, conf.Db, conf.DbOwnerUser, dataTypeNames)
+	db, err := lyspgdb.GetPoolWithTypes(ctx, conf.Db, conf.DbOwnerUser, "test", dataTypeNames)
 	if err != nil {
 		t.Fatalf("lyspgdb.GetPoolWithTypes failed: %v", err)
 	}

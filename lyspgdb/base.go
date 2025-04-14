@@ -26,14 +26,14 @@ type User struct {
 	Password string
 }
 
-func getConnStr(dbConfig Database, userConfig User) string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s", userConfig.Name, userConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.Database)
+func getConnStr(dbConfig Database, userConfig User, appName string) string {
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?application_name=%s", userConfig.Name, userConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.Database, appName)
 }
 
 // GetConn returns a connection pool to the postgres database matching the config params
-func GetConfig(dbConfig Database, userConfig User) (cfg *pgxpool.Config, err error) {
+func GetConfig(dbConfig Database, userConfig User, appName string) (cfg *pgxpool.Config, err error) {
 
-	cfg, err = pgxpool.ParseConfig(getConnStr(dbConfig, userConfig))
+	cfg, err = pgxpool.ParseConfig(getConnStr(dbConfig, userConfig, appName))
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool.ParseConfig failed: %w", err)
 	}
@@ -42,9 +42,9 @@ func GetConfig(dbConfig Database, userConfig User) (cfg *pgxpool.Config, err err
 }
 
 // GetPool returns a connection pool to the postgres database matching the config params
-func GetPool(ctx context.Context, dbConfig Database, userConfig User) (db *pgxpool.Pool, err error) {
+func GetPool(ctx context.Context, dbConfig Database, userConfig User, appName string) (db *pgxpool.Pool, err error) {
 
-	db, err = pgxpool.New(ctx, getConnStr(dbConfig, userConfig))
+	db, err = pgxpool.New(ctx, getConnStr(dbConfig, userConfig, appName))
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool.New failed: %w", err)
 	}
@@ -53,9 +53,9 @@ func GetPool(ctx context.Context, dbConfig Database, userConfig User) (db *pgxpo
 }
 
 // GetPoolWithTypes returns a connection pool and registers the supplied types to each connection
-func GetPoolWithTypes(ctx context.Context, dbConfig Database, userConfig User, dataTypeNames []string) (db *pgxpool.Pool, err error) {
+func GetPoolWithTypes(ctx context.Context, dbConfig Database, userConfig User, appName string, dataTypeNames []string) (db *pgxpool.Pool, err error) {
 
-	cfg, err := GetConfig(dbConfig, userConfig)
+	cfg, err := GetConfig(dbConfig, userConfig, appName)
 	if err != nil {
 		return nil, fmt.Errorf("GetConfig failed: %w", err)
 	}
@@ -80,8 +80,8 @@ func GetPoolWithTypes(ctx context.Context, dbConfig Database, userConfig User, d
 	return db, nil
 }
 
-// executeFile extracts the supplied file from the supplied filesystem and executes it into supplied database
-func executeFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlAssets embed.FS, replacementsMap map[string]string, infoLog *slog.Logger) (err error) {
+// xecuteFile extracts the supplied file from the supplied filesystem and executes it into supplied database
+func ExecuteFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlAssets embed.FS, replacementsMap map[string]string, infoLog *slog.Logger) (err error) {
 
 	infoLog.Info("Executing " + sqlFileName)
 

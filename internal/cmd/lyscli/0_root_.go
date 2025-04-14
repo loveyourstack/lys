@@ -57,7 +57,7 @@ func initApp() {
 	cliApp = &cliApplication{app}
 
 	// connect to db and assign conn to cliApp
-	cliApp.Db, err = lyspgdb.GetPool(ctx, conf.Db, conf.DbOwnerUser)
+	cliApp.Db, err = lyspgdb.GetPool(ctx, conf.Db, conf.DbOwnerUser, "lys test")
 	if err != nil {
 		log.Fatalf("initialization: failed to create db connection pool: %s", err.Error())
 	}
