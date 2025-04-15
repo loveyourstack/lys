@@ -1,7 +1,7 @@
 
 DROP VIEW IF EXISTS lyspgmon.v_settings;
 
-CREATE OR REPLACE VIEW lyspgmon.v_settings AS
+CREATE VIEW lyspgmon.v_settings AS
   SELECT 
     name,
     COALESCE(setting,'') AS setting,

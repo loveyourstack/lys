@@ -1,7 +1,7 @@
 
 DROP VIEW IF EXISTS lyspgmon.v_queries;
 
-CREATE OR REPLACE VIEW lyspgmon.v_queries AS
+CREATE VIEW lyspgmon.v_queries AS
   SELECT
     application_name,
     client_addr::text,
