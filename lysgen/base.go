@@ -25,7 +25,7 @@ func GetGoDataTypeFromPg(pgType string) (goType string, err error) {
 		return "int", nil
 	case "money", "numeric":
 		return "float64", nil
-	case "time", "time with time zone":
+	case "time", "time without time zone":
 		return "lystype.Time", nil
 	case "timestamp", "timestamp with time zone":
 		return "lystype.Datetime", nil
@@ -46,7 +46,7 @@ func GetTsDataTypeFromPg(pgType string) (tsType string, err error) {
 		return "boolean", nil
 	case "character", "character varying", "text", "USER-DEFINED": // "USER-DEFINED" is enum
 		return "string", nil
-	case "date", "time", "time with time zone", "timestamp", "timestamp with time zone":
+	case "date", "time", "time without time zone", "timestamp", "timestamp with time zone":
 		return "Date", nil
 	default:
 		return "", fmt.Errorf("no Typescript type found for pgType: %s", pgType)

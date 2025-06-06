@@ -21,6 +21,13 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 		fields = params.Fields
 	}
 
+	// escape pg reserved words in fields
+	for i := range fields {
+		if ReservedWords[fields[i]] {
+			fields[i] = `"` + fields[i] + `"`
+		}
+	}
+
 	// build select stmt with placeholders for conditions
 	selectCols := strings.Join(fields, ",")
 	whereClause, numPlaceholders := GetWhereClause(len(params.SetFuncParamValues), params.Conditions, params.OrConditionSets)
