@@ -80,7 +80,7 @@ func GetPoolWithTypes(ctx context.Context, dbConfig Database, userConfig User, a
 	return db, nil
 }
 
-// xecuteFile extracts the supplied file from the supplied filesystem and executes it into supplied database
+// ExecuteFile extracts the supplied file from the supplied filesystem and executes it into supplied database
 func ExecuteFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlAssets embed.FS, replacementsMap map[string]string, infoLog *slog.Logger) (err error) {
 
 	infoLog.Info("Executing " + sqlFileName)

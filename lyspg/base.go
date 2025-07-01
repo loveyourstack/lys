@@ -20,18 +20,6 @@ func init() {
 	gLystypeTimeTypeP = reflect.TypeOf((*lystype.Time)(nil))
 	gLystypeDatetimeType = reflect.TypeOf((lystype.Datetime{}))
 	gLystypeDatetimeTypeP = reflect.TypeOf((*lystype.Datetime)(nil))
-
-	ReservedWords["case"] = true
-	ReservedWords["cast"] = true
-	ReservedWords["check"] = true
-	ReservedWords["column"] = true
-	ReservedWords["constraint"] = true
-	ReservedWords["default"] = true
-	ReservedWords["distinct"] = true
-	ReservedWords["offset"] = true
-	ReservedWords["references"] = true
-	ReservedWords["table"] = true
-	ReservedWords["user"] = true
 }
 
 var (
@@ -49,9 +37,6 @@ const (
 	ErrDescUpdateExecFailed      string = "db.Exec failed"
 	ErrDescGetRowsAffectedFailed string = "sqlRes.RowsAffected() failed"
 )
-
-// pg reserved words: need to be escaped
-var ReservedWords = make(map[string]bool)
 
 // max number of characters of a statement to print in error logs
 const MaxStmtPrintChars int = 5000

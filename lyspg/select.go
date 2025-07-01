@@ -22,11 +22,7 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 	}
 
 	// escape pg reserved words in fields
-	for i := range fields {
-		if ReservedWords[fields[i]] {
-			fields[i] = `"` + fields[i] + `"`
-		}
-	}
+	EscapeReserved(fields)
 
 	// build select stmt with placeholders for conditions
 	selectCols := strings.Join(fields, ",")
