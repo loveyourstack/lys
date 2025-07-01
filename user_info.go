@@ -4,7 +4,7 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/loveyourstack/lys/lysstring"
+	"github.com/loveyourstack/lys/lysslices"
 )
 
 type contextKey string
@@ -55,7 +55,7 @@ func AuthorizeRole(allowedRoles []string) func(http.Handler) http.Handler {
 			}
 
 			// check user is authorized to do this
-			if len(allowedRoles) > 0 && !lysstring.ContainsAny(userInfo.Roles, allowedRoles) {
+			if len(allowedRoles) > 0 && !lysslices.ContainsAny(userInfo.Roles, allowedRoles) {
 				HandleUserError(http.StatusForbidden, ErrDescPermissionDenied, w)
 				return
 			}

@@ -5,6 +5,16 @@ import (
 	"slices"
 )
 
+// ContainsAny returns true if any string in elements is found in slice
+func ContainsAny[T comparable](slice []T, elements []T) bool {
+	for _, v := range elements {
+		if slices.Contains(slice, v) {
+			return true
+		}
+	}
+	return false
+}
+
 // DeDuplicate returns a copy of the slice with duplicates removed and without affecting value order
 // from https://stackoverflow.com/questions/66643946/how-to-remove-duplicates-strings-or-int-from-slice-in-go
 func DeDuplicate[S ~[]E, E comparable](s S) S {
