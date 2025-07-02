@@ -50,7 +50,7 @@ func TestRemoveCharactersSuccess(t *testing.T) {
 	assert.Equal(t, "abc", res)
 }
 
-func TestStdLinesSuccess(t *testing.T) {
+func TestSingleLineSuccess(t *testing.T) {
 	s := `
 	a
 	
@@ -58,12 +58,12 @@ func TestStdLinesSuccess(t *testing.T) {
 	b
 	
 	`
-	res := StdLines(s)
+	res := SingleLine(s)
 	assert.Equal(t, "a\nb", res)
 }
 
-func TestStdWhitespaceSuccess(t *testing.T) {
-	s := "		a   b 		 "
-	res := StdWhitespace(s)
+func TestSingleSpaceSuccess(t *testing.T) {
+	s := "		a	   b 		 "
+	res := SingleSpace(s)
 	assert.Equal(t, "a b", res)
 }

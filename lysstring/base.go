@@ -61,16 +61,16 @@ func RemoveCharacters(input string, charsToRemove string) string {
 	return strings.Map(filter, input)
 }
 
-// StdWhitespace removes tabs and excess line breaks from s
-// "a\n\nb\n" -> "a\nb"
+// SingleLines removes tabs and excess line breaks from s
+// "a\n\n\tb\n" -> "a\nb"
 // from https://stackoverflow.com/questions/35360080/golang-idiomatic-way-to-remove-a-blank-line-from-a-multi-line-string
-func StdLines(s string) string {
+func SingleLine(s string) string {
 	return regexp.MustCompile(`[\t\r\n]+`).ReplaceAllString(strings.TrimSpace(s), "\n")
 }
 
-// StdWhitespace removes excess whitespace from s
+// SingleSpace removes excess tabs and spaces from s
 // " a   b  " -> "a b"
 // from https://stackoverflow.com/questions/37290693/how-to-remove-redundant-spaces-whitespace-from-a-string-in-golang
-func StdWhitespace(s string) string {
+func SingleSpace(s string) string {
 	return strings.Join(strings.Fields(s), " ")
 }
