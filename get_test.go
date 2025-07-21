@@ -45,16 +45,35 @@ func TestGetSuccessFields(t *testing.T) {
 	srvApp := mustGetSrvApp(t, context.Background())
 	defer srvApp.Db.Close()
 
+	// id
 	targetUrl := "/param-test?xfields=id"
 	resp := lysclient.MustGetItemResp(t, srvApp.getRouter(), targetUrl)
 	item := resp.Data[0]
+
+	// present
 	_, ok := item["id"]
 	if !ok {
 		t.Errorf("id: expected in response, but missing")
 	}
+
+	// omitempty
 	_, ok = item["c_int"]
 	if ok {
 		t.Errorf("c_int: not expected in response, but present")
+	}
+
+	// omitzero
+	_, ok = item["c_date"]
+	if ok {
+		t.Errorf("c_date: not expected in response, but present")
+	}
+	_, ok = item["c_time"]
+	if ok {
+		t.Errorf("c_time: not expected in response, but present")
+	}
+	_, ok = item["c_datetime"]
+	if ok {
+		t.Errorf("c_datetime: not expected in response, but present")
 	}
 }
 

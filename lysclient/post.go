@@ -51,7 +51,7 @@ func MustPostToValue[inT, outT any](t testing.TB, h http.Handler, method string,
 
 	// check status
 	if res.Status != successStatus {
-		t.Fatalf(res.ErrDescription)
+		t.Fatalf("%s", res.ErrDescription)
 	}
 
 	return res.Data
@@ -100,7 +100,7 @@ func PostToValue[inT, outT any](client http.Client, method string, targetUrl str
 
 	// check status
 	if res.Status != successStatus {
-		return val, fmt.Errorf(res.ErrDescription)
+		return val, fmt.Errorf("%s", res.ErrDescription)
 	}
 
 	return res.Data, nil
@@ -146,7 +146,7 @@ func PostToValueTester[inT, outT any](h http.Handler, method string, targetUrl s
 
 	// check status
 	if res.Status != successStatus {
-		return val, fmt.Errorf(res.ErrDescription)
+		return val, fmt.Errorf("%s", res.ErrDescription)
 	}
 
 	return res.Data, nil

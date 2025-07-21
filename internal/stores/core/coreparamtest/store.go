@@ -28,11 +28,11 @@ type Input struct {
 	CIntN      *int64            `db:"c_intn" json:"c_intn,omitempty"`
 	CDouble    float32           `db:"c_double" json:"c_double,omitempty"`
 	CDoubleN   *float32          `db:"c_doublen" json:"c_doublen,omitempty"`
-	CDate      lystype.Date      `db:"c_date" json:"c_date,omitempty"`
+	CDate      lystype.Date      `db:"c_date" json:"c_date,omitzero"`
 	CDateN     *lystype.Date     `db:"c_daten" json:"c_daten,omitempty"`
-	CTime      lystype.Time      `db:"c_time" json:"c_time,omitempty"`
+	CTime      lystype.Time      `db:"c_time" json:"c_time,omitzero"`
 	CTimeN     *lystype.Time     `db:"c_timen" json:"c_timen,omitempty"`
-	CDatetime  lystype.Datetime  `db:"c_datetime" json:"c_datetime,omitempty"`
+	CDatetime  lystype.Datetime  `db:"c_datetime" json:"c_datetime,omitzero"`
 	CDatetimeN *lystype.Datetime `db:"c_datetimen" json:"c_datetimen,omitempty"`
 	CEnum      string            `db:"c_enum" json:"c_enum,omitempty"`
 	CEnumN     *string           `db:"c_enumn" json:"c_enumn,omitempty"`
@@ -42,7 +42,7 @@ type Input struct {
 
 type Model struct {
 	Id   int64     `db:"id" json:"id,omitempty"`
-	Iduu uuid.UUID `db:"id_uu" json:"id_uu,omitempty"`
+	Iduu uuid.UUID `db:"id_uu" json:"id_uu,omitzero"`
 	Input
 }
 

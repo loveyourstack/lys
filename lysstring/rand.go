@@ -15,7 +15,7 @@ const (
 
 var randSrc = rand.NewSource(time.Now().UnixNano())
 
-// RandString creates a random string
+// RandString creates a random string of length n
 // from https://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-go
 func RandString(n int) string {
 	b := make([]byte, n)

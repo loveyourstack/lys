@@ -46,7 +46,7 @@ func DoToValue[T any](client http.Client, method string, targetUrl string) (val 
 
 	// check status
 	if res.Status != successStatus {
-		return val, fmt.Errorf(res.ErrDescription)
+		return val, fmt.Errorf("%s", res.ErrDescription)
 	}
 
 	// success
@@ -84,7 +84,7 @@ func DoToValueTester[T any](h http.Handler, method string, targetUrl string) (va
 
 	// check status
 	if res.Status != successStatus {
-		return val, fmt.Errorf(res.ErrDescription)
+		return val, fmt.Errorf("%s", res.ErrDescription)
 	}
 
 	// success
@@ -125,7 +125,7 @@ func MustDoToValue[T any](t testing.TB, h http.Handler, method string, targetUrl
 
 	// check status
 	if res.Status != successStatus {
-		t.Fatalf(res.ErrDescription)
+		t.Fatalf("%s", res.ErrDescription)
 	}
 
 	// success

@@ -39,7 +39,7 @@ func GetArray[T any](client http.Client, targetUrl string) (arr []T, err error) 
 
 	// check status
 	if res.Status != successStatus {
-		return nil, fmt.Errorf(res.ErrDescription)
+		return nil, fmt.Errorf("%s", res.ErrDescription)
 	}
 
 	// success
@@ -77,7 +77,7 @@ func GetArrayTester[T any](h http.Handler, targetUrl string) (arr []T, err error
 
 	// check status
 	if res.Status != successStatus {
-		return nil, fmt.Errorf(res.ErrDescription)
+		return nil, fmt.Errorf("%s", res.ErrDescription)
 	}
 
 	// success
@@ -112,7 +112,7 @@ func GetItemResp(client http.Client, targetUrl string) (itemResp ItemAResp, err 
 
 	// check status
 	if itemResp.Status != successStatus {
-		return ItemAResp{}, fmt.Errorf(itemResp.ErrDescription)
+		return ItemAResp{}, fmt.Errorf("%s", itemResp.ErrDescription)
 	}
 
 	// success
@@ -149,7 +149,7 @@ func GetItemRespTester(h http.Handler, targetUrl string) (itemResp ItemAResp, er
 
 	// check status
 	if itemResp.Status != successStatus {
-		return ItemAResp{}, fmt.Errorf(itemResp.ErrDescription)
+		return ItemAResp{}, fmt.Errorf("%s", itemResp.ErrDescription)
 	}
 
 	// success
@@ -190,7 +190,7 @@ func MustGetArray[T any](t testing.TB, h http.Handler, targetUrl string) (arr []
 
 	// check status
 	if res.Status != successStatus {
-		t.Fatalf(res.ErrDescription)
+		t.Fatalf("%s", res.ErrDescription)
 	}
 
 	// success
@@ -267,7 +267,7 @@ func MustGetItemResp(t testing.TB, h http.Handler, targetUrl string) (itemResp I
 
 	// check status
 	if itemResp.Status != successStatus {
-		t.Fatalf(itemResp.ErrDescription)
+		t.Fatalf("%s", itemResp.ErrDescription)
 	}
 
 	// success

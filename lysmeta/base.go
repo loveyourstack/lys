@@ -41,8 +41,9 @@ func AnalyzeStructs(reflVals ...reflect.Value) (res Result, err error) {
 				dbTagMap[dbTag]++
 			}
 
-			// get "json" tag if set, but strip out omitempty
-			jsonTag := strings.Replace(structTag.Get("json"), ",omitempty", "", -1)
+			// get "json" tag if set, but strip out omitempty and omitzero
+			jsonTag := strings.ReplaceAll(structTag.Get("json"), ",omitempty", "")
+			jsonTag = strings.ReplaceAll(jsonTag, ",omitzero", "")
 			if jsonTag != "" && jsonTag != "-" {
 				res.JsonTags = append(res.JsonTags, jsonTag)
 				jsonTagMap[jsonTag]++

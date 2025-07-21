@@ -40,7 +40,7 @@ func initApp() {
 	conf := lyscmd.Config{}
 	err := conf.LoadFromFile("/usr/local/etc/lys_config.toml")
 	if err != nil {
-		log.Fatalf("initialization: lys_config.toml not found: %s" + err.Error())
+		log.Fatalf("initialization: lys_config.toml not found: %s", err.Error())
 	}
 
 	ctx := context.Background()
@@ -66,6 +66,6 @@ func initApp() {
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		log.Fatalf(err.Error())
+		log.Fatal(err.Error())
 	}
 }
