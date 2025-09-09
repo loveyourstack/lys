@@ -15,10 +15,10 @@ import (
 const schemaName string = "lyspgmon"
 
 // Install creates the lyspgmon schema in the database if it is not already present, and (re)-adds the monitoring views in the lyspgmonddl folder
-func Install(ctx context.Context, db *pgxpool.Pool, dbOwner string, infoLog *slog.Logger) (err error) {
+func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, infoLog *slog.Logger) (err error) {
 
 	// create schema if needed
-	err = createSchema(ctx, db, dbOwner)
+	err = createSchema(ctx, ownerDb, dbOwner)
 	if err != nil {
 		return fmt.Errorf("createSchema failed: %w", err)
 	}
@@ -35,7 +35,7 @@ func Install(ctx context.Context, db *pgxpool.Pool, dbOwner string, infoLog *slo
 		}
 
 		// exec file into db
-		err = lyspgdb.ExecuteFile(ctx, db, d.Name(), lyspgmonddl.SQLAssets, nil, infoLog)
+		err = lyspgdb.ExecuteFile(ctx, ownerDb, d.Name(), lyspgmonddl.SQLAssets, nil, infoLog)
 		if err != nil {
 			return fmt.Errorf("lyspgdb.ExecuteFile failed for file '%s': %w", d.Name(), err)
 		}
@@ -49,12 +49,12 @@ func Install(ctx context.Context, db *pgxpool.Pool, dbOwner string, infoLog *slo
 	return nil
 }
 
-func createSchema(ctx context.Context, db *pgxpool.Pool, dbOwner string) (err error) {
+func createSchema(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string) (err error) {
 
 	stmt := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s AUTHORIZATION %s;", schemaName, dbOwner)
-	_, err = db.Exec(ctx, stmt)
+	_, err = ownerDb.Exec(ctx, stmt)
 	if err != nil {
-		return fmt.Errorf("db.Exec failed: %w", err)
+		return fmt.Errorf("ownerDb.Exec failed: %w", err)
 	}
 
 	return nil
