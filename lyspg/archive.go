@@ -74,7 +74,7 @@ func Restore[pkT PrimaryKeyType](ctx context.Context, tx pgx.Tx, schemaName, tab
 		return lyserr.Db{Err: fmt.Errorf("tx.Exec (Insert) failed: %w", err), Stmt: stmt}
 	}
 
-	// if no rows affected, Id doesn't exist
+	// if no rows affected, pkVal doesn't exist
 	if cmdTag.RowsAffected() == 0 {
 		return pgx.ErrNoRows
 	}
