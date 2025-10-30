@@ -42,6 +42,12 @@ func Archive[pkT PrimaryKeyType](ctx context.Context, tx pgx.Tx, schemaName, tab
 
 	// if no rows affected, pkVal doesn't exist
 	if cmdTag.RowsAffected() == 0 {
+
+		// exit with no error if cascading
+		if isCascaded {
+			return nil
+		}
+
 		return pgx.ErrNoRows
 	}
 
@@ -76,6 +82,12 @@ func Restore[pkT PrimaryKeyType](ctx context.Context, tx pgx.Tx, schemaName, tab
 
 	// if no rows affected, pkVal doesn't exist
 	if cmdTag.RowsAffected() == 0 {
+
+		// exit with no error if cascading
+		if isCascaded {
+			return nil
+		}
+
 		return pgx.ErrNoRows
 	}
 
