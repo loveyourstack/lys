@@ -80,6 +80,55 @@ func GetPoolWithTypes(ctx context.Context, dbConfig Database, userConfig User, a
 	return db, nil
 }
 
+type ContextKey string
+
+// GetPoolWithCtxSetting returns a connection pool wherein each connection has a setting from ctx applied to it on acquisition
+// adapted from https://github.com/jackc/pgx/issues/288
+func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database, userConfig User, appName, settingName string, ctxKey ContextKey, errorLog *slog.Logger) (db *pgxpool.Pool, err error) {
+
+	cfg, err := GetConfig(dbConfig, userConfig, appName)
+	if err != nil {
+		return nil, fmt.Errorf("GetConfig failed: %w", err)
+	}
+
+	cfg.BeforeAcquire = func(ctx context.Context, conn *pgx.Conn) bool {
+
+		ctxVal, ok := ctx.Value(ctxKey).(ctxValueT)
+		if !ok {
+			errorLog.Error("ctxVal not found in ctx")
+			return false
+		}
+
+		// set ctx value into this connection's setting
+		_, err := conn.Exec(ctx, fmt.Sprintf("SET %s TO %v;", settingName, ctxVal))
+		if err != nil {
+			errorLog.Error("conn.Exec (set ctx value) failed: " + err.Error())
+			return false
+		}
+
+		return true
+	}
+
+	cfg.AfterRelease = func(conn *pgx.Conn) bool {
+
+		// unset the setting before this connection is released to pool
+		_, err := conn.Exec(ctx, fmt.Sprintf("SET %s TO '';", settingName))
+		if err != nil {
+			errorLog.Error("conn.Exec (unset ctx value) failed: " + err.Error())
+			return false
+		}
+
+		return true
+	}
+
+	db, err = pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("pgxpool.NewWithConfig failed: %w", err)
+	}
+
+	return db, nil
+}
+
 // ExecuteFile extracts the supplied file from the supplied filesystem and executes it into supplied database
 func ExecuteFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlAssets embed.FS, replacementsMap map[string]string, infoLog *slog.Logger) (err error) {
 
