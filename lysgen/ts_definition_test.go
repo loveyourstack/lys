@@ -68,7 +68,7 @@ func TestGetTsDefinitionSuccess(t *testing.T) {
 		// should be included
 		{Name: "id", DataType: "bigint", IsIdentity: true},
 		{Name: "generated", DataType: "text", IsGenerated: true},
-		{Name: "entry_at", DataType: "timestamp with time zone", IsTracking: true},
+		{Name: "created_at", DataType: "timestamp with time zone", IsTracking: true},
 	}
 
 	parentCols := []lyspg.Column{
@@ -88,7 +88,7 @@ func TestGetTsDefinitionSuccess(t *testing.T) {
 		"export interface MyTable extends MyTableInput {",
 		"  id: number",
 		"  generated: string",
-		"  entry_at: Date",
+		"  created_at: Date",
 		"  parent_lvl1_name: string",
 		"  child_lvl1_count: number",
 		"}",

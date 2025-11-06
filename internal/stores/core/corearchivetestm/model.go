@@ -11,8 +11,8 @@ type Input struct {
 }
 
 type Model struct {
-	Id      int64            `db:"id" json:"id,omitempty"`
-	Iduu    uuid.UUID        `db:"id_uu" json:"id_uu,omitempty"`
-	EntryAt lystype.Datetime `db:"entry_at" json:"entry_at,omitempty"`
+	Id        int64            `db:"id" json:"id,omitempty"`
+	Iduu      uuid.UUID        `db:"id_uu" json:"id_uu,omitempty"`
+	CreatedAt lystype.Datetime `db:"created_at" json:"created_at,omitzero"`
 	Input
 }

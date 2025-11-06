@@ -88,7 +88,7 @@ func TestGetModelSuccess(t *testing.T) {
 		// should be included
 		{Name: "id", DataType: "bigint", IsIdentity: true},
 		{Name: "generated", DataType: "text", IsGenerated: true},
-		{Name: "entry_at", DataType: "timestamp with time zone", IsTracking: true},
+		{Name: "created_at", DataType: "timestamp with time zone", IsTracking: true},
 	}
 
 	parentCols := []lyspg.Column{
@@ -108,7 +108,7 @@ func TestGetModelSuccess(t *testing.T) {
 		"type Model struct {",
 		"    Id  int64  `db:\"id\" json:\"id\"`",
 		"    Generated  string  `db:\"generated\" json:\"generated\"`",
-		"    EntryAt  lystype.Datetime  `db:\"entry_at\" json:\"entry_at\"`",
+		"    CreatedAt  lystype.Datetime  `db:\"created_at\" json:\"created_at\"`",
 		"    ParentLvl1Name  string  `db:\"parent_lvl1_name\" json:\"parent_lvl1_name\"`",
 		"    ChildLvl1Count  int  `db:\"child_lvl1_count\" json:\"child_lvl1_count\"`",
 		"    Input",
