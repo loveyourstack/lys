@@ -58,7 +58,7 @@ func GetSourceName(viewName string, setFuncParamValuesCount int) string {
 
 		// viewName is the setFunc: append param placeholders
 		paramPlaceholders := []string{}
-		for i := 0; i < setFuncParamValuesCount; i++ {
+		for i := range setFuncParamValuesCount {
 			paramPlaceholders = append(paramPlaceholders, fmt.Sprintf("$%v", i+1))
 		}
 		viewName = fmt.Sprintf("%s(%s)", viewName, strings.Join(paramPlaceholders, ","))

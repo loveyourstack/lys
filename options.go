@@ -18,37 +18,39 @@ type GetOptions struct {
 
 // FillGetOptions returns input GetOptions if they are passed, and sets any unset fields to a sensible default value
 func FillGetOptions(input GetOptions) (ret GetOptions) {
-	if input.FormatParamName == "" {
+	ret = input
+
+	if ret.FormatParamName == "" {
 		ret.FormatParamName = "xformat"
 	}
-	if input.FieldsParamName == "" {
+	if ret.FieldsParamName == "" {
 		ret.FieldsParamName = "xfields"
 	}
-	if input.PageParamName == "" {
+	if ret.PageParamName == "" {
 		ret.PageParamName = "xpage"
 	}
-	if input.PerPageParamName == "" {
+	if ret.PerPageParamName == "" {
 		ret.PerPageParamName = "xper_page"
 	}
-	if input.SortParamName == "" {
+	if ret.SortParamName == "" {
 		ret.SortParamName = "xsort"
 	}
-	if input.MultipleValueSeparator == "" {
+	if ret.MultipleValueSeparator == "" {
 		ret.MultipleValueSeparator = "|"
 	}
-	if input.MetadataSeparator == "" {
+	if ret.MetadataSeparator == "" {
 		ret.MetadataSeparator = "^"
 	}
-	if input.DefaultPerPage == 0 {
+	if ret.DefaultPerPage == 0 {
 		ret.DefaultPerPage = 20
 	}
-	if input.MaxPerPage == 0 {
+	if ret.MaxPerPage == 0 {
 		ret.MaxPerPage = 500
 	}
-	if input.MaxFileRecs == 0 {
+	if ret.MaxFileRecs == 0 {
 		ret.MaxFileRecs = 10000
 	}
-	if input.CsvDelimiter == 0 {
+	if ret.CsvDelimiter == 0 {
 		ret.CsvDelimiter = ','
 	}
 
@@ -62,7 +64,9 @@ type PostOptions struct {
 
 // FillPostOptions returns input PostOptions if they are passed, and sets any unset fields to a sensible default value
 func FillPostOptions(input PostOptions) (ret PostOptions) {
-	if input.MaxBodySize == 0 {
+	ret = input
+
+	if ret.MaxBodySize == 0 {
 		ret.MaxBodySize = 1024 * 1024 // 1 Mb
 	}
 

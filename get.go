@@ -92,7 +92,6 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 		// select items from db
 		items, unpagedCount, err := storeSelectFunc(r.Context(), selectParams)
 		if err != nil {
-
 			HandleError(r.Context(), fmt.Errorf("Get: storeSelectFunc failed: %w", err), env.ErrorLog, w)
 			return
 		}
