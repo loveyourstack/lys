@@ -5,8 +5,8 @@ import (
 	"slices"
 	"time"
 
+	"codeberg.org/tealeg/xlsx/v4"
 	"github.com/loveyourstack/lys/lystype"
-	"github.com/tealeg/xlsx/v3"
 	"golang.org/x/exp/maps"
 )
 

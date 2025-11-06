@@ -3,6 +3,7 @@ module github.com/loveyourstack/lys
 go 1.24.5
 
 require (
+	codeberg.org/tealeg/xlsx/v4 v4.0.1
 	github.com/BurntSushi/toml v1.5.0
 	github.com/go-playground/validator/v10 v10.27.0
 	github.com/google/uuid v1.6.0
@@ -11,7 +12,6 @@ require (
 	github.com/jackc/pgx/v5 v5.7.5
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	github.com/tealeg/xlsx/v3 v3.3.13
 	golang.org/x/exp v0.0.0-20250718183923-645b1fa84792
 	golang.org/x/text v0.27.0
 )
