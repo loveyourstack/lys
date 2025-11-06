@@ -14,9 +14,9 @@ import (
 // getInsertStmt returns an INSERT statement using the supplied params
 func getInsertStmt(schemaName, tableName, pkColName string, inputFields []string) string {
 
-	var paramPlaceholders []string
-	for k := range inputFields {
-		paramPlaceholders = append(paramPlaceholders, "$"+strconv.Itoa(k+1))
+	paramPlaceholders := make([]string, len(inputFields))
+	for i := range inputFields {
+		paramPlaceholders[i] = "$" + strconv.Itoa(i+1)
 	}
 
 	return fmt.Sprintf("INSERT INTO %s.%s (%s) VALUES (%s) RETURNING %s;",

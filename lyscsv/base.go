@@ -69,23 +69,26 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]string, filePa
 
 func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]string) (data [][]string, err error) {
 
+	// return 1 row per record, plus 1 for the header row
+	data = make([][]string, len(recsMap)+1)
+
 	// get sorted keys
 	keys := maps.Keys(jsonTagTypeMap)
 	slices.Sort(keys)
 
-	// add header row
-	data = append(data, keys)
+	// assign header row
+	data[0] = keys
 
 	// add data
 
 	// for each record
 	for i := range recsMap {
 
-		// add a row
-		row := []string{}
+		// add a row with 1 column per key
+		row := make([]string, len(keys))
 
 		// for each key
-		for _, key := range keys {
+		for j, key := range keys {
 
 			val := recsMap[i][key]
 
@@ -95,29 +98,30 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]string) (dat
 			case "bool":
 				boolVal, ok := val.(bool)
 				if ok {
-					row = append(row, strconv.FormatBool(boolVal))
+					row[j] = strconv.FormatBool(boolVal)
 				} else {
-					row = append(row, "")
+					row[j] = ""
 				}
 
 			case "float32", "float64":
 				f64Val, ok := val.(float64)
 				if ok {
-					row = append(row, strconv.FormatFloat(f64Val, 'f', -1, 64))
+					row[j] = strconv.FormatFloat(f64Val, 'f', -1, 64)
 				} else {
-					row = append(row, "")
+					row[j] = ""
 				}
 
 			case "int", "int32", "int64": // needs float64 fallback
 				intVal, ok := val.(int)
 				if ok {
-					row = append(row, strconv.Itoa(intVal))
-				}
-				f64Val, ok := val.(float64)
-				if ok {
-					row = append(row, strconv.FormatFloat(f64Val, 'f', -1, 64))
+					row[j] = strconv.Itoa(intVal)
 				} else {
-					row = append(row, "")
+					f64Val, ok := val.(float64)
+					if ok {
+						row[j] = strconv.FormatFloat(f64Val, 'f', -1, 64)
+					} else {
+						row[j] = ""
+					}
 				}
 
 			case "lystype.Date":
@@ -129,7 +133,7 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]string) (dat
 				if err != nil {
 					return nil, fmt.Errorf("time.Parse failed: %w", err)
 				}
-				row = append(row, timeVal.Format(lystype.DateFormat))
+				row[j] = timeVal.Format(lystype.DateFormat)
 
 			case "lystype.Datetime":
 				strVal, ok := val.(string)
@@ -140,20 +144,20 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]string) (dat
 				if err != nil {
 					return nil, fmt.Errorf("time.Parse failed: %w", err)
 				}
-				row = append(row, timeVal.Format(lystype.DatetimeFormat))
+				row[j] = timeVal.Format(lystype.DatetimeFormat)
 
 			default:
 				strVal, ok := val.(string)
 				if ok {
-					row = append(row, strVal)
+					row[j] = strVal
 				} else {
-					row = append(row, "")
+					row[j] = ""
 				}
 			}
 
 		} // next key
 
-		data = append(data, row)
+		data[i+1] = row
 
 	} // next record
 

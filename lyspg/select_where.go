@@ -9,12 +9,13 @@ import (
 func GetWhereClause(existingParamCount int, conds []Condition, orCondSets [][]Condition) (res string, numPlaceholders int) {
 
 	i := existingParamCount
+	clause := strings.Builder{}
 
 	// append each regular AND condition to the WHERE clause
 	for _, cond := range conds {
 		i++
 		part, newI := getWherePart(cond, i)
-		res += " AND " + part
+		clause.WriteString(" AND " + part)
 		i = newI
 	}
 
@@ -29,10 +30,10 @@ func GetWhereClause(existingParamCount int, conds []Condition, orCondSets [][]Co
 			orParts = append(orParts, part)
 			i = newI
 		}
-		res += " AND (" + strings.Join(orParts, " OR ") + ")"
+		clause.WriteString(" AND (" + strings.Join(orParts, " OR ") + ")")
 	}
 
-	return res, i
+	return clause.String(), i
 }
 
 func getWherePart(cond Condition, i int) (string, int) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/loveyourstack/lys/lyserr"
@@ -20,7 +21,8 @@ func SelectEnum(ctx context.Context, db PoolOrTx, enumName string, includeVals, 
 	if sortVal != "" {
 		castStr = "::text"
 	}
-	stmt := fmt.Sprintf("WITH vals AS (SELECT unnest(enum_range(NULL::%s)) val) SELECT val%s FROM vals WHERE 1=1", enumName, castStr)
+	stmt := strings.Builder{}
+	stmt.WriteString(fmt.Sprintf("WITH vals AS (SELECT unnest(enum_range(NULL::%s)) val) SELECT val%s FROM vals WHERE 1=1", enumName, castStr))
 
 	inputVals := []any{}
 	paramNum := 0
@@ -28,13 +30,13 @@ func SelectEnum(ctx context.Context, db PoolOrTx, enumName string, includeVals, 
 	// process filters
 	if len(includeVals) > 0 {
 		paramNum++
-		stmt += fmt.Sprintf(" AND val = ANY($%v)", paramNum)
+		stmt.WriteString(fmt.Sprintf(" AND val = ANY($%v)", paramNum))
 		inputVals = append(inputVals, includeVals)
 	}
 
 	if len(excludeVals) > 0 {
 		paramNum++
-		stmt += fmt.Sprintf(" AND NOT (val = ANY($%v))", paramNum)
+		stmt.WriteString(fmt.Sprintf(" AND NOT (val = ANY($%v))", paramNum))
 		inputVals = append(inputVals, excludeVals)
 	}
 
@@ -42,17 +44,17 @@ func SelectEnum(ctx context.Context, db PoolOrTx, enumName string, includeVals, 
 	switch sortVal {
 	case "":
 	case "val":
-		stmt += " ORDER BY val"
+		stmt.WriteString(" ORDER BY val")
 	case "-val":
-		stmt += " ORDER BY val DESC"
+		stmt.WriteString(" ORDER BY val DESC")
 	default:
 		return nil, lyserr.User{Message: fmt.Sprintf("invalid sort val '%s'", sortVal)}
 	}
 
-	rows, _ := db.Query(ctx, stmt, inputVals...)
+	rows, _ := db.Query(ctx, stmt.String(), inputVals...)
 	vals, err = pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
-		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
+		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt.String()}
 	}
 
 	// success

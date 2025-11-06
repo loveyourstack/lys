@@ -18,9 +18,9 @@ func TestConvertSuccess(t *testing.T) {
 
 func TestDeAliasSuccess(t *testing.T) {
 	type MyString string
-	s := []MyString{"a", "b"}
+	s := []MyString{"a", "b", "世界"}
 	res := DeAlias(s)
-	assert.Equal(t, []string{"a", "b"}, res)
+	assert.Equal(t, []string{"a", "b", "世界"}, res)
 }
 
 func TestIsAsciiSuccess(t *testing.T) {

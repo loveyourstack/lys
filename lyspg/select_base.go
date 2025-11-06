@@ -57,9 +57,9 @@ func GetSourceName(viewName string, setFuncParamValuesCount int) string {
 	if setFuncParamValuesCount > 0 {
 
 		// viewName is the setFunc: append param placeholders
-		paramPlaceholders := []string{}
+		paramPlaceholders := make([]string, setFuncParamValuesCount)
 		for i := range setFuncParamValuesCount {
-			paramPlaceholders = append(paramPlaceholders, fmt.Sprintf("$%v", i+1))
+			paramPlaceholders[i] = fmt.Sprintf("$%v", i+1) // PG params are indexed from 1
 		}
 		viewName = fmt.Sprintf("%s(%s)", viewName, strings.Join(paramPlaceholders, ","))
 	}

@@ -43,9 +43,9 @@ func BulkDelete[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, 
 
 	// if some vals were invalid, return them
 	if len(invalidVals) > 0 {
-		rets := []string{}
-		for _, v := range invalidVals {
-			rets = append(rets, fmt.Sprintf("%v", v))
+		rets := make([]string, len(invalidVals))
+		for i, v := range invalidVals {
+			rets[i] = fmt.Sprintf("%v", v)
 		}
 		return lyserr.Db{Err: fmt.Errorf("partial success: invalid vals: %s", strings.Join(rets, ", "))}
 	}

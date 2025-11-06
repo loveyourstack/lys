@@ -22,7 +22,7 @@ func TestBulkInsertSuccess(t *testing.T) {
 
 	// with empty inputs
 	inputs := []coretypetestm.Input{}
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		input := coretypetestm.GetEmptyInput()
 		inputs = append(inputs, input)
 	}

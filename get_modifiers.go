@@ -112,28 +112,32 @@ func ExtractFields(r *http.Request, validJsonFields []string, fieldsReqParamName
 	// fieldsReqParamName: e.g. "xfields"
 	// example: &xfields=id,name
 
-	// see if fields GET param exists, and if so, ensure correct format and valid fields
+	// see if fields GET param exists
 	fieldsRaw := r.FormValue(fieldsReqParamName)
-	if fieldsRaw != "" {
 
-		// split by comma
-		fieldVals := strings.Split(fieldsRaw, ",")
+	// if no fields param defined, return all
+	if fieldsRaw == "" {
+		return validJsonFields, nil
+	}
 
-		// for each field val
-		for _, v := range fieldVals {
+	// ensure correct format and valid fields
 
-			// ensure value is a valid json field
-			if !slices.Contains(validJsonFields, v) {
-				return nil, lyserr.User{
-					Message: fieldsReqParamName + " param value is invalid: " + v}
-			}
+	// split by comma
+	fieldVals := strings.Split(fieldsRaw, ",")
 
-			// add field
-			fields = append(fields, v)
+	fields = make([]string, len(fieldVals))
+
+	// for each field val
+	for i, v := range fieldVals {
+
+		// ensure value is a valid json field
+		if !slices.Contains(validJsonFields, v) {
+			return nil, lyserr.User{
+				Message: fieldsReqParamName + " param value is invalid: " + v}
 		}
-	} else {
-		// if no fields param defined, return all
-		fields = validJsonFields
+
+		// add field
+		fields[i] = v
 	}
 
 	return fields, nil

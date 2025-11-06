@@ -28,14 +28,14 @@ func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName s
 		return 0, fmt.Errorf("input type does not have db tags")
 	}
 
-	var recs [][]any
+	recs := make([][]any, len(inputs))
 
 	// for each input
-	for _, input := range inputs {
+	for i, input := range inputs {
 
 		// get input values by reflection
 		inputReflVals := reflect.ValueOf(input)
-		recs = append(recs, getInputValsFromStruct(inputReflVals, nil))
+		recs[i] = getInputValsFromStruct(inputReflVals, nil)
 	}
 
 	// COPY to table using pgx

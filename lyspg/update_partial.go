@@ -15,13 +15,14 @@ import (
 func UpdatePartial[pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, allowedFields []string, assignmentsMap map[string]any, pkVal pkT) error {
 
 	// get keys (column names) and input values from assignmentsMap
-	var keys []string
-	var inputVals []any
+	keys := make([]string, len(assignmentsMap))
+	inputVals := make([]any, len(assignmentsMap))
+	i := 0
 	for k, v := range assignmentsMap {
 		//fmt.Printf("%s: %v\n", k, v)
-
-		keys = append(keys, k)
-		inputVals = append(inputVals, getInputValue(v, reflect.TypeOf(v)))
+		keys[i] = k
+		inputVals[i] = getInputValue(v, reflect.TypeOf(v))
+		i++
 	}
 
 	// ensure that each map key is among the allowed fields

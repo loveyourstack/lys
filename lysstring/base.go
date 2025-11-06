@@ -31,8 +31,9 @@ func Convert(s, inSep, outSep string, f func(string) string) (res string) {
 
 // DeAlias converts []T to []string, where T is an alias of string
 func DeAlias[T ~string](in []T) (out []string) {
-	for _, v := range in {
-		out = append(out, fmt.Sprintf("%s", v))
+	out = make([]string, len(in))
+	for i, v := range in {
+		out[i] = fmt.Sprintf("%s", v)
 	}
 	return out
 }

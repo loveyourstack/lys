@@ -73,9 +73,9 @@ func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sch
 
 	// if some pkVals were invalid, return them
 	if len(invalidPkVals) > 0 {
-		rets := []string{}
-		for _, pkVal := range invalidPkVals {
-			rets = append(rets, fmt.Sprintf("%v", pkVal))
+		rets := make([]string, len(invalidPkVals))
+		for i, pkVal := range invalidPkVals {
+			rets[i] = fmt.Sprintf("%v", pkVal)
 		}
 		return lyserr.Db{Err: fmt.Errorf("partial success: invalid pkVals: %s", strings.Join(rets, ", "))}
 	}
