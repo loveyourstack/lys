@@ -81,7 +81,11 @@ func HandleDbError(ctx context.Context, stmt string, err error, errorLog *slog.L
 			HandleUserError(lyserr.User{Message: "undefined object: " + pgErr.Message}, w)
 			return
 		case pgerrcode.UniqueViolation:
-			HandleUserError(lyserr.User{Message: "unique constraint violation: " + pgErr.Detail, StatusCode: http.StatusConflict}, w)
+			errStr := pgErr.ConstraintName // single column unique key
+			if pgErr.Detail != "" {
+				errStr = pgErr.Detail // is better, but only filled on multiple column unique keys
+			}
+			HandleUserError(lyserr.User{Message: "unique constraint violation: " + errStr, StatusCode: http.StatusConflict}, w)
 			return
 		}
 	}
