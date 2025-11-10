@@ -24,7 +24,7 @@ func Patch(env Env, store iPatchable) http.HandlerFunc {
 		vars := mux.Vars(r)
 		id, err := strconv.ParseInt(vars["id"], 10, 64)
 		if err != nil {
-			HandleUserError(http.StatusBadRequest, ErrDescIdNotAnInteger, w)
+			HandleUserError(ErrIdNotAnInteger, w)
 			return
 		}
 
@@ -43,7 +43,7 @@ func Patch(env Env, store iPatchable) http.HandlerFunc {
 			return
 		}
 		if len(assignmentsMap) == 0 {
-			HandleUserError(http.StatusBadRequest, "no assignments found", w)
+			HandleUserError(ErrNoAssignments, w)
 			return
 		}
 

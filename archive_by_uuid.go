@@ -35,13 +35,13 @@ func MoveRecordsByUuid(env Env, db *pgxpool.Pool, moveFunc func(context.Context,
 		// get the uuid and ensure it is valid
 		uuidStr := mux.Vars(r)["id"]
 		if uuidStr == "" {
-			HandleUserError(http.StatusBadRequest, ErrDescIdMissing, w)
+			HandleUserError(ErrIdMissing, w)
 			return
 		}
 
 		idUu, err := uuid.Parse(uuidStr)
 		if err != nil {
-			HandleUserError(http.StatusBadRequest, ErrDescIdNotAUuid, w)
+			HandleUserError(ErrIdNotAUuid, w)
 			return
 		}
 

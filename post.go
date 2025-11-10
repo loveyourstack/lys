@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/loveyourstack/lys/lyserr"
 )
 
 // iPostable is a store that can be used by Post
@@ -35,7 +36,7 @@ func Post[inputT any, outputT any](env Env, store iPostable[inputT, outputT]) ht
 
 		// validate item
 		if err = store.Validate(env.Validate, input); err != nil {
-			HandleUserError(http.StatusUnprocessableEntity, err.Error(), w)
+			HandleUserError(lyserr.User{Message: err.Error(), StatusCode: http.StatusUnprocessableEntity}, w)
 			return
 		}
 

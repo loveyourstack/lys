@@ -8,6 +8,7 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
+	"github.com/loveyourstack/lys/lyserr"
 )
 
 // iPutable is a store that can be used by Put
@@ -25,7 +26,7 @@ func Put[T any](env Env, store iPutable[T]) http.HandlerFunc {
 		vars := mux.Vars(r)
 		id, err := strconv.ParseInt(vars["id"], 10, 64)
 		if err != nil {
-			HandleUserError(http.StatusBadRequest, ErrDescIdNotAnInteger, w)
+			HandleUserError(ErrIdNotAnInteger, w)
 			return
 		}
 
@@ -45,7 +46,7 @@ func Put[T any](env Env, store iPutable[T]) http.HandlerFunc {
 
 		// validate item
 		if err = store.Validate(env.Validate, input); err != nil {
-			HandleUserError(http.StatusUnprocessableEntity, err.Error(), w)
+			HandleUserError(lyserr.User{Message: err.Error(), StatusCode: http.StatusUnprocessableEntity}, w)
 			return
 		}
 

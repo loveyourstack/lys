@@ -36,7 +36,7 @@ func MoveRecordsById(env Env, db *pgxpool.Pool, moveFunc func(context.Context, p
 		vars := mux.Vars(r)
 		id, err := strconv.ParseInt(vars["id"], 10, 64)
 		if err != nil {
-			HandleUserError(http.StatusBadRequest, ErrDescIdNotAnInteger, w)
+			HandleUserError(ErrIdNotAnInteger, w)
 			return
 		}
 

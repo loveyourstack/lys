@@ -1,16 +1,27 @@
 package lys
 
+import (
+	"net/http"
+
+	"github.com/loveyourstack/lys/lyserr"
+)
+
 // validation user errors
-const (
-	ErrDescBodyMissing        string = "request body missing"
-	ErrDescIdMissing          string = "id missing"
-	ErrDescIdNotAUuid         string = "id not a uuid"
-	ErrDescIdNotAnInteger     string = "id not an integer"
-	ErrDescIdNotUnique        string = "id not unique" // the handling func was expecting id to be unique, but it is not
-	ErrDescInvalidContentType string = "content type must be application/json"
-	ErrDescInvalidId          string = "invalid id" // the Id sent is not present in the relevant table
-	ErrDescInvalidJson        string = "invalid json"
-	ErrDescRouteNotFound      string = "route not found"
-	ErrDescUserInfoMissing    string = "userInfo missing"  // failed to get ReqUserInfo from context
-	ErrDescPermissionDenied   string = "permission denied" // authorization failed
+var (
+
+	// bad requests (default status)
+	ErrBodyMissing        = lyserr.User{Message: "request body missing"}
+	ErrIdMissing          = lyserr.User{Message: "id missing"}
+	ErrIdNotAUuid         = lyserr.User{Message: "id not a uuid"}
+	ErrIdNotAnInteger     = lyserr.User{Message: "id not an integer"}
+	ErrIdNotUnique        = lyserr.User{Message: "id not unique"} // the handling func was expecting id to be unique, but it is not
+	ErrInvalidContentType = lyserr.User{Message: "content type must be application/json"}
+	ErrInvalidId          = lyserr.User{Message: "invalid id"} // the id sent is not present in the relevant table
+	ErrInvalidJson        = lyserr.User{Message: "invalid json"}
+	ErrNoAssignments      = lyserr.User{Message: "no assignments found"} // for patch reqs where assignmentMap is expected
+	ErrRouteNotFound      = lyserr.User{Message: "route not found"}
+
+	// forbidden
+	ErrPermissionDenied = lyserr.User{Message: "permission denied", StatusCode: http.StatusForbidden} // authorization failed
+	ErrUserInfoMissing  = lyserr.User{Message: "userInfo missing", StatusCode: http.StatusForbidden}  // failed to get ReqUserInfo from context
 )

@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-
-	"github.com/loveyourstack/lys/lyserr"
 )
 
 // ExtractJsonBody reads and validates the body of the supplied request
@@ -19,8 +17,7 @@ func ExtractJsonBody(r *http.Request, maxBodySize int64) (body []byte, err error
 
 	// make sure Content-Type header is json
 	if r.Header.Get("Content-Type") != "application/json" {
-		return nil, lyserr.User{
-			Message: ErrDescInvalidContentType}
+		return nil, ErrInvalidContentType
 	}
 
 	// read req body
@@ -31,14 +28,12 @@ func ExtractJsonBody(r *http.Request, maxBodySize int64) (body []byte, err error
 
 	// ensure there's a body
 	if len(body) == 0 {
-		return nil, lyserr.User{
-			Message: ErrDescBodyMissing}
+		return nil, ErrBodyMissing
 	}
 
 	// ensure body is valid JSON
 	if !json.Valid(body) {
-		return nil, lyserr.User{
-			Message: ErrDescInvalidJson}
+		return nil, ErrInvalidJson
 	}
 
 	return body, nil

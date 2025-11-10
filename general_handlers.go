@@ -30,12 +30,7 @@ func Message(msg string) http.HandlerFunc {
 func NotFound() http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		resp := StdResponse{
-			Status:         ReqFailed,
-			ErrDescription: ErrDescRouteNotFound,
-		}
-		JsonResponse(resp, http.StatusNotFound, w)
+		HandleUserError(ErrRouteNotFound, w)
 	}
 }
 

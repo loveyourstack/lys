@@ -23,7 +23,7 @@ func Delete(env Env, store iDeletable) http.HandlerFunc {
 		vars := mux.Vars(r)
 		id, err := strconv.ParseInt(vars["id"], 10, 64)
 		if err != nil {
-			HandleUserError(http.StatusBadRequest, ErrDescIdNotAnInteger, w)
+			HandleUserError(ErrIdNotAnInteger, w)
 			return
 		}
 

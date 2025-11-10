@@ -22,13 +22,13 @@ func GetByUuid[T any](env Env, store iGetableByUuid[T]) http.HandlerFunc {
 		// get the uuid and ensure it is valid
 		uuidStr := mux.Vars(r)["id"]
 		if uuidStr == "" {
-			HandleUserError(http.StatusBadRequest, ErrDescIdMissing, w)
+			HandleUserError(ErrIdMissing, w)
 			return
 		}
 
 		idUu, err := uuid.Parse(uuidStr)
 		if err != nil {
-			HandleUserError(http.StatusBadRequest, ErrDescIdNotAUuid, w)
+			HandleUserError(ErrIdNotAUuid, w)
 			return
 		}
 

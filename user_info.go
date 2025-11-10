@@ -50,13 +50,13 @@ func AuthorizeRole(allowedRoles []string) func(http.Handler) http.Handler {
 			// get the user info from context
 			userInfo, ok := r.Context().Value(ReqUserInfoCtxKey).(ReqUserInfo)
 			if !ok {
-				HandleUserError(http.StatusForbidden, ErrDescUserInfoMissing, w)
+				HandleUserError(ErrUserInfoMissing, w)
 				return
 			}
 
 			// check user is authorized to do this
 			if len(allowedRoles) > 0 && !lysslices.ContainsAny(userInfo.Roles, allowedRoles) {
-				HandleUserError(http.StatusForbidden, ErrDescPermissionDenied, w)
+				HandleUserError(ErrPermissionDenied, w)
 				return
 			}
 
