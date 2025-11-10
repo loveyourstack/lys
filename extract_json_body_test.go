@@ -10,8 +10,8 @@ import (
 
 func TestExtractJsonBodySuccess(t *testing.T) {
 
-	rawBody := `{"a":1,"b":""}`
-	req, err := http.NewRequest("GET", "", bytes.NewReader([]byte(rawBody)))
+	rawBody := []byte(`{"a":1,"b":""}`)
+	req, err := http.NewRequest("GET", "", bytes.NewReader(rawBody))
 	if err != nil {
 		t.Fatalf("http.NewRequest failed: %v", err)
 	}
@@ -22,7 +22,7 @@ func TestExtractJsonBodySuccess(t *testing.T) {
 		t.Fatalf("ExtractJsonBody failed: %v", err)
 	}
 
-	assert.EqualValues(t, `{"a":1,"b":""}`, string(body))
+	assert.EqualValues(t, rawBody, body)
 }
 
 func TestExtractJsonBodyFailure(t *testing.T) {
@@ -36,8 +36,8 @@ func TestExtractJsonBodyFailure(t *testing.T) {
 	assert.EqualValues(t, "content type must be application/json", err.Error())
 
 	// body missing
-	rawBody := ``
-	req, err := http.NewRequest("GET", "", bytes.NewReader([]byte(rawBody)))
+	rawBody := []byte(``)
+	req, err := http.NewRequest("GET", "", bytes.NewReader(rawBody))
 	if err != nil {
 		t.Fatalf("http.NewRequest failed: %v", err)
 	}
@@ -46,8 +46,8 @@ func TestExtractJsonBodyFailure(t *testing.T) {
 	assert.EqualValues(t, "request body missing", err.Error())
 
 	// invalid json
-	rawBody = `"a":"b",`
-	req, err = http.NewRequest("GET", "", bytes.NewReader([]byte(rawBody)))
+	rawBody = []byte(`"a":"b",`)
+	req, err = http.NewRequest("GET", "", bytes.NewReader(rawBody))
 	if err != nil {
 		t.Fatalf("http.NewRequest failed: %v", err)
 	}

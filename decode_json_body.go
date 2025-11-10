@@ -16,16 +16,15 @@ import (
 // findLine returns the line number in a json body corresponding to a given offset
 func findLine(body []byte, offset int) (line int) {
 
-	js := string(body)
-	start := strings.LastIndex(js[:offset], "\n") + 1
-	return strings.Count(js[:start], "\n")
+	start := bytes.LastIndex(body[:offset], []byte("\n")) + 1
+	return bytes.Count(body[:start], []byte("\n"))
 }
 
 // DecodeJsonBody decodes the supplied json body into dest and checks for a variety of error conditions
 // adapted from https://www.alexedwards.net/blog/how-to-properly-parse-a-json-request-body
 func DecodeJsonBody[T any](body []byte) (dest T, err error) {
 
-	if body == nil || string(body) == "" {
+	if len(body) == 0 {
 		return dest, lyserr.User{Message: "body is missing"}
 	}
 

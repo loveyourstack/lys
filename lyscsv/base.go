@@ -61,7 +61,7 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]string, filePa
 	w.Flush()
 
 	if err := w.Error(); err != nil {
-		return fmt.Errorf("csv.NewWriter: %w", err)
+		return fmt.Errorf("csv.NewWriter: flush: %w", err)
 	}
 
 	return nil

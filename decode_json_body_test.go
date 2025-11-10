@@ -16,8 +16,8 @@ func TestDecodeJsonBodySuccess(t *testing.T) {
 		B *string `json:"b"`
 	}
 
-	rawBody := `{"a":1,"b":null}`
-	v, err := DecodeJsonBody[value]([]byte(rawBody))
+	rawBody := []byte(`{"a":1,"b":null}`)
+	v, err := DecodeJsonBody[value](rawBody)
 	if err != nil {
 		t.Fatalf("DecodeJsonBody failed: %v", err)
 	}
@@ -43,27 +43,31 @@ func TestDecodeJsonBodyFailure(t *testing.T) {
 	assert.EqualValues(t, "body is missing", err.Error(), "empty body")
 
 	// malformed body
-	rawBody := `{"a:1}`
-	_, err = DecodeJsonBody[value]([]byte(rawBody))
+	rawBody := []byte(`{"a:1}`)
+	_, err = DecodeJsonBody[value](rawBody)
 	assert.EqualValues(t, "request body contains badly-formed json", err.Error(), "malformed body")
 
 	// syntax error
-	rawBody = `{"a":-}`
-	_, err = DecodeJsonBody[value]([]byte(rawBody))
+	rawBody = []byte(`{-
+		"a":1
+	}`)
+	_, err = DecodeJsonBody[value](rawBody)
 	assert.EqualValues(t, "json syntax error: line: 0", err.Error(), "syntax error")
 
 	// type error
-	rawBody = `{"a":"1"}`
-	_, err = DecodeJsonBody[value]([]byte(rawBody))
-	assert.EqualValues(t, "json type error: line: 0", err.Error(), "type error")
+	rawBody = []byte(`{
+		"a":"1"
+	}`)
+	_, err = DecodeJsonBody[value](rawBody)
+	assert.EqualValues(t, "json type error: line: 1", err.Error(), "type error")
 
 	// unknown field
-	rawBody = `{"d":1}`
-	_, err = DecodeJsonBody[value]([]byte(rawBody))
+	rawBody = []byte(`{"d":1}`)
+	_, err = DecodeJsonBody[value](rawBody)
 	assert.EqualValues(t, "unknown field: d", err.Error(), "unknown field")
 
 	// time parse error
-	rawBody = `{"c":"2024-01-aa"}`
-	_, err = DecodeJsonBody[value]([]byte(rawBody))
+	rawBody = []byte(`{"c":"2024-01-aa"}`)
+	_, err = DecodeJsonBody[value](rawBody)
 	assert.EqualValues(t, "failed to parse a date or time: 2024-01-aa", err.Error(), "time parse error")
 }
