@@ -48,7 +48,11 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]string, filePa
 	if err != nil {
 		return fmt.Errorf("os.OpenFile failed: %w", err)
 	}
-	defer f.Close()
+	defer func() {
+		if err = f.Close(); err != nil {
+			fmt.Printf("f.Close failed: %s", err.Error())
+		}
+	}()
 
 	// write file
 	w := csv.NewWriter(f)

@@ -48,10 +48,18 @@ func FileResponse(filePath, outputFileName string, remove bool, w http.ResponseW
 		fmt.Printf("FileResponse: os.Open failed: %s", err.Error())
 		return
 	}
-	defer file.Close()
+	defer func() {
+		if err = file.Close(); err != nil {
+			fmt.Printf("FileResponse: file.Close failed: %s", err.Error())
+		}
+	}()
 
 	if remove {
-		defer os.Remove(filePath)
+		defer func() {
+			if err = os.Remove(filePath); err != nil {
+				fmt.Printf("FileResponse: os.Remove failed: %s", err.Error())
+			}
+		}()
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")

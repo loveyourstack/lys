@@ -6,7 +6,7 @@ import (
 	"github.com/loveyourstack/lys/lyserr"
 )
 
-// validation user errors
+// expected user errors during validation
 var (
 
 	// bad requests (default status)

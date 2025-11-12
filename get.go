@@ -117,7 +117,11 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 				HandleInternalError(r.Context(), fmt.Errorf("Get: os.CreateTemp failed: %w", err), env.ErrorLog, w)
 				return
 			}
-			f.Close()
+			err = f.Close()
+			if err != nil {
+				HandleInternalError(r.Context(), fmt.Errorf("Get: f.Close failed: %w", err), env.ErrorLog, w)
+				return
+			}
 
 			// write items to temp file
 			err = lyscsv.WriteItemsToFile(items, store.GetMeta().JsonTagTypeMap, f.Name(), env.GetOptions.CsvDelimiter)
@@ -147,7 +151,11 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 				HandleInternalError(r.Context(), fmt.Errorf("Get: os.CreateTemp failed: %w", err), env.ErrorLog, w)
 				return
 			}
-			f.Close()
+			err = f.Close()
+			if err != nil {
+				HandleInternalError(r.Context(), fmt.Errorf("Get: f.Close failed: %w", err), env.ErrorLog, w)
+				return
+			}
 
 			// write items to temp file as Excel workbook
 			err = lysexcel.WriteItemsToFile(items, store.GetMeta().JsonTagTypeMap, f.Name(), "")
