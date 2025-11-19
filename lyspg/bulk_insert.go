@@ -29,15 +29,8 @@ func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName s
 		return 0, fmt.Errorf("input type does not have db tags")
 	}
 
-	recs := make([][]any, len(inputs))
-
-	// for each input
-	for i, input := range inputs {
-
-		// get input values by reflection
-		inputReflVals := reflect.ValueOf(input)
-		recs[i] = getInputValsFromStruct(inputReflVals, nil)
-	}
+	// get recs from inputs via reflection
+	recs := getRecsFromInputs(inputs)
 
 	// COPY to table using pgx
 	rowsAffected, err = db.CopyFrom(ctx, pgx.Identifier{schemaName, tableName}, meta.DbTags, pgx.CopyFromRows(recs))
@@ -48,7 +41,7 @@ func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName s
 	return rowsAffected, nil
 }
 
-// bulkInsertWithoutReflection creates the COPY records for core.bulk_insert_test without using reflection
+// bulkInsertWithoutReflection creates the COPY records for core.bulk_insert_test without using reflection and inserts them
 // is used in benchmark (see test file)
 func bulkInsertWithoutReflection(ctx context.Context, db PoolOrTx, inputs []coretypetestm.Input) (rowsAffected int64, err error) {
 
@@ -67,12 +60,7 @@ func bulkInsertWithoutReflection(ctx context.Context, db PoolOrTx, inputs []core
 		return 0, fmt.Errorf("input type does not have db tags")
 	}
 
-	recs := make([][]any, len(inputs))
-
-	// directly convert each input to a record without using reflection
-	for i, input := range inputs {
-		recs[i] = coretypetestm.GetRecord(input)
-	}
+	recs := getRecsFromInputsWithoutReflection(inputs)
 
 	// COPY to table using pgx
 	rowsAffected, err = db.CopyFrom(ctx, pgx.Identifier{"core", "bulk_insert_test"}, meta.DbTags, pgx.CopyFromRows(recs))
@@ -81,4 +69,31 @@ func bulkInsertWithoutReflection(ctx context.Context, db PoolOrTx, inputs []core
 	}
 
 	return rowsAffected, nil
+}
+
+func getRecsFromInputs[T any](inputs []T) (recs [][]any) {
+
+	recs = make([][]any, len(inputs))
+
+	for i, input := range inputs {
+
+		// get input values by reflection
+		inputReflVals := reflect.ValueOf(input)
+		recs[i] = getInputValsFromStruct(inputReflVals, nil)
+	}
+
+	return recs
+}
+
+// getRecsFromInputsWithoutReflection creates the COPY records for core.bulk_insert_test without using reflection
+func getRecsFromInputsWithoutReflection(inputs []coretypetestm.Input) (recs [][]any) {
+
+	recs = make([][]any, len(inputs))
+
+	// directly convert each input to a record without using reflection
+	for i, input := range inputs {
+		recs[i] = coretypetestm.GetRecord(input)
+	}
+
+	return recs
 }

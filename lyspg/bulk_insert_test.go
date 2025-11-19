@@ -53,7 +53,18 @@ func BenchmarkBulkInsertWithoutReflection(b *testing.B) {
 
 	/*
 		This benchmark, when compared with BenchmarkBulkInsert, attempts to measure the use of reflection when creating COPY records for pgx CopyFrom
-		Currently it is slightly slower than BenchmarkBulkInsert. I'm not sure why yet
+
+		I tried comparing getRecsFromInputs with getRecsFromInputsWithoutReflection directly, but the benchmark function didn't return (see below)
+
+		The difference in the results comparing the full functions is not significant though. Method used:
+
+		go test -benchmem -run=^$ -bench ^BenchmarkBulkInsert$ github.com/loveyourstack/lys/lyspg -count=10 | tee stats.txt
+		benchstat stats.txt
+
+		go test -benchmem -run=^$ -bench ^BenchmarkBulkInsertWithoutReflection$ github.com/loveyourstack/lys/lyspg -count=10 | tee stats.txt
+		benchstat stats.txt
+
+		cleanup: rm stats.txt
 	*/
 
 	schemaName := "core"
@@ -91,6 +102,31 @@ func BenchmarkBulkInsertWithoutReflection(b *testing.B) {
 	b.StopTimer()
 
 	mustTruncateTable(b, ctx, db, schemaName, tableName)
+}
+
+func BenchmarkGetRecsFromInputs(b *testing.B) {
+
+	// doesn't return within 30s - need to find out why. Tried assigning getRecsFromInputs result to global var, didn't work
+
+	for range b.N {
+
+		iters := b.N
+
+		b.StopTimer() // don't count creation of inputs
+
+		inputs := make([]coretypetestm.Input, iters)
+		for i := range iters {
+			input, err := coretypetestm.GetFilledInput()
+			if err != nil {
+				b.Fatalf("coretypetestm.GetFilledInput failed: %v", err)
+			}
+			inputs[i] = input
+		}
+
+		b.StartTimer()
+
+		_ = getRecsFromInputs(inputs)
+	}
 }
 
 func TestBulkInsertSuccess(t *testing.T) {
