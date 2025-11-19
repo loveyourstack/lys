@@ -137,6 +137,39 @@ func GetFilledInput() (input Input, err error) {
 	return input, nil
 }
 
+func GetRecord(item Input) []any {
+
+	return []any{
+		item.CBool,
+		item.CBoolN,
+		item.CBoolA,
+		item.CInt,
+		item.CIntN,
+		item.CIntA,
+		item.CDouble,
+		item.CDoubleN,
+		item.CDoubleA,
+		item.CNumeric,
+		item.CNumericN,
+		item.CNumericA,
+		item.CDate.Format(lystype.DateFormat),
+		(*item.CDateN).Format(lystype.DateFormat),
+		item.CDateA,
+		item.CTime.Format(lystype.TimeFormatDb),
+		(*item.CTimeN).Format(lystype.TimeFormatDb),
+		item.CTimeA,
+		item.CDatetime.Format(lystype.DatetimeFormat),
+		(*item.CDatetimeN).Format(lystype.DatetimeFormat),
+		item.CDatetimeA,
+		item.CEnum,
+		item.CEnumN,
+		item.CEnumA,
+		item.CText,
+		item.CTextN,
+		item.CTextA,
+	}
+}
+
 // copied from lys: TODO
 func mustParseTime(t testing.TB, layout, value string) time.Time {
 

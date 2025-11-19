@@ -10,6 +10,89 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func BenchmarkBulkInsert(b *testing.B) {
+
+	schemaName := "core"
+	tableName := "bulk_insert_test"
+
+	ctx := context.Background()
+	db := mustGetDb(b, ctx)
+	defer db.Close()
+
+	b.ResetTimer()
+
+	for range b.N {
+
+		iters := b.N
+
+		b.StopTimer() // don't count creation of inputs
+
+		inputs := make([]coretypetestm.Input, iters)
+		for i := range iters {
+			input, err := coretypetestm.GetFilledInput()
+			if err != nil {
+				b.Fatalf("coretypetestm.GetFilledInput failed: %v", err)
+			}
+			inputs[i] = input
+		}
+
+		b.StartTimer()
+
+		_, err := BulkInsert(ctx, db, schemaName, tableName, inputs)
+		if err != nil {
+			b.Fatalf("BulkInsert failed: %v", err)
+		}
+	}
+
+	b.StopTimer()
+
+	mustTruncateTable(b, ctx, db, schemaName, tableName)
+}
+
+func BenchmarkBulkInsertWithoutReflection(b *testing.B) {
+
+	/*
+		This benchmark, when compared with BenchmarkBulkInsert, attempts to measure the use of reflection when creating COPY records for pgx CopyFrom
+		Currently it is slightly slower than BenchmarkBulkInsert. I'm not sure why yet
+	*/
+
+	schemaName := "core"
+	tableName := "bulk_insert_test"
+
+	ctx := context.Background()
+	db := mustGetDb(b, ctx)
+	defer db.Close()
+
+	b.ResetTimer()
+
+	for range b.N {
+
+		iters := b.N
+
+		b.StopTimer() // don't count creation of inputs
+
+		inputs := make([]coretypetestm.Input, iters)
+		for i := range iters {
+			input, err := coretypetestm.GetFilledInput()
+			if err != nil {
+				b.Fatalf("coretypetestm.GetFilledInput failed: %v", err)
+			}
+			inputs[i] = input
+		}
+
+		b.StartTimer()
+
+		_, err := bulkInsertWithoutReflection(ctx, db, inputs)
+		if err != nil {
+			b.Fatalf("bulkInsertWithoutReflection failed: %v", err)
+		}
+	}
+
+	b.StopTimer()
+
+	mustTruncateTable(b, ctx, db, schemaName, tableName)
+}
+
 func TestBulkInsertSuccess(t *testing.T) {
 
 	schemaName := "core"

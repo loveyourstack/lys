@@ -2,6 +2,7 @@ package lyspg
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -25,4 +26,12 @@ func mustGetDb(t testing.TB, ctx context.Context) *pgxpool.Pool {
 	}
 
 	return db
+}
+
+func mustTruncateTable(t testing.TB, ctx context.Context, db *pgxpool.Pool, schemaName, tableName string) {
+
+	_, err := db.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s.%s;", schemaName, tableName))
+	if err != nil {
+		t.Fatalf("db.Exec failed: %v", err)
+	}
 }
