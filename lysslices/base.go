@@ -5,13 +5,38 @@ import (
 	"slices"
 )
 
-// ContainsAny returns true if any string in elements is found in slice
+// ContainsAll returns true if all elements are found in slice
+func ContainsAll[T comparable](slice []T, elements []T) bool {
+
+	if len(slice) == 0 || len(elements) == 0 {
+		return false
+	}
+	if len(elements) > len(slice) {
+		return false
+	}
+
+	for _, ele := range elements {
+		if !slices.Contains(slice, ele) {
+			return false
+		}
+	}
+
+	return true
+}
+
+// ContainsAny returns true if any element is found in slice
 func ContainsAny[T comparable](slice []T, elements []T) bool {
-	for _, v := range elements {
-		if slices.Contains(slice, v) {
+
+	if len(slice) == 0 || len(elements) == 0 {
+		return false
+	}
+
+	for _, ele := range elements {
+		if slices.Contains(slice, ele) {
 			return true
 		}
 	}
+
 	return false
 }
 

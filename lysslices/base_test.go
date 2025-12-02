@@ -6,6 +6,32 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func TestContainsAllSuccess(t *testing.T) {
+	s := []int{1, 2}
+
+	e1 := []int{1}
+	assert.Equal(t, true, ContainsAll(s, e1), "e1")
+
+	e2 := []int{1, 2}
+	assert.Equal(t, true, ContainsAll(s, e2), "e2")
+}
+
+func TestContainsAllFailure(t *testing.T) {
+	s := []int{1, 2}
+
+	e1 := []int{}
+	assert.Equal(t, false, ContainsAll(s, e1), "e1")
+
+	e2 := []int{1, 3}
+	assert.Equal(t, false, ContainsAll(s, e2), "e2")
+
+	e3 := []int{1, 2, 3}
+	assert.Equal(t, false, ContainsAll(s, e3), "e3")
+
+	s1 := []int{}
+	assert.Equal(t, false, ContainsAll(s1, e2), "s1")
+}
+
 func TestDeDuplicateSuccess(t *testing.T) {
 	s1 := []int{2, 3, 1, 3, 2}
 	s1a := DeDuplicate(s1)
