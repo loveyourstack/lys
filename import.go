@@ -2,6 +2,7 @@ package lys
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
@@ -15,8 +16,23 @@ type iImportable[T any] interface {
 	Validate(validate *validator.Validate, input T) error
 }
 
+/*
+ImportValueMap can be used when the input contains a foreign key.
+It allows the referenced table's string representation to be passed by the user.
+The string attribute gets replaced with the int64 attribute, and all the values are mapped using the supplied map. For example:
+
+	StringJsonName: "car_manufacturer"
+	Int64JsonName:  "car_manufacturer_fk"
+	Map:            Ford = 1, Nissan = 2, etc
+*/
+type ImportValueMap struct {
+	StringJsonName string
+	Int64JsonName  string
+	Map            map[string]int64
+}
+
 // Import handles creating multiple new items using the supplied store and returning the number of rows inserted
-func Import[T any](env Env, store iImportable[T]) http.HandlerFunc {
+func Import[T any](env Env, store iImportable[T], valMapFuncs ...func(context.Context) (ImportValueMap, error)) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -25,6 +41,15 @@ func Import[T any](env Env, store iImportable[T]) http.HandlerFunc {
 		if err != nil {
 			HandleError(r.Context(), fmt.Errorf("Import: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
 			return
+		}
+
+		// map string values to int64 if needed
+		if len(valMapFuncs) > 0 {
+			body, err = importMapValues(r.Context(), body, valMapFuncs...)
+			if err != nil {
+				HandleError(r.Context(), fmt.Errorf("Import: importMapValues failed: %w", err), env.ErrorLog, w)
+				return
+			}
 		}
 
 		// unmarshal the body into a slice of inputs
@@ -62,4 +87,61 @@ func Import[T any](env Env, store iImportable[T]) http.HandlerFunc {
 		}
 		JsonResponse(resp, http.StatusCreated, w)
 	}
+}
+
+func importMapValues(ctx context.Context, inBody []byte, valMapFuncs ...func(context.Context) (ImportValueMap, error)) (outBody []byte, err error) {
+
+	// unmarshal to []map[string]any so that keys can be processed
+	dataA := []map[string]any{}
+	err = json.Unmarshal(inBody, &dataA)
+	if err != nil {
+		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
+	}
+
+	// for each value mapping
+	for _, valMapFunc := range valMapFuncs {
+
+		// get valMap
+		valMap, err := valMapFunc(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("valMapFunc failed: %w", err)
+		}
+
+		// for each input
+		for _, d := range dataA {
+
+			// try to find the StringJsonName key: skip if not found
+			strValAny, ok := d[valMap.StringJsonName]
+			if !ok {
+				//fmt.Println(valMap.StringJsonName, "not found")
+				continue
+			}
+
+			// if found, it needs to be a string
+			strVal, ok := strValAny.(string)
+			if !ok {
+				return nil, fmt.Errorf("mapping key '%s': string assertion of value '%v' failed", valMap.StringJsonName, strValAny)
+			}
+
+			// get the mapped int64
+			int64Val, ok := valMap.Map[strVal]
+			if !ok {
+				return nil, lyserr.User{Message: fmt.Sprintf("mapping key '%s': no mapped value for '%s'", valMap.StringJsonName, strVal)}
+			}
+
+			// delete the string key
+			delete(d, valMap.StringJsonName)
+
+			// add the int64 key
+			d[valMap.Int64JsonName] = int64Val
+		}
+	}
+
+	// marshal
+	outBody, err = json.Marshal(dataA)
+	if err != nil {
+		return nil, fmt.Errorf("json.Marshal failed: %w", err)
+	}
+
+	return outBody, nil
 }
