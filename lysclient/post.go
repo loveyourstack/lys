@@ -151,3 +151,49 @@ func PostToValueTester[inT, outT any](h http.Handler, method string, targetUrl s
 
 	return res.Data, nil
 }
+
+// PostArrayToValueTester sends a POST/PUT/PATCH request to targetUrl using a test handler with an inT slice as the body. It expects an outT in response
+func PostArrayToValueTester[inT, outT any](h http.Handler, method string, targetUrl string, items []inT) (val outT, err error) {
+
+	// check method
+	if !slices.Contains([]string{"POST", "PUT", "PATCH"}, method) {
+		return val, fmt.Errorf("invalid method: %s", method)
+	}
+
+	// marshal
+	reqBody, err := json.Marshal(items)
+	if err != nil {
+		return val, fmt.Errorf("json.Marshal failed: %w", err)
+	}
+
+	// create req
+	req, err := http.NewRequest(method, targetUrl, bytes.NewReader(reqBody))
+	if err != nil {
+		return val, fmt.Errorf("http.NewRequest failed: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// do request
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// read body
+	respBody, err := io.ReadAll(rr.Body)
+	if err != nil {
+		return val, fmt.Errorf("io.ReadAll failed: %w", err)
+	}
+
+	// unmarshal
+	var res ValueResp[outT]
+	err = json.Unmarshal(respBody, &res)
+	if err != nil {
+		return val, fmt.Errorf("json.Unmarshal failed: %w", err)
+	}
+
+	// check status
+	if res.Status != successStatus {
+		return val, fmt.Errorf("%s", res.ErrDescription)
+	}
+
+	return res.Data, nil
+}

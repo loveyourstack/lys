@@ -9,12 +9,9 @@ import (
 )
 
 const (
-	name           string = "Bulk delete test"
-	schemaName     string = "core"
-	tableName      string = "bulk_delete_test"
-	viewName       string = "bulk_delete_test"
-	pkColName      string = "id"
-	defaultOrderBy string = "id"
+	name       string = "Bulk delete test"
+	schemaName string = "core"
+	tableName  string = "bulk_delete_test"
 )
 
 type Input struct {

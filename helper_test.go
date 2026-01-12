@@ -13,6 +13,7 @@ import (
 	"github.com/loveyourstack/lys/internal/cmd"
 	"github.com/loveyourstack/lys/internal/lyscmd"
 	"github.com/loveyourstack/lys/internal/stores/core/corearchivetest"
+	"github.com/loveyourstack/lys/internal/stores/core/coreimporttest"
 	"github.com/loveyourstack/lys/internal/stores/core/coreparamtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coresetfunc"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
@@ -54,6 +55,11 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	r.HandleFunc(endpoint+"/{id}", GetByUuid(apiEnv, archiveTestStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}/restore", RestoreByUuid(apiEnv, srvApp.Db, archiveTestStore)).Methods("POST")
 	r.HandleFunc(endpoint+"/{id}/archive", ArchiveByUuid(apiEnv, srvApp.Db, archiveTestStore)).Methods("DELETE")
+
+	endpoint = "/import-test"
+
+	importTestStore := coreimporttest.Store{Db: srvApp.Db}
+	r.HandleFunc(endpoint+"/import", Import(apiEnv, importTestStore)).Methods("POST")
 
 	endpoint = "/param-test"
 

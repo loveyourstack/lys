@@ -90,9 +90,9 @@ COMMENT ON TABLE core.type_test IS 'shortname: tt';
 
 CREATE TABLE core.bulk_insert_test (LIKE core.type_test INCLUDING ALL);
 
-
 CREATE TABLE core.bulk_update_test (LIKE core.type_test INCLUDING ALL);
 
+CREATE TABLE core.import_test (LIKE core.type_test INCLUDING ALL);
 
 CREATE TABLE core.volume_test
 (
