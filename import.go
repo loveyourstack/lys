@@ -17,22 +17,22 @@ type iImportable[T any] interface {
 }
 
 /*
-ImportValueMap can be used when the input contains a foreign key.
+ImportValueRepl is a struct that can be used when the input contains a foreign key.
 It allows the referenced table's string representation to be passed by the user.
 The string attribute gets replaced with the int64 attribute, and all the values are mapped using the supplied map. For example:
 
 	StringJsonName: "car_manufacturer"
 	Int64JsonName:  "car_manufacturer_fk"
-	Map:            Ford = 1, Nissan = 2, etc
+	MapFunc:        returns Ford = 1, Nissan = 2, etc
 */
-type ImportValueMap struct {
+type ImportValueRepl struct {
 	StringJsonName string
 	Int64JsonName  string
-	Map            map[string]int64
+	MapFunc        func(context.Context) (map[string]int64, error)
 }
 
 // Import handles creating multiple new items using the supplied store and returning the number of rows inserted
-func Import[T any](env Env, store iImportable[T], valMapFuncs ...func(context.Context) (ImportValueMap, error)) http.HandlerFunc {
+func Import[T any](env Env, store iImportable[T], valRepls ...ImportValueRepl) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -43,11 +43,11 @@ func Import[T any](env Env, store iImportable[T], valMapFuncs ...func(context.Co
 			return
 		}
 
-		// map string values to int64 if needed
-		if len(valMapFuncs) > 0 {
-			body, err = importMapValues(r.Context(), body, valMapFuncs...)
+		// replace string values with int64 if needed
+		if len(valRepls) > 0 {
+			body, err = importReplaceValues(r.Context(), body, valRepls...)
 			if err != nil {
-				HandleError(r.Context(), fmt.Errorf("Import: importMapValues failed: %w", err), env.ErrorLog, w)
+				HandleError(r.Context(), fmt.Errorf("Import: importReplaceValues failed: %w", err), env.ErrorLog, w)
 				return
 			}
 		}
@@ -89,7 +89,7 @@ func Import[T any](env Env, store iImportable[T], valMapFuncs ...func(context.Co
 	}
 }
 
-func importMapValues(ctx context.Context, inBody []byte, valMapFuncs ...func(context.Context) (ImportValueMap, error)) (outBody []byte, err error) {
+func importReplaceValues(ctx context.Context, inBody []byte, valRepls ...ImportValueRepl) (outBody []byte, err error) {
 
 	// unmarshal to []map[string]any so that keys can be processed
 	dataA := []map[string]any{}
@@ -98,42 +98,42 @@ func importMapValues(ctx context.Context, inBody []byte, valMapFuncs ...func(con
 		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
 	}
 
-	// for each value mapping
-	for _, valMapFunc := range valMapFuncs {
+	// for each value replacement
+	for _, valRepl := range valRepls {
 
-		// get valMap
-		valMap, err := valMapFunc(ctx)
+		// get map
+		valMap, err := valRepl.MapFunc(ctx)
 		if err != nil {
-			return nil, fmt.Errorf("valMapFunc failed: %w", err)
+			return nil, fmt.Errorf("valRepl.MapFunc failed: %w", err)
 		}
 
 		// for each input
 		for _, d := range dataA {
 
 			// try to find the StringJsonName key: skip if not found
-			strValAny, ok := d[valMap.StringJsonName]
+			strValAny, ok := d[valRepl.StringJsonName]
 			if !ok {
-				//fmt.Println(valMap.StringJsonName, "not found")
+				//fmt.Println(valRepl.StringJsonName, "not found")
 				continue
 			}
 
 			// if found, it needs to be a string
 			strVal, ok := strValAny.(string)
 			if !ok {
-				return nil, fmt.Errorf("mapping key '%s': string assertion of value '%v' failed", valMap.StringJsonName, strValAny)
+				return nil, fmt.Errorf("key '%s': string assertion of value '%v' failed", valRepl.StringJsonName, strValAny)
 			}
 
 			// get the mapped int64
-			int64Val, ok := valMap.Map[strVal]
+			int64Val, ok := valMap[strVal]
 			if !ok {
-				return nil, lyserr.User{Message: fmt.Sprintf("mapping key '%s': no mapped value for '%s'", valMap.StringJsonName, strVal)}
+				return nil, lyserr.User{Message: fmt.Sprintf("key '%s': no mapped value for '%s'", valRepl.StringJsonName, strVal)}
 			}
 
 			// delete the string key
-			delete(d, valMap.StringJsonName)
+			delete(d, valRepl.StringJsonName)
 
 			// add the int64 key
-			d[valMap.Int64JsonName] = int64Val
+			d[valRepl.Int64JsonName] = int64Val
 		}
 	}
 
