@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lyserr"
 )
 
@@ -28,11 +29,12 @@ The string attribute gets replaced with the int64 attribute, and all the values 
 type ImportValueRepl struct {
 	StringJsonName string
 	Int64JsonName  string
-	MapFunc        func(context.Context) (map[string]int64, error)
+	MapFunc        func(context.Context, *pgxpool.Pool) (map[string]int64, error)
 }
 
 // Import handles creating multiple new items using the supplied store and returning the number of rows inserted
-func Import[T any](env Env, store iImportable[T], valRepls ...ImportValueRepl) http.HandlerFunc {
+// the supplied db is used for the MapFunc in valRepls
+func Import[T any](env Env, db *pgxpool.Pool, store iImportable[T], valRepls ...ImportValueRepl) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -45,7 +47,7 @@ func Import[T any](env Env, store iImportable[T], valRepls ...ImportValueRepl) h
 
 		// replace string values with int64 if needed
 		if len(valRepls) > 0 {
-			body, err = importReplaceValues(r.Context(), body, valRepls...)
+			body, err = importReplaceValues(r.Context(), db, body, valRepls...)
 			if err != nil {
 				HandleError(r.Context(), fmt.Errorf("Import: importReplaceValues failed: %w", err), env.ErrorLog, w)
 				return
@@ -89,7 +91,7 @@ func Import[T any](env Env, store iImportable[T], valRepls ...ImportValueRepl) h
 	}
 }
 
-func importReplaceValues(ctx context.Context, inBody []byte, valRepls ...ImportValueRepl) (outBody []byte, err error) {
+func importReplaceValues(ctx context.Context, db *pgxpool.Pool, inBody []byte, valRepls ...ImportValueRepl) (outBody []byte, err error) {
 
 	// unmarshal to []map[string]any so that keys can be processed
 	dataA := []map[string]any{}
@@ -102,7 +104,7 @@ func importReplaceValues(ctx context.Context, inBody []byte, valRepls ...ImportV
 	for _, valRepl := range valRepls {
 
 		// get map
-		valMap, err := valRepl.MapFunc(ctx)
+		valMap, err := valRepl.MapFunc(ctx, db)
 		if err != nil {
 			return nil, fmt.Errorf("valRepl.MapFunc failed: %w", err)
 		}

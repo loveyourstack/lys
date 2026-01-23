@@ -59,7 +59,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	endpoint = "/import-test"
 
 	importTestStore := coreimporttest.Store{Db: srvApp.Db}
-	r.HandleFunc(endpoint+"/import", Import(apiEnv, importTestStore)).Methods("POST")
+	r.HandleFunc(endpoint+"/import", Import(apiEnv, srvApp.Db, importTestStore)).Methods("POST")
 
 	endpoint = "/param-test"
 
