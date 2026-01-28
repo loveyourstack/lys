@@ -6,7 +6,7 @@ import (
 )
 
 // RecsToMap converts a slice of T to a map[string]any using JSON marshal/unmarshal
-// only those T fields with a json tag will be in the result
+// T fields with json tag "-" will be excluded from the result
 func RecsToMap[T any](recs []T) (recsMap []map[string]any, err error) {
 
 	if len(recs) == 0 {
