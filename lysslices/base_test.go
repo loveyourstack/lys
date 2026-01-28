@@ -32,6 +32,38 @@ func TestContainsAllFailure(t *testing.T) {
 	assert.Equal(t, false, ContainsAll(s1, e2), "s1")
 }
 
+func TestContainsAnySuccess(t *testing.T) {
+	s := []int{1, 2, 3}
+
+	e1 := []int{1}
+	assert.Equal(t, true, ContainsAny(s, e1), "e1")
+
+	e2 := []int{3}
+	assert.Equal(t, true, ContainsAny(s, e2), "e2")
+
+	e3 := []int{2, 4}
+	assert.Equal(t, true, ContainsAny(s, e3), "e3")
+
+	e4 := []int{1, 2, 3}
+	assert.Equal(t, true, ContainsAny(s, e4), "e4")
+}
+
+func TestContainsAnyFailure(t *testing.T) {
+	s := []int{1, 2, 3}
+
+	e1 := []int{}
+	assert.Equal(t, false, ContainsAny(s, e1), "e1")
+
+	e2 := []int{4, 5}
+	assert.Equal(t, false, ContainsAny(s, e2), "e2")
+
+	e3 := []int{4, 5, 6}
+	assert.Equal(t, false, ContainsAny(s, e3), "e3")
+
+	s1 := []int{}
+	assert.Equal(t, false, ContainsAny(s1, e2), "s1")
+}
+
 func TestDeDuplicateSuccess(t *testing.T) {
 	s1 := []int{2, 3, 1, 3, 2}
 	s1a := DeDuplicate(s1)

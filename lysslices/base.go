@@ -15,8 +15,13 @@ func ContainsAll[T comparable](slice []T, elements []T) bool {
 		return false
 	}
 
+	sliceMap := make(map[T]bool, len(slice))
+	for _, v := range slice {
+		sliceMap[v] = true
+	}
+
 	for _, ele := range elements {
-		if !slices.Contains(slice, ele) {
+		if !sliceMap[ele] {
 			return false
 		}
 	}
@@ -31,8 +36,13 @@ func ContainsAny[T comparable](slice []T, elements []T) bool {
 		return false
 	}
 
+	sliceMap := make(map[T]bool, len(slice))
+	for _, v := range slice {
+		sliceMap[v] = true
+	}
+
 	for _, ele := range elements {
-		if slices.Contains(slice, ele) {
+		if sliceMap[ele] {
 			return true
 		}
 	}
@@ -43,14 +53,17 @@ func ContainsAny[T comparable](slice []T, elements []T) bool {
 // DeDuplicate returns a copy of the slice with duplicates removed and without affecting value order
 // from https://stackoverflow.com/questions/66643946/how-to-remove-duplicates-strings-or-int-from-slice-in-go
 func DeDuplicate[S ~[]E, E comparable](s S) S {
+
 	keys := make(map[E]bool)
 	s1 := []E{}
+
 	for _, v := range s {
 		if _, ok := keys[v]; !ok {
 			keys[v] = true
 			s1 = append(s1, v)
 		}
 	}
+
 	return s1
 }
 
