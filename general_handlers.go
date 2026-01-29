@@ -63,7 +63,7 @@ func PgSleep(db lyspg.PoolOrTx, errorLog *slog.Logger, secs int) http.HandlerFun
 			}
 
 			// unknown db error
-			HandleDbError(r.Context(), stmt, fmt.Errorf("PgSleep: pgx.CollectExactlyOneRow failed: %w", err), errorLog, w)
+			HandleDbError(r.Context(), 0, stmt, fmt.Errorf("PgSleep: pgx.CollectExactlyOneRow failed: %w", err), errorLog, w)
 			return
 		}
 

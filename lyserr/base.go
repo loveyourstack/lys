@@ -21,6 +21,7 @@ func (e User) Error() string {
 // Db is an error that comes from the Postgres database. It might contain a wrapped pgx PgError.
 type Db struct {
 	Err  error
+	Line int    // optional: the line number in input that caused the error
 	Stmt string // the SQL statement that caused the error
 }
 
