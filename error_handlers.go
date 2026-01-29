@@ -65,37 +65,41 @@ func HandleDbError(ctx context.Context, line int, stmt string, err error, errorL
 
 	// see if err can be unwrapped to a pgx PgError
 	var pgErr *pgconn.PgError
+	pgErrTxt := ""
+	statusCode := http.StatusBadRequest
 	if errors.As(err, &pgErr) {
 
 		switch pgErr.Code {
 
-		// handle expected errors that can be attributed to bad requests or conflicts
+		// define text and status for errors that can be attributed to bad requests or conflicts
 		case pgerrcode.CheckViolation:
-			HandleUserError(lyserr.User{Message: fmt.Sprintf("%scheck constraint violation: %s", lineTxt, pgErr.ConstraintName)}, w)
-			return
+			pgErrTxt = fmt.Sprintf("check constraint violation: %s", pgErr.ConstraintName)
 		case pgerrcode.ExclusionViolation:
-			HandleUserError(lyserr.User{Message: fmt.Sprintf("%sexclusion constraint violation: %s", lineTxt, pgErr.Detail), StatusCode: http.StatusConflict}, w)
-			return
+			pgErrTxt = fmt.Sprintf("exclusion constraint violation: %s", pgErr.Detail)
+			statusCode = http.StatusConflict
 		case pgerrcode.ForeignKeyViolation:
-			HandleUserError(lyserr.User{Message: fmt.Sprintf("%sforeign key violation: %s", lineTxt, pgErr.Detail)}, w)
-			return
+			pgErrTxt = fmt.Sprintf("foreign key violation: %s", pgErr.Detail)
 		case pgerrcode.InvalidTextRepresentation: // e.g. enum value does not exist
-			HandleUserError(lyserr.User{Message: fmt.Sprintf("%sinvalid text: %s", lineTxt, pgErr.Message)}, w)
-			return
+			pgErrTxt = fmt.Sprintf("invalid text: %s", pgErr.Message)
 		case pgerrcode.StringDataRightTruncationDataException: // e.g. text too long for varchar(i) column
-			HandleUserError(lyserr.User{Message: fmt.Sprintf("%s%s", lineTxt, pgErr.Message)}, w)
-			return
+			pgErrTxt = pgErr.Message
 		case pgerrcode.UndefinedObject: // e.g. enum type does not exist
-			HandleUserError(lyserr.User{Message: fmt.Sprintf("%sundefined object: %s", lineTxt, pgErr.Message)}, w)
-			return
+			pgErrTxt = fmt.Sprintf("undefined object: %s", pgErr.Message)
 		case pgerrcode.UniqueViolation:
 			errStr := pgErr.ConstraintName // single column unique key
 			if pgErr.Detail != "" {
 				errStr = pgErr.Detail // is better, but only filled on multiple column unique keys
 			}
-			HandleUserError(lyserr.User{Message: fmt.Sprintf("%sunique constraint violation: %s", lineTxt, errStr), StatusCode: http.StatusConflict}, w)
-			return
+			pgErrTxt = fmt.Sprintf("unique constraint violation: %s", errStr)
+			statusCode = http.StatusConflict
+		default:
+			// other pgx error: treat as unknown db error
 		}
+	}
+
+	if pgErrTxt != "" {
+		HandleUserError(lyserr.User{Message: fmt.Sprintf("%s%s", lineTxt, pgErrTxt), StatusCode: statusCode}, w)
+		return
 	}
 
 	// unknown db error
