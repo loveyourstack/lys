@@ -7,6 +7,7 @@ import (
 	"reflect"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysmeta"
@@ -38,15 +39,15 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
-func (s Store) BulkInsert(ctx context.Context, inputs []coretypetestm.Input) (rowsAffected int64, err error) {
-	return lyspg.BulkInsert(ctx, s.Db, schemaName, tableName, inputs)
-}
-
 func (s Store) GetMeta() lysmeta.Result {
 	return meta
 }
 func (s Store) GetName() string {
 	return name
+}
+
+func (s Store) InsertTx(ctx context.Context, tx pgx.Tx, input coretypetestm.Input) (newId int64, err error) {
+	return lyspg.Insert[coretypetestm.Input, int64](ctx, tx, schemaName, tableName, "id", input)
 }
 
 func (s Store) Validate(validate *validator.Validate, input coretypetestm.Input) error {

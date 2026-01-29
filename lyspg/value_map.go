@@ -30,7 +30,7 @@ func ValueMap[keyT comparable, valT any](ctx context.Context, db PoolOrTx, schem
 	}
 
 	if len(items) != len(m) {
-		return nil, fmt.Errorf("key is not unique. len(items) is %v, but len(m) is %v", len(items), len(m))
+		return nil, fmt.Errorf("%s.%s: key '%s' is not unique. len(items) is %v, but len(m) is %v", schemaName, tableName, keyCol, len(items), len(m))
 	}
 
 	return m, nil

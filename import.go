@@ -3,17 +3,19 @@ package lys
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lyserr"
 )
 
 // iImportable is a store that can be used by Import
 type iImportable[T any] interface {
-	BulkInsert(ctx context.Context, inputs []T) (rowsAffected int64, err error)
+	InsertTx(ctx context.Context, tx pgx.Tx, input T) (newId int64, err error)
 	Validate(validate *validator.Validate, input T) error
 }
 
@@ -75,17 +77,41 @@ func Import[T any](env Env, db *pgxpool.Pool, store iImportable[T], valRepls ...
 			}
 		}
 
-		// bulk insert the items into db
-		rowsAffected, err := store.BulkInsert(r.Context(), inputs)
+		// begin tx
+		tx, err := db.Begin(r.Context())
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Import: store.BulkInsert failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("Import: db.Begin failed: %w", err), env.ErrorLog, w)
+			return
+		}
+		defer tx.Rollback(r.Context())
+
+		// insert items as a tx
+		for i, input := range inputs {
+			if _, err := store.InsertTx(r.Context(), tx, input); err != nil {
+
+				// if it was user-fixable db error, e.g. a unique constraint violation, show the line number to user
+				dbErr := lyserr.Db{}
+				if errors.As(err, &dbErr) {
+					HandleDbError(r.Context(), i+1, dbErr.Stmt, fmt.Errorf("Import: store.InsertTx failed: %w", dbErr.Err), env.ErrorLog, w)
+					return
+				}
+
+				HandleError(r.Context(), fmt.Errorf("Import: store.InsertTx failed on line %v: %w", i+1, err), env.ErrorLog, w)
+				return
+			}
+		}
+
+		// success: commit tx
+		err = tx.Commit(r.Context())
+		if err != nil {
+			HandleError(r.Context(), fmt.Errorf("Import: tx.Commit failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
 		// success
 		resp := StdResponse{
 			Status: ReqSucceeded,
-			Data:   rowsAffected,
+			Data:   len(inputs),
 		}
 		JsonResponse(resp, http.StatusCreated, w)
 	}
@@ -110,7 +136,7 @@ func importReplaceValues(ctx context.Context, db *pgxpool.Pool, inBody []byte, v
 		}
 
 		// for each input
-		for _, d := range dataA {
+		for i, d := range dataA {
 
 			// try to find the StringJsonName key: skip if not found
 			strValAny, ok := d[valRepl.StringJsonName]
@@ -122,13 +148,13 @@ func importReplaceValues(ctx context.Context, db *pgxpool.Pool, inBody []byte, v
 			// if found, it needs to be a string
 			strVal, ok := strValAny.(string)
 			if !ok {
-				return nil, fmt.Errorf("key '%s': string assertion of value '%v' failed", valRepl.StringJsonName, strValAny)
+				return nil, fmt.Errorf("line %v: key '%s': string assertion of value '%v' failed", i+1, valRepl.StringJsonName, strValAny)
 			}
 
 			// get the mapped int64
 			int64Val, ok := valMap[strVal]
 			if !ok {
-				return nil, lyserr.User{Message: fmt.Sprintf("key '%s': no mapped value for '%s'", valRepl.StringJsonName, strVal)}
+				return nil, lyserr.User{Message: fmt.Sprintf("line %v: key '%s': no mapped value for '%s'", i+1, valRepl.StringJsonName, strVal)}
 			}
 
 			// delete the string key
