@@ -94,8 +94,6 @@ curl --header "Content-Type: application/json" --request POST --data '{"name":"F
 # etc
 ```
 
-See the [Northwind sample application](https://github.com/loveyourstack/northwind) for a complete application using these packages.
-
 ## Features
 
 * Library only: is not a framework, and does not use code generation, so can be overriden at every step to deal with exceptional cases
