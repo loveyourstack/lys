@@ -16,19 +16,29 @@ func init() {
 	// reflect lystype date types one time on startup for use in getInputValue
 	gLystypeDateType = reflect.TypeOf((lystype.Date{}))
 	gLystypeDateTypeP = reflect.TypeOf((*lystype.Date)(nil))
+	gLystypeDateTypeA = reflect.TypeOf([]lystype.Date{})
+
 	gLystypeTimeType = reflect.TypeOf(lystype.Time{})
 	gLystypeTimeTypeP = reflect.TypeOf((*lystype.Time)(nil))
+	gLystypeTimeTypeA = reflect.TypeOf([]lystype.Time{})
+
 	gLystypeDatetimeType = reflect.TypeOf((lystype.Datetime{}))
 	gLystypeDatetimeTypeP = reflect.TypeOf((*lystype.Datetime)(nil))
+	gLystypeDatetimeTypeA = reflect.TypeOf([]lystype.Datetime{})
 }
 
 var (
-	gLystypeDateType      reflect.Type
-	gLystypeDateTypeP     reflect.Type
-	gLystypeTimeType      reflect.Type
-	gLystypeTimeTypeP     reflect.Type
+	gLystypeDateType  reflect.Type
+	gLystypeDateTypeP reflect.Type
+	gLystypeDateTypeA reflect.Type
+
+	gLystypeTimeType  reflect.Type
+	gLystypeTimeTypeP reflect.Type
+	gLystypeTimeTypeA reflect.Type
+
 	gLystypeDatetimeType  reflect.Type
 	gLystypeDatetimeTypeP reflect.Type
+	gLystypeDatetimeTypeA reflect.Type
 )
 
 // error strings used by internal errors
@@ -87,7 +97,7 @@ func getInputValsFromStruct(reflVal reflect.Value, omitDbTags []string) (inputVa
 	return inputVals
 }
 
-// getInputValue returns val, but contains special handling for both the pointer and non-pointer versions of lystype date types
+// getInputValue returns val, but contains special handling for lystype date types
 func getInputValue(val any, reflType reflect.Type) (inputVal any) {
 
 	switch reflType {
@@ -96,6 +106,7 @@ func getInputValue(val any, reflType reflect.Type) (inputVal any) {
 	case gLystypeDateType:
 		val := val.(lystype.Date)
 		return val.Format(lystype.DateFormat)
+
 	case gLystypeDateTypeP:
 		val := val.(*lystype.Date)
 		if val == nil {
@@ -103,10 +114,19 @@ func getInputValue(val any, reflType reflect.Type) (inputVal any) {
 		}
 		return (*val).Format(lystype.DateFormat)
 
+	case gLystypeDateTypeA:
+		val := val.([]lystype.Date)
+		inputVal := make([]string, len(val))
+		for i, v := range val {
+			inputVal[i] = v.Format(lystype.DateFormat)
+		}
+		return inputVal
+
 	// lystype.Time
 	case gLystypeTimeType:
 		val := val.(lystype.Time)
 		return val.Format(lystype.TimeFormatDb)
+
 	case gLystypeTimeTypeP:
 		val := val.(*lystype.Time)
 		if val == nil {
@@ -114,16 +134,33 @@ func getInputValue(val any, reflType reflect.Type) (inputVal any) {
 		}
 		return (*val).Format(lystype.TimeFormatDb)
 
+	case gLystypeTimeTypeA:
+		val := val.([]lystype.Time)
+		inputVal := make([]string, len(val))
+		for i, v := range val {
+			inputVal[i] = v.Format(lystype.TimeFormatDb)
+		}
+		return inputVal
+
 	// lystype.Datetime
 	case gLystypeDatetimeType:
 		val := val.(lystype.Datetime)
 		return val.Format(lystype.DatetimeFormat)
+
 	case gLystypeDatetimeTypeP:
 		val := val.(*lystype.Datetime)
 		if val == nil {
 			return nil
 		}
 		return (*val).Format(lystype.DatetimeFormat)
+
+	case gLystypeDatetimeTypeA:
+		val := val.([]lystype.Datetime)
+		inputVal := make([]string, len(val))
+		for i, v := range val {
+			inputVal[i] = v.Format(lystype.DatetimeFormat)
+		}
+		return inputVal
 
 	default:
 		return val

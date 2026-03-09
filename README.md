@@ -117,7 +117,6 @@ curl --header "Content-Type: application/json" --request POST --data '{"name":"F
 
 * Only supports PostgreSQL
 * No database obfuscation. Struct "db" tags must be added and must be identical to the "json" tag, unless the latter is "-"
-* Limited support for database date/time arrays
 
 ## Testing
 

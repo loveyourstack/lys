@@ -6,39 +6,38 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/loveyourstack/lys/lystype"
 	"github.com/stretchr/testify/assert"
 )
 
 type Input struct {
-	CBool      bool                 `db:"c_bool" json:"c_bool"`
-	CBoolN     *bool                `db:"c_booln" json:"c_booln"`
-	CBoolA     []bool               `db:"c_boola" json:"c_boola"` // array types: if zero, must be set to empty array if db col is not null
-	CInt       int64                `db:"c_int" json:"c_int"`
-	CIntN      *int64               `db:"c_intn" json:"c_intn"`
-	CIntA      []int64              `db:"c_inta" json:"c_inta"`
-	CDouble    float32              `db:"c_double" json:"c_double"`
-	CDoubleN   *float32             `db:"c_doublen" json:"c_doublen"`
-	CDoubleA   []float32            `db:"c_doublea" json:"c_doublea"`
-	CNumeric   float32              `db:"c_numeric" json:"c_numeric"`
-	CNumericN  *float32             `db:"c_numericn" json:"c_numericn"`
-	CNumericA  []float32            `db:"c_numerica" json:"c_numerica"`
-	CDate      lystype.Date         `db:"c_date" json:"c_date"`
-	CDateN     *lystype.Date        `db:"c_daten" json:"c_daten"`
-	CDateA     []pgtype.Date        `db:"c_datea" json:"c_datea"`
-	CTime      lystype.Time         `db:"c_time" json:"c_time"`
-	CTimeN     *lystype.Time        `db:"c_timen" json:"c_timen"`
-	CTimeA     []pgtype.Time        `db:"c_timea" json:"c_timea"`
-	CDatetime  lystype.Datetime     `db:"c_datetime" json:"c_datetime"`
-	CDatetimeN *lystype.Datetime    `db:"c_datetimen" json:"c_datetimen"`
-	CDatetimeA []pgtype.Timestamptz `db:"c_datetimea" json:"c_datetimea"` // same timezone used on entry, but entry 1 stored as local timezone, entry 2 as specified
-	CEnum      string               `db:"c_enum" json:"c_enum"`           // enum has no zero value: must be set
-	CEnumN     *string              `db:"c_enumn" json:"c_enumn"`
-	CEnumA     []string             `db:"c_enuma" json:"c_enuma"`
-	CText      string               `db:"c_text" json:"c_text"`
-	CTextN     *string              `db:"c_textn" json:"c_textn"`
-	CTextA     []string             `db:"c_texta" json:"c_texta"`
+	CBool      bool               `db:"c_bool" json:"c_bool"`
+	CBoolN     *bool              `db:"c_booln" json:"c_booln"`
+	CBoolA     []bool             `db:"c_boola" json:"c_boola"` // array types: if zero, must be set to empty array if db col is not null
+	CInt       int64              `db:"c_int" json:"c_int"`
+	CIntN      *int64             `db:"c_intn" json:"c_intn"`
+	CIntA      []int64            `db:"c_inta" json:"c_inta"`
+	CDouble    float32            `db:"c_double" json:"c_double"`
+	CDoubleN   *float32           `db:"c_doublen" json:"c_doublen"`
+	CDoubleA   []float32          `db:"c_doublea" json:"c_doublea"`
+	CNumeric   float32            `db:"c_numeric" json:"c_numeric"`
+	CNumericN  *float32           `db:"c_numericn" json:"c_numericn"`
+	CNumericA  []float32          `db:"c_numerica" json:"c_numerica"`
+	CDate      lystype.Date       `db:"c_date" json:"c_date"`
+	CDateN     *lystype.Date      `db:"c_daten" json:"c_daten"`
+	CDateA     []lystype.Date     `db:"c_datea" json:"c_datea"`
+	CTime      lystype.Time       `db:"c_time" json:"c_time"`
+	CTimeN     *lystype.Time      `db:"c_timen" json:"c_timen"`
+	CTimeA     []lystype.Time     `db:"c_timea" json:"c_timea"`
+	CDatetime  lystype.Datetime   `db:"c_datetime" json:"c_datetime"`
+	CDatetimeN *lystype.Datetime  `db:"c_datetimen" json:"c_datetimen"`
+	CDatetimeA []lystype.Datetime `db:"c_datetimea" json:"c_datetimea"`
+	CEnum      string             `db:"c_enum" json:"c_enum"` // enum has no zero value: must be set
+	CEnumN     *string            `db:"c_enumn" json:"c_enumn"`
+	CEnumA     []string           `db:"c_enuma" json:"c_enuma"`
+	CText      string             `db:"c_text" json:"c_text"`
+	CTextN     *string            `db:"c_textn" json:"c_textn"`
+	CTextA     []string           `db:"c_texta" json:"c_texta"`
 }
 
 type Model struct {
@@ -55,9 +54,9 @@ func GetEmptyInput() (input Input) {
 		CIntA:      []int64{},
 		CDoubleA:   []float32{},
 		CNumericA:  []float32{},
-		CDateA:     []pgtype.Date{},
-		CTimeA:     []pgtype.Time{},
-		CDatetimeA: []pgtype.Timestamptz{},
+		CDateA:     []lystype.Date{},
+		CTimeA:     []lystype.Time{},
+		CDatetimeA: []lystype.Datetime{},
 		CEnum:      "Monday",
 		CEnumA:     []string{},
 		CTextA:     []string{},
@@ -115,15 +114,15 @@ func GetFilledInput() (input Input, err error) {
 
 		CDate:  lystype.Date(d1),
 		CDateN: lystype.ToPtr(lystype.Date(d2)),
-		CDateA: []pgtype.Date{}, // TODO
+		CDateA: []lystype.Date{lystype.Date(d1), lystype.Date(d2)},
 
 		CTime:  lystype.Time(t1),
 		CTimeN: lystype.ToPtr(lystype.Time(t2)),
-		CTimeA: []pgtype.Time{}, // TODO
+		CTimeA: []lystype.Time{lystype.Time(t1), lystype.Time(t2)},
 
 		CDatetime:  lystype.Datetime(dt1),
 		CDatetimeN: lystype.ToPtr(lystype.Datetime(dt2)),
-		CDatetimeA: []pgtype.Timestamptz{}, // TODO
+		CDatetimeA: []lystype.Datetime{lystype.Datetime(dt1), lystype.Datetime(dt2)},
 
 		CEnum:  "Monday",
 		CEnumN: lystype.ToPtr("Tuesday"),
@@ -206,19 +205,19 @@ func TestEmptyInput(t testing.TB, item Input) {
 	// date
 	assert.EqualValues(t, lystype.Date{}, item.CDate, "CDate")
 	assert.EqualValues(t, (*lystype.Date)(nil), item.CDateN, "CDateN")
-	// TODO item.CDateA
+	assert.EqualValues(t, []lystype.Date{}, item.CDateA, "CDateA")
 
 	// time
 	t1 := mustParseTime(t, lystype.TimeFormat, "00:00")
 	assert.EqualValues(t, t1, item.CTime, "CTime")
 	assert.EqualValues(t, (*lystype.Time)(nil), item.CTimeN, "CTimeN")
-	// TODO item.CTimeA
+	assert.EqualValues(t, []lystype.Time{}, item.CTimeA, "CTimeA")
 
 	// datetime
 	dt1 := mustParseTime(t, lystype.DatetimeFormat, "0001-01-01 12:00:00+00")
 	assert.EqualValues(t, dt1.Format(lystype.DateFormat), item.CDatetime.Format(lystype.DateFormat), "CDatetime")
 	assert.EqualValues(t, (*lystype.Datetime)(nil), item.CDatetimeN, "CDatetimeN")
-	// TODO item.CDatetimeA
+	assert.EqualValues(t, []lystype.Datetime{}, item.CDatetimeA, "CDatetimeA")
 
 	// enum
 	assert.EqualValues(t, "Monday", item.CEnum, "CEnum")
@@ -270,21 +269,21 @@ func TestFilledInput(t testing.TB, item Input) {
 	d2 := mustParseTime(t, lystype.DateFormat, "2002-03-04")
 	assert.EqualValues(t, lystype.Date(d1), item.CDate, "CDate")
 	assert.EqualValues(t, lystype.Date(d2), *item.CDateN, "CDateN")
-	// TODO item.CDateA
+	assert.EqualValues(t, []lystype.Date{lystype.Date(d1), lystype.Date(d2)}, item.CDateA, "CDateA")
 
 	// time
 	t1 := mustParseTime(t, lystype.TimeFormat, "12:01")
 	t2 := mustParseTime(t, lystype.TimeFormat, "12:02")
 	assert.EqualValues(t, lystype.Time(t1), item.CTime, "CTime")
 	assert.EqualValues(t, lystype.Time(t2), *item.CTimeN, "CTimeN")
-	// TODO item.CTimeA
+	assert.EqualValues(t, []lystype.Time{lystype.Time(t1), lystype.Time(t2)}, item.CTimeA, "CTimeA")
 
 	// datetime
 	dt1 := mustParseTime(t, lystype.DatetimeFormat, "2001-02-03 12:01:00+01")
 	dt2 := mustParseTime(t, lystype.DatetimeFormat, "2002-03-04 12:02:00+01")
 	assert.EqualValues(t, lystype.Datetime(dt1), item.CDatetime, "CDatetime")
 	assert.EqualValues(t, lystype.Datetime(dt2), *item.CDatetimeN, "CDatetimeN")
-	// TODO item.CDatetimeA
+	assert.EqualValues(t, []lystype.Datetime{lystype.Datetime(dt1), lystype.Datetime(dt2)}, item.CDatetimeA, "CDatetimeA")
 
 	// enum
 	assert.EqualValues(t, "Monday", item.CEnum, "CEnum")
