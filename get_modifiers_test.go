@@ -13,13 +13,21 @@ func TestExtractFieldsSuccess(t *testing.T) {
 	validJsonFields := []string{"a", "b", "c"}
 	fieldsReqParamName := "xfields"
 
-	// with fields param
+	// with inclusion fields param
 	r := mustCreateGetReq(t, "/test?xfields=a,b")
 	fields, err := ExtractFields(r, validJsonFields, fieldsReqParamName)
 	if err != nil {
 		t.Errorf("ExtractFields failed: %v", err)
 	}
-	assert.EqualValues(t, []string{"a", "b"}, fields)
+	assert.EqualValues(t, []string{"a", "b"}, fields, "inclusion")
+
+	// with exclusion fields param
+	r = mustCreateGetReq(t, "/test?xfields=-a,b")
+	fields, err = ExtractFields(r, validJsonFields, fieldsReqParamName)
+	if err != nil {
+		t.Errorf("ExtractFields failed: %v", err)
+	}
+	assert.EqualValues(t, []string{"c"}, fields, "exclusion")
 
 	// without fields param (use default)
 	r = mustCreateGetReq(t, "/test")
@@ -27,7 +35,7 @@ func TestExtractFieldsSuccess(t *testing.T) {
 	if err != nil {
 		t.Errorf("ExtractFields failed: %v", err)
 	}
-	assert.EqualValues(t, validJsonFields, fields)
+	assert.EqualValues(t, validJsonFields, fields, "default")
 }
 
 func TestExtractFieldsFailure(t *testing.T) {
@@ -35,10 +43,20 @@ func TestExtractFieldsFailure(t *testing.T) {
 	validJsonFields := []string{"a", "b"}
 	fieldsReqParamName := "xfields"
 
-	// invalid param value
+	// inclusion: invalid param value
 	r := mustCreateGetReq(t, "/test?xfields=c")
 	_, err := ExtractFields(r, validJsonFields, fieldsReqParamName)
-	assert.EqualValues(t, "xfields param value is invalid: c", err.Error())
+	assert.EqualValues(t, "xfields param value is invalid: c", err.Error(), "inclusion: invalid param value")
+
+	// exclusion: invalid param value
+	r = mustCreateGetReq(t, "/test?xfields=-c")
+	_, err = ExtractFields(r, validJsonFields, fieldsReqParamName)
+	assert.EqualValues(t, "xfields param value is invalid: c", err.Error(), "exclusion: invalid param value")
+
+	// exclusion: wrong usage
+	r = mustCreateGetReq(t, "/test?xfields=-a,-b")
+	_, err = ExtractFields(r, validJsonFields, fieldsReqParamName)
+	assert.EqualValues(t, "xfields param value is invalid: -b", err.Error(), "exclusion: wrong usage")
 }
 
 func TestExtractFiltersOptionsSuccess(t *testing.T) {

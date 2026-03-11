@@ -109,8 +109,11 @@ func ExtractFormat(r *http.Request, formatReqParamName string) (format string, e
 // ExtractFields returns a slice of strings parsed from the request's fields param
 func ExtractFields(r *http.Request, validJsonFields []string, fieldsReqParamName string) (fields []string, err error) {
 
-	// fieldsReqParamName: e.g. "xfields"
-	// example: &xfields=id,name
+	/*
+	  fieldsReqParamName: e.g. "xfields"
+	  inclusion example: &xfields=id,name
+	  exclusion example: &xfields=-id,name
+	*/
 
 	// see if fields GET param exists
 	fieldsRaw := r.FormValue(fieldsReqParamName)
@@ -120,24 +123,38 @@ func ExtractFields(r *http.Request, validJsonFields []string, fieldsReqParamName
 		return validJsonFields, nil
 	}
 
+	// check for inclusion or exclusion
+	inclusion := true
+	if fieldsRaw[:1] == "-" {
+		inclusion = false
+		fieldsRaw = fieldsRaw[1:]
+	}
+
 	// ensure correct format and valid fields
 
 	// split by comma
 	fieldVals := strings.Split(fieldsRaw, ",")
 
-	fields = make([]string, len(fieldVals))
-
 	// for each field val
-	for i, v := range fieldVals {
+	for _, v := range fieldVals {
 
 		// ensure value is a valid json field
 		if !slices.Contains(validJsonFields, v) {
 			return nil, lyserr.User{
 				Message: fieldsReqParamName + " param value is invalid: " + v}
 		}
+	}
 
-		// add field
-		fields[i] = v
+	// if inclusion, fields are the fieldVals
+	if inclusion {
+		return fieldVals, nil
+	}
+
+	// exclusion: fields are all validJsonFields that are not in fieldVals
+	for _, f := range validJsonFields {
+		if !slices.Contains(fieldVals, f) {
+			fields = append(fields, f)
+		}
 	}
 
 	return fields, nil
