@@ -13,6 +13,12 @@ import (
 // CheckDDL checks the DDL integrity of the database. It should be run after schema updates and also periodically
 func CheckDDL(ctx context.Context, ownerDb *pgxpool.Pool, infoLog, errorLog *slog.Logger) (err error) {
 
+	// add any missing audit_update triggers
+	err = AddMissingAuditUpdateTriggers(ctx, ownerDb, infoLog)
+	if err != nil {
+		return fmt.Errorf("AddMissingAuditUpdateTriggers failed: %w", err)
+	}
+
 	// add any missing updated_at triggers
 	err = AddMissingUpdatedAtTriggers(ctx, ownerDb, infoLog)
 	if err != nil {
@@ -40,6 +46,44 @@ func CheckDDL(ctx context.Context, ownerDb *pgxpool.Pool, infoLog, errorLog *slo
 	return nil
 }
 
+// AddMissingAuditUpdateTriggers adds missing audit update triggers for all tables returned by v_missing_audit_update_trigger
+func AddMissingAuditUpdateTriggers(ctx context.Context, ownerDb *pgxpool.Pool, infoLog *slog.Logger) (err error) {
+
+	type missingTrigger struct {
+		TableSchema string `db:"table_schema"`
+		TableName   string `db:"table_name"`
+	}
+
+	// select tables with a "_data_update" view that are missing the trigger
+	stmt := "SELECT table_schema, table_name FROM lyspgmon.v_missing_audit_update_trigger;"
+	rows, _ := ownerDb.Query(ctx, stmt)
+	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[missingTrigger])
+	if err != nil {
+		return lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
+	}
+
+	// exit if none found
+	if len(items) == 0 {
+		return nil
+	}
+
+	// for each table
+	for _, item := range items {
+
+		// create the trigger
+		stmt = fmt.Sprintf("CREATE TRIGGER t_audit_update AFTER UPDATE ON %s.%s FOR EACH ROW EXECUTE PROCEDURE system.update_trigger();",
+			item.TableSchema, item.TableName)
+		_, err = ownerDb.Exec(ctx, stmt)
+		if err != nil {
+			return lyserr.Db{Err: fmt.Errorf("ownerDb.Exec failed on %s.%s: %w", item.TableSchema, item.TableName, err), Stmt: stmt}
+		}
+
+		infoLog.Info("created audit_update trigger", slog.String("schema", item.TableSchema), slog.String("table", item.TableName))
+	}
+
+	return nil
+}
+
 // AddMissingUpdatedAtTriggers adds missing updated_at triggers for all tables returned by v_missing_updated_at_trigger
 func AddMissingUpdatedAtTriggers(ctx context.Context, ownerDb *pgxpool.Pool, infoLog *slog.Logger) (err error) {
 
@@ -48,7 +92,7 @@ func AddMissingUpdatedAtTriggers(ctx context.Context, ownerDb *pgxpool.Pool, inf
 		TableName   string `db:"table_name"`
 	}
 
-	// select tables missing the trigger
+	// select tables with an updated_at column that are missing the trigger
 	stmt := "SELECT table_schema, table_name FROM lyspgmon.v_missing_updated_at_trigger;"
 	rows, _ := ownerDb.Query(ctx, stmt)
 	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[missingTrigger])

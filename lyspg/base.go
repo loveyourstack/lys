@@ -54,8 +54,8 @@ const MaxStmtPrintChars int = 5000
 // PoolOrTx is an abstraction of a pgx connection pool or transaction, e.g. pgxpool.Pool, pgx.Conn or pgx.Tx
 // adapted from Querier in https://github.com/georgysavva/scany/blob/master/pgxscan/pgxscan.go
 type PoolOrTx interface {
-	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	CopyFrom(ctx context.Context, tableName pgx.Identifier, columnNames []string, rowSrc pgx.CopyFromSource) (int64, error)
+	Exec(ctx context.Context, sql string, arguments ...any) (pgconn.CommandTag, error)
 	Query(ctx context.Context, query string, args ...any) (pgx.Rows, error)
 	QueryRow(ctx context.Context, sql string, args ...any) pgx.Row
 	SendBatch(ctx context.Context, b *pgx.Batch) (br pgx.BatchResults)
