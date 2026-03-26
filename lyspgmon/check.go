@@ -54,7 +54,7 @@ func AddMissingAuditUpdateTriggers(ctx context.Context, ownerDb *pgxpool.Pool, i
 		TableName   string `db:"table_name"`
 	}
 
-	// select tables with a "_data_update" view that are missing the trigger
+	// select tables with a "last_user_update_by" column that are missing the trigger
 	stmt := "SELECT table_schema, table_name FROM lyspgmon.v_missing_audit_update_trigger;"
 	rows, _ := ownerDb.Query(ctx, stmt)
 	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[missingTrigger])
