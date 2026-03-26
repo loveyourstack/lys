@@ -10,8 +10,8 @@ import (
 	"github.com/loveyourstack/lys/lyserr"
 )
 
-// CheckDDL checks the DDL integrity of the database. It should be run after schema updates and also periodically
-func CheckDDL(ctx context.Context, ownerDb *pgxpool.Pool, infoLog, errorLog *slog.Logger) (err error) {
+// CheckDb checks the integrity of the database. It should be run after schema updates and also periodically
+func CheckDb(ctx context.Context, ownerDb *pgxpool.Pool, infoLog, errorLog *slog.Logger) (err error) {
 
 	// add any missing audit_update triggers
 	err = AddMissingAuditUpdateTriggers(ctx, ownerDb, infoLog)
@@ -71,7 +71,7 @@ func AddMissingAuditUpdateTriggers(ctx context.Context, ownerDb *pgxpool.Pool, i
 	for _, item := range items {
 
 		// create the trigger
-		stmt = fmt.Sprintf("CREATE TRIGGER t_audit_update AFTER UPDATE ON %s.%s FOR EACH ROW EXECUTE PROCEDURE system.update_trigger();",
+		stmt = fmt.Sprintf("CREATE TRIGGER t_audit_update AFTER UPDATE ON %s.%s FOR EACH ROW EXECUTE PROCEDURE lyspgmon.audit_update_trigger();",
 			item.TableSchema, item.TableName)
 		_, err = ownerDb.Exec(ctx, stmt)
 		if err != nil {
@@ -109,7 +109,7 @@ func AddMissingUpdatedAtTriggers(ctx context.Context, ownerDb *pgxpool.Pool, inf
 	for _, item := range items {
 
 		// create the trigger
-		stmt = fmt.Sprintf("CREATE TRIGGER t_set_updated_at BEFORE UPDATE ON %s.%s FOR EACH ROW EXECUTE PROCEDURE system.set_updated_at();",
+		stmt = fmt.Sprintf("CREATE TRIGGER t_set_updated_at BEFORE UPDATE ON %s.%s FOR EACH ROW EXECUTE PROCEDURE lyspgmon.set_updated_at();",
 			item.TableSchema, item.TableName)
 		_, err = ownerDb.Exec(ctx, stmt)
 		if err != nil {

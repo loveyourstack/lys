@@ -15,6 +15,7 @@ import (
 const schemaName string = "lyspgmon"
 
 // Install creates the lyspgmon schema in the database if it is not already present, and (re)-adds the monitoring views in the lyspgmonddl folder
+// note that local permissions need to be granted to lyspgmon schema and objects after installation
 func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, infoLog *slog.Logger) (err error) {
 
 	// create schema if needed
