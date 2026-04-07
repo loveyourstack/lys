@@ -17,7 +17,7 @@ const (
 	tableName      string = "audit_update"
 	viewName       string = "audit_update"
 	pkColName      string = "id"
-	defaultOrderBy string = "id"
+	defaultOrderBy string = "affected_at DESC"
 )
 
 // No input: records are created by t_audit_update trigger
