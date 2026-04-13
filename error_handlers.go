@@ -22,7 +22,7 @@ func HandleInternalError(ctx context.Context, err error, errorLog *slog.Logger, 
 	}
 	JsonResponse(resp, http.StatusInternalServerError, w)
 
-	userName := GetUserNameFromCtx(ctx, "Unknown")
+	userName := GetUserNameFromCtx(ctx)
 	errorLog.Error(err.Error(), slog.String("user", userName))
 }
 
@@ -49,7 +49,7 @@ func HandleExtError(ctx context.Context, extMessage string, err error, errorLog 
 	}
 	JsonResponse(resp, http.StatusInternalServerError, w)
 
-	userName := GetUserNameFromCtx(ctx, "Unknown")
+	userName := GetUserNameFromCtx(ctx)
 	errorLog.Error(err.Error(), slog.String("user", userName))
 }
 
@@ -109,7 +109,7 @@ func HandleDbError(ctx context.Context, line int, stmt string, err error, errorL
 	}
 	JsonResponse(resp, http.StatusInternalServerError, w)
 
-	userName := GetUserNameFromCtx(ctx, "Unknown")
+	userName := GetUserNameFromCtx(ctx)
 
 	if line > 0 {
 		errorLog.Error(err.Error(), slog.String("user", userName), slog.Int("line", line), slog.String("stmt", stmt))
