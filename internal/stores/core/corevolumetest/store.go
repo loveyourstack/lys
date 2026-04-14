@@ -39,11 +39,11 @@ var (
 
 func init() {
 	var err error
-	meta, err = lysmeta.AnalyzeStructs(reflect.ValueOf(&Input{}).Elem(), reflect.ValueOf(&Model{}).Elem())
+	meta, err = lysmeta.AnalyzeStruct(reflect.ValueOf(&Model{}).Elem())
 	if err != nil {
-		log.Fatalf("lysmeta.AnalyzeStructs failed for %s.%s: %s", schemaName, tableName, err.Error())
+		log.Fatalf("lysmeta.AnalyzeStruct failed for %s.%s: %s", schemaName, tableName, err.Error())
 	}
-	inputMeta, _ = lysmeta.AnalyzeStructs(reflect.ValueOf(&Input{}).Elem())
+	inputMeta, _ = lysmeta.AnalyzeStruct(reflect.ValueOf(&Input{}).Elem())
 }
 
 type Store struct {

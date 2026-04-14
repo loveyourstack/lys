@@ -30,9 +30,9 @@ var (
 
 func init() {
 	var err error
-	meta, err = lysmeta.AnalyzeStructs(reflect.ValueOf(&corearchivetestm.Input{}).Elem(), reflect.ValueOf(&corearchivetestm.Model{}).Elem())
+	meta, err = lysmeta.AnalyzeStruct(reflect.ValueOf(&corearchivetestm.Model{}).Elem())
 	if err != nil {
-		log.Fatalf("lysmeta.AnalyzeStructs failed for %s.%s: %s", schemaName, tableName, err.Error())
+		log.Fatalf("lysmeta.AnalyzeStruct failed for %s.%s: %s", schemaName, tableName, err.Error())
 	}
 }
 

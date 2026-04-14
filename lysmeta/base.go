@@ -2,6 +2,7 @@ package lysmeta
 
 import (
 	"fmt"
+	"maps"
 	"reflect"
 	"strings"
 )
@@ -13,47 +14,22 @@ type Result struct {
 	JsonTagTypeMap map[string]string // a map of [json tag]type name
 }
 
-// AnalyzeStructs reflects the supplied struct(s) and returns a Result
-// checks for duplicate db and json tags
-func AnalyzeStructs(reflVals ...reflect.Value) (res Result, err error) {
-
-	res.JsonTagTypeMap = make(map[string]string)
+// AnalyzeStruct reflects the supplied struct and returns a Result.
+// It recursively analyzes embedded and named structs if they have db or json tags.
+// It checks for duplicate db and json tags across the entire struct hierarchy.
+func AnalyzeStruct(reflVal reflect.Value) (res Result, err error) {
 
 	// use maps to help with duplication checks
 	dbTagMap := make(map[string]int)
 	jsonTagMap := make(map[string]int)
 
-	// for each struct passed
-	for _, reflVal := range reflVals {
-
-		reflType := reflVal.Type()
-
-		// for each struct field
-		for i := 0; i < reflVal.NumField(); i++ {
-
-			// get the whole tag string
-			structTag := reflType.Field(i).Tag
-
-			// get "db" tag if set
-			dbTag := structTag.Get("db")
-			if dbTag != "" && dbTag != "-" {
-				res.DbTags = append(res.DbTags, dbTag)
-				dbTagMap[dbTag]++
-			}
-
-			// get "json" tag if set, but strip out omitempty and omitzero
-			jsonTag := strings.ReplaceAll(structTag.Get("json"), ",omitempty", "")
-			jsonTag = strings.ReplaceAll(jsonTag, ",omitzero", "")
-			if jsonTag != "" && jsonTag != "-" {
-				res.JsonTags = append(res.JsonTags, jsonTag)
-				jsonTagMap[jsonTag]++
-
-				res.JsonTagTypeMap[jsonTag] = fmt.Sprintf("%v", reflType.Field(i).Type)
-			}
-
-		} // next field
-
-	} // next struct
+	res = getStructResult(reflVal)
+	for _, dbTag := range res.DbTags {
+		dbTagMap[dbTag]++
+	}
+	for _, jsonTag := range res.JsonTags {
+		jsonTagMap[jsonTag]++
+	}
 
 	// check for dups
 	errA := []string{}
@@ -74,4 +50,70 @@ func AnalyzeStructs(reflVals ...reflect.Value) (res Result, err error) {
 	}
 
 	return res, nil
+}
+
+func getStructResult(reflVal reflect.Value) (res Result) {
+
+	res.JsonTagTypeMap = make(map[string]string)
+
+	reflType := reflVal.Type()
+
+	// for each struct field
+	for i := 0; i < reflVal.NumField(); i++ {
+
+		field := reflType.Field(i)
+
+		// if this field is a struct (embedded or named) and has db or json tags (omits structs like time.Time that would cause a panic)
+		if field.Type.Kind() == reflect.Struct && HasDbOrJsonTags(field.Type) {
+
+			// recurse into it
+			innerRes := getStructResult(reflVal.Field(i))
+
+			for _, v := range innerRes.DbTags {
+				res.DbTags = append(res.DbTags, v)
+			}
+			for _, v := range innerRes.JsonTags {
+				res.JsonTags = append(res.JsonTags, v)
+			}
+			maps.Copy(res.JsonTagTypeMap, innerRes.JsonTagTypeMap)
+
+			continue
+		}
+
+		// get the whole tag string
+		structTag := field.Tag
+
+		// get "db" tag if set
+		dbTag := structTag.Get("db")
+		if dbTag != "" && dbTag != "-" {
+			res.DbTags = append(res.DbTags, dbTag)
+		}
+
+		// get "json" tag if set, but strip out omitempty and omitzero
+		jsonTag := strings.ReplaceAll(structTag.Get("json"), ",omitempty", "")
+		jsonTag = strings.ReplaceAll(jsonTag, ",omitzero", "")
+		if jsonTag != "" && jsonTag != "-" {
+			res.JsonTags = append(res.JsonTags, jsonTag)
+
+			res.JsonTagTypeMap[jsonTag] = fmt.Sprintf("%v", field.Type)
+		}
+
+	} // next field
+
+	return res
+}
+
+func HasDbOrJsonTags(reflType reflect.Type) bool {
+
+	for i := 0; i < reflType.NumField(); i++ {
+		field := reflType.Field(i)
+		structTag := field.Tag
+		dbTag := structTag.Get("db")
+		jsonTag := structTag.Get("json")
+		if (dbTag != "" && dbTag != "-") || (jsonTag != "" && jsonTag != "-") {
+			return true
+		}
+	}
+
+	return false
 }

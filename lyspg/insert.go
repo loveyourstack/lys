@@ -29,9 +29,9 @@ func Insert[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sc
 
 	// get input db struct tags
 	inputReflVals := reflect.ValueOf(input)
-	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
+	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
 	if err != nil {
-		return newPk, fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
+		return newPk, fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
 	}
 
 	if len(meta.DbTags) == 0 {
@@ -56,9 +56,9 @@ func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schem
 
 	// get input db struct tags
 	inputReflVals := reflect.ValueOf(input)
-	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
+	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
 	if err != nil {
-		return newItem, fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
+		return newItem, fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
 	}
 
 	if len(meta.DbTags) == 0 {
@@ -76,4 +76,16 @@ func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schem
 	}
 
 	return SelectUnique[itemT](ctx, db, schemaName, viewName, pkColName, newPk)
+}
+
+// InsertWithCreatedBy is a wrapper for Insert that adds a created_by field to the input struct and sets it to the supplied createdBy value
+func InsertWithCreatedBy[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input inputT, createdBy string) (newPk pkT, err error) {
+	type inputWithCreatedBy struct {
+		Input     inputT
+		CreatedBy string `db:"created_by"`
+	}
+	var inputCb inputWithCreatedBy
+	inputCb.Input = input
+	inputCb.CreatedBy = createdBy
+	return Insert[inputWithCreatedBy, pkT](ctx, db, schemaName, tableName, pkColName, inputCb)
 }

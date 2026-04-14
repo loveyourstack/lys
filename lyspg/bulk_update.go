@@ -27,9 +27,9 @@ func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sch
 
 	// get columns to update by reflecting the first input T
 	inputReflVals := reflect.ValueOf(inputs[0])
-	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
+	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
 	if err != nil {
-		return fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
+		return fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
 	}
 	if len(meta.DbTags) == 0 {
 		return fmt.Errorf("input type does not have db tags")

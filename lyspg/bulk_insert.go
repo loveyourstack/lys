@@ -21,9 +21,9 @@ func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName s
 
 	// get db tags of first input
 	inputReflVals := reflect.ValueOf(inputs[0])
-	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
+	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
 	if err != nil {
-		return 0, fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
+		return 0, fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
 	}
 	if len(meta.DbTags) == 0 {
 		return 0, fmt.Errorf("input type does not have db tags")
@@ -52,9 +52,9 @@ func bulkInsertWithoutReflection(ctx context.Context, db PoolOrTx, inputs []core
 
 	// get db tags of first input
 	inputReflVals := reflect.ValueOf(inputs[0])
-	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
+	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
 	if err != nil {
-		return 0, fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
+		return 0, fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
 	}
 	if len(meta.DbTags) == 0 {
 		return 0, fmt.Errorf("input type does not have db tags")

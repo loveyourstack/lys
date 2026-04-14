@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/loveyourstack/lys/lysmeta"
 	"github.com/loveyourstack/lys/lystype"
 	"golang.org/x/exp/constraints"
 )
@@ -74,6 +75,8 @@ func getInputValsFromStruct(reflVal reflect.Value, omitDbTags []string) (inputVa
 	// for each struct field
 	for i := 0; i < reflVal.NumField(); i++ {
 
+		field := reflType.Field(i)
+
 		// if there are omissions
 		if len(omitDbTags) > 0 {
 
@@ -88,10 +91,19 @@ func getInputValsFromStruct(reflVal reflect.Value, omitDbTags []string) (inputVa
 			}
 		}
 
-		//fmt.Printf("Index: %d\tName: %s\tType: %s\tValue: %v\n", reflType.Field(i).Index[0], reflType.Field(i).Name, reflType.Field(i).Type, reflVal.Field(i))
+		// if this field is a struct (embedded or named) and has db or json tags (omits structs like time.Time that would cause a panic due to unexported fields)
+		if field.Type.Kind() == reflect.Struct && lysmeta.HasDbOrJsonTags(field.Type) {
+
+			// recurse into it
+			innerInputVals := getInputValsFromStruct(reflVal.Field(i), omitDbTags)
+			inputVals = append(inputVals, innerInputVals...)
+			continue
+		}
+
+		//fmt.Printf("Index: %d\tName: %s\tType: %s\tValue: %v\n", field.Index[0], field.Name, field.Type, reflVal.Field(i))
 
 		// append the input value from the field value and type
-		inputVals = append(inputVals, getInputValue(reflVal.Field(i).Interface(), reflType.Field(i).Type))
+		inputVals = append(inputVals, getInputValue(reflVal.Field(i).Interface(), field.Type))
 	}
 
 	return inputVals

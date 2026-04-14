@@ -39,9 +39,9 @@ func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaN
 
 	// get columns to update by reflecting input T
 	inputReflVals := reflect.ValueOf(input)
-	meta, err := lysmeta.AnalyzeStructs(inputReflVals)
+	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
 	if err != nil {
-		return fmt.Errorf("lysmeta.AnalyzeStructs failed: %w", err)
+		return fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
 	}
 
 	// get fields to omit from the update, if any
@@ -97,4 +97,16 @@ func getUpdateFields(dbTags, omitFields []string) (updateFields []string) {
 	}
 
 	return updateFields
+}
+
+// UpdateWithLastUserBy is a wrapper for Update that adds a last_user_update_by field to the input struct and sets it to the supplied lastUserUpdateBy value
+func UpdateWithLastUserBy[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT, lastUserUpdateBy string, options ...UpdateOption) error {
+	type inputWithLastUserBy struct {
+		Input            T
+		LastUserUpdateBy string `db:"last_user_update_by"`
+	}
+	var inputLub inputWithLastUserBy
+	inputLub.Input = input
+	inputLub.LastUserUpdateBy = lastUserUpdateBy
+	return Update(ctx, db, schemaName, tableName, pkColName, inputLub, pkVal, options...)
 }
