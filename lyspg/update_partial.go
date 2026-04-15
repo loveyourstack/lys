@@ -48,3 +48,11 @@ func UpdatePartial[pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaN
 	// success
 	return nil
 }
+
+// UpdatePartialWithLastUserBy is a wrapper for UpdatePartial that adds a last_user_update_by field to the assignmentsMap and sets it to the supplied lastUserUpdateBy value
+func UpdatePartialWithLastUserBy[pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, allowedFields []string,
+	assignmentsMap map[string]any, pkVal pkT, lastUserUpdateBy string) error {
+
+	assignmentsMap["last_user_update_by"] = lastUserUpdateBy
+	return UpdatePartial(ctx, db, schemaName, tableName, pkColName, append(allowedFields, "last_user_update_by"), assignmentsMap, pkVal)
+}

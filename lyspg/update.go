@@ -100,7 +100,9 @@ func getUpdateFields(dbTags, omitFields []string) (updateFields []string) {
 }
 
 // UpdateWithLastUserBy is a wrapper for Update that adds a last_user_update_by field to the input struct and sets it to the supplied lastUserUpdateBy value
-func UpdateWithLastUserBy[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT, lastUserUpdateBy string, options ...UpdateOption) error {
+func UpdateWithLastUserBy[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT,
+	lastUserUpdateBy string, options ...UpdateOption) error {
+
 	type inputWithLastUserBy struct {
 		Input            T
 		LastUserUpdateBy string `db:"last_user_update_by"`
