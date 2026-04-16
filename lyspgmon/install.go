@@ -14,7 +14,7 @@ import (
 
 const schemaName string = "lyspgmon"
 
-// Install creates the lyspgmon schema in the database if it is not already present, and (re)-adds the monitoring views in the lyspgmonddl folder
+// Install creates the lyspgmon schema in the database if it is not already present, and (re)-adds functions and monitoring views in the lyspgmonddl folder
 // note that local permissions need to be granted to lyspgmon schema and objects after installation
 func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, infoLog *slog.Logger) (err error) {
 
@@ -24,7 +24,7 @@ func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, infoLog
 		return fmt.Errorf("createSchema failed: %w", err)
 	}
 
-	// execute all embedded views into db
+	// execute all embedded funcs and views into db
 	err = fs.WalkDir(lyspgmonddl.SQLAssets, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("unknown file err: %w", err)
