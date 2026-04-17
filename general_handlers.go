@@ -2,14 +2,11 @@ package lys
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
+	"time"
 
-	"github.com/jackc/pgerrcode"
-	"github.com/jackc/pgx/v5"
-	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/loveyourstack/lys/lyspg"
 )
 
@@ -34,42 +31,35 @@ func NotFound() http.HandlerFunc {
 	}
 }
 
-// PgSleep creates an artifical longrunning query in the db which can be viewed using pg_stat_activity
-// used for testing context cancelation
-func PgSleep(db lyspg.PoolOrTx, errorLog *slog.Logger, secs int) http.HandlerFunc {
+// PgSleep creates an artifical longrunning query in the db which can be viewed using pg_stat_activity.
+// Pass cancelAfterSecs as 0 to not cancel the request.
+// Used for testing context cancelation
+func PgSleep(db lyspg.PoolOrTx, errorLog *slog.Logger, sleepSecs, cancelAfterSecs int) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		stmt := fmt.Sprintf("SELECT pg_sleep(%d);", secs)
+		ctx := r.Context()
 
-		rows, _ := db.Query(r.Context(), stmt)
-		_, err := pgx.CollectExactlyOneRow(rows, pgx.RowTo[string])
+		if cancelAfterSecs > 0 && cancelAfterSecs < sleepSecs {
+			cancelCtx, cancel := context.WithTimeout(ctx, time.Duration(cancelAfterSecs)*time.Second)
+			ctx = cancelCtx
+			defer cancel()
+
+			go func() {
+				<-ctx.Done()
+				errorLog.Info(fmt.Sprintf("canceling sleep after %d seconds", cancelAfterSecs))
+			}()
+		}
+
+		err := lyspg.Sleep(ctx, db, sleepSecs)
 		if err != nil {
-
-			// request canceled: cancelation propagated to db via context
-			if errors.Is(err, context.Canceled) {
-				return
-			}
-
-			// db pid canceled (pg_cancel_backend(pid))
-			var pgErr *pgconn.PgError
-			if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.QueryCanceled {
-				resp := StdResponse{
-					Status:         ReqFailed,
-					ErrDescription: "process canceled in database",
-				}
-				JsonResponse(resp, http.StatusInternalServerError, w)
-				return
-			}
-
-			// unknown db error
-			HandleDbError(r.Context(), 0, stmt, fmt.Errorf("PgSleep: pgx.CollectExactlyOneRow failed: %w", err), errorLog, w)
+			HandleError(ctx, err, errorLog, w)
 			return
 		}
 
 		resp := StdResponse{
 			Status: ReqSucceeded,
-			Data:   fmt.Sprintf("slept %d seconds", secs),
+			Data:   "done",
 		}
 		JsonResponse(resp, http.StatusOK, w)
 	}

@@ -13,7 +13,7 @@ import (
 
 const (
 	DbSizePrettyStmt = "SELECT pg_size_pretty(pg_database_size(current_database()));"
-	VersionStmt      = "SELECT version();"
+	VersionStmt      = "SELECT (string_to_array(version(), ', compiled'))[1];" // omits compilation details
 )
 
 // Database holds postgres database config options
