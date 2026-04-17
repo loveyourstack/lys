@@ -14,7 +14,7 @@ func RunSimple(env Env, runFunc func(context.Context) error) http.HandlerFunc {
 		// run the func
 		err := runFunc(r.Context())
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("ProcessSimple: runFunc failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("RunSimple: runFunc failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

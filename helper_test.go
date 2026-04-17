@@ -99,6 +99,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	volTestStore := corevolumetest.Store{Db: srvApp.Db}
 	r.HandleFunc(endpoint, Get(apiEnv, volTestStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/any-10", GetSimple(apiEnv, volTestStore.Select10)).Methods("GET")
+	r.HandleFunc(endpoint+"/int-1", GetValue[int](apiEnv, srvApp.Db, "SELECT 1;")).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, volTestStore)).Methods("GET")
 	r.HandleFunc(endpoint, Post(apiEnv, volTestStore)).Methods("POST")
 	r.HandleFunc(endpoint+"/{id}", Put(apiEnv, volTestStore)).Methods("PUT")

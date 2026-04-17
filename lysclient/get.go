@@ -273,3 +273,44 @@ func MustGetItemResp(t testing.TB, h http.Handler, targetUrl string) (itemResp I
 	// success
 	return itemResp
 }
+
+// MustGetValue GETs the target Url using a test handler. It expects a single T in response and will fail on any error
+func MustGetValue[T any](t testing.TB, h http.Handler, targetUrl string) (val T) {
+
+	// create req
+	req, err := http.NewRequest("GET", targetUrl, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest failed: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// do req
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// check status code
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, rr.Code, targetUrl)
+	}
+
+	// read body
+	respBody, err := io.ReadAll(rr.Body)
+	if err != nil {
+		t.Fatalf("io.ReadAll failed: %v", err)
+	}
+
+	// unmarshal
+	var res ValueResp[T]
+	err = json.Unmarshal(respBody, &res)
+	if err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
+	}
+
+	// check status
+	if res.Status != successStatus {
+		t.Fatalf("%s", res.ErrDescription)
+	}
+
+	// success
+	return res.Data
+}
