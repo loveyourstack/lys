@@ -32,6 +32,12 @@ func GetPool(ctx context.Context, dbConfig Database, userConfig User, appName st
 		return nil, fmt.Errorf("pgxpool.New failed: %w", err)
 	}
 
+	err = db.Ping(ctx)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("db.Ping failed: %w", err)
+	}
+
 	return db, nil
 }
 
@@ -58,6 +64,12 @@ func GetPoolWithTypes(ctx context.Context, dbConfig Database, userConfig User, a
 	db, err = pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool.NewWithConfig failed: %w", err)
+	}
+
+	err = db.Ping(ctx)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("db.Ping failed: %w", err)
 	}
 
 	return db, nil
@@ -107,6 +119,12 @@ func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database
 	db, err = pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("pgxpool.NewWithConfig failed: %w", err)
+	}
+
+	err = db.Ping(ctx)
+	if err != nil {
+		db.Close()
+		return nil, fmt.Errorf("db.Ping failed: %w", err)
 	}
 
 	return db, nil
