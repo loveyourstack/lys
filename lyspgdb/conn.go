@@ -121,11 +121,7 @@ func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database
 		return nil, fmt.Errorf("pgxpool.NewWithConfig failed: %w", err)
 	}
 
-	err = db.Ping(ctx)
-	if err != nil {
-		db.Close()
-		return nil, fmt.Errorf("db.Ping failed: %w", err)
-	}
+	// don't try to ping here, it causes an infinite loop
 
 	return db, nil
 }
