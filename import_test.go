@@ -18,8 +18,7 @@ func TestImportSuccess(t *testing.T) {
 	pkColName := "id"
 
 	ctx := context.Background()
-
-	srvApp := mustGetSrvApp(t, ctx)
+	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
 	// with empty inputs
@@ -29,7 +28,7 @@ func TestImportSuccess(t *testing.T) {
 		inputs = append(inputs, input)
 	}
 
-	rowsAffected := lysclient.MustPostToValue[[]coretypetestm.Input, int64](t, srvApp.getRouter(), "POST", "/import-test/import", inputs)
+	rowsAffected := lysclient.MustPostToValue[[]coretypetestm.Input, int64](ctx, t, srvApp.getRouter(), "POST", "/import-test/import", inputs)
 	assert.EqualValues(t, 10, rowsAffected, "type test - empty")
 
 	// test last inserted value
@@ -51,7 +50,7 @@ func TestImportSuccess(t *testing.T) {
 		inputs = append(inputs, input)
 	}
 
-	rowsAffected = lysclient.MustPostToValue[[]coretypetestm.Input, int64](t, srvApp.getRouter(), "POST", "/import-test/import", inputs)
+	rowsAffected = lysclient.MustPostToValue[[]coretypetestm.Input, int64](ctx, t, srvApp.getRouter(), "POST", "/import-test/import", inputs)
 	assert.EqualValues(t, 10, rowsAffected, "type test - filled")
 
 	// test last inserted value
@@ -66,7 +65,8 @@ func TestImportSuccess(t *testing.T) {
 
 func TestImportParamsFailure(t *testing.T) {
 
-	srvApp := mustGetSrvApp(t, context.Background())
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
 	// struct with unknown field
@@ -80,22 +80,23 @@ func TestImportParamsFailure(t *testing.T) {
 	testSA = append(testSA, inputTestS)
 	testSA = append(testSA, inputTestS)
 
-	_, err := lysclient.PostArrayToValueTester[testS, int64](srvApp.getRouter(), "POST", "/import-test/import", testSA)
+	_, err := lysclient.PostArrayToValueTester[testS, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", testSA)
 	assert.EqualValues(t, "unknown field: Val", err.Error(), "unknown field")
 
 	// no inputs (nil)
-	_, err = lysclient.PostArrayToValueTester[any, int64](srvApp.getRouter(), "POST", "/import-test/import", nil)
+	_, err = lysclient.PostArrayToValueTester[any, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", nil)
 	assert.EqualValues(t, "no inputs found", err.Error(), "nil")
 
 	// no inputs (empty slice)
 	inputTTA := []coretypetestm.Input{}
-	_, err = lysclient.PostArrayToValueTester[coretypetestm.Input, int64](srvApp.getRouter(), "POST", "/import-test/import", inputTTA)
+	_, err = lysclient.PostArrayToValueTester[coretypetestm.Input, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", inputTTA)
 	assert.EqualValues(t, "no inputs found", err.Error(), "empty slice")
 }
 
 func TestImportValidationFailure(t *testing.T) {
 
-	srvApp := mustGetSrvApp(t, context.Background())
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
 	// an input fails validation
@@ -105,6 +106,6 @@ func TestImportValidationFailure(t *testing.T) {
 	input.CText = "fail" // see coreimporttest store Validate()
 	inputs = append(inputs, input)
 
-	_, err := lysclient.PostArrayToValueTester[coretypetestm.Input, int64](srvApp.getRouter(), "POST", "/import-test/import", inputs)
+	_, err := lysclient.PostArrayToValueTester[coretypetestm.Input, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", inputs)
 	assert.EqualValues(t, "line 2: CText is invalid", err.Error(), "")
 }

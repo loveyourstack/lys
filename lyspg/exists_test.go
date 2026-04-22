@@ -26,7 +26,8 @@ func mustExistsConditions(t *testing.T, db *pgxpool.Pool, schemaName, tableName,
 
 func TestExistsSuccess(t *testing.T) {
 
-	db := mustGetDb(t, context.Background())
+	ctx := context.Background()
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	// int, true
@@ -56,7 +57,8 @@ func TestExistsSuccess(t *testing.T) {
 
 func TestExistsConditionsSuccess(t *testing.T) {
 
-	db := mustGetDb(t, context.Background())
+	ctx := context.Background()
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	// AND, true
@@ -119,7 +121,7 @@ func TestExistsConditionsSuccess(t *testing.T) {
 func TestExistsConditionsFailure(t *testing.T) {
 
 	ctx := context.Background()
-	db := mustGetDb(t, ctx)
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	// invalid match string

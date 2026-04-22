@@ -10,7 +10,7 @@ import (
 	"github.com/loveyourstack/lys/lyspgdb"
 )
 
-func mustGetDb(t testing.TB, ctx context.Context) *pgxpool.Pool {
+func mustGetDb(ctx context.Context, t testing.TB) *pgxpool.Pool {
 
 	conf := lyscmd.MustGetConfig(t)
 
@@ -28,7 +28,7 @@ func mustGetDb(t testing.TB, ctx context.Context) *pgxpool.Pool {
 	return db
 }
 
-func mustTruncateTable(t testing.TB, ctx context.Context, db *pgxpool.Pool, schemaName, tableName string) {
+func mustTruncateTable(ctx context.Context, t testing.TB, db *pgxpool.Pool, schemaName, tableName string) {
 
 	_, err := db.Exec(ctx, fmt.Sprintf("TRUNCATE TABLE %s.%s;", schemaName, tableName))
 	if err != nil {

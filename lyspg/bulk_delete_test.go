@@ -17,7 +17,7 @@ func TestBulkDeleteSuccess(t *testing.T) {
 	pkColName := "id"
 
 	ctx := context.Background()
-	db := mustGetDb(t, ctx)
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	// delete existing rows, if any
@@ -83,7 +83,7 @@ func TestBulkDeleteFailure(t *testing.T) {
 	pkColName := "id"
 
 	ctx := context.Background()
-	db := mustGetDb(t, ctx)
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	// empty input slice

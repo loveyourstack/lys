@@ -112,7 +112,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	return r
 }
 
-func mustGetSrvApp(t testing.TB, ctx context.Context) *httpServerApplication {
+func mustGetSrvApp(ctx context.Context, t testing.TB) *httpServerApplication {
 
 	conf := lyscmd.MustGetConfig(t)
 

@@ -1,6 +1,7 @@
 package lysclient
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -47,12 +48,12 @@ func GetArray[T any](client http.Client, targetUrl string) (arr []T, err error) 
 }
 
 // GetArrayTester GETs the target Url using a test handler. It expects an array of T in response
-func GetArrayTester[T any](h http.Handler, targetUrl string) (arr []T, err error) {
+func GetArrayTester[T any](ctx context.Context, h http.Handler, targetUrl string) (arr []T, err error) {
 
 	// create req
-	req, err := http.NewRequest("GET", targetUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
 	if err != nil {
-		return nil, fmt.Errorf("http.NewRequest failed: %w", err)
+		return nil, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -120,12 +121,12 @@ func GetItemResp(client http.Client, targetUrl string) (itemResp ItemAResp, err 
 }
 
 // GetItemRespTester GETs the target Url using a test handler. It expects an array of items in response
-func GetItemRespTester(h http.Handler, targetUrl string) (itemResp ItemAResp, err error) {
+func GetItemRespTester(ctx context.Context, h http.Handler, targetUrl string) (itemResp ItemAResp, err error) {
 
 	// create req
-	req, err := http.NewRequest("GET", targetUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
 	if err != nil {
-		return ItemAResp{}, fmt.Errorf("http.NewRequest failed: %w", err)
+		return ItemAResp{}, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -157,12 +158,12 @@ func GetItemRespTester(h http.Handler, targetUrl string) (itemResp ItemAResp, er
 }
 
 // MustGetArray GETs the target Url using a test handler. It expects an array of T in response and will fail on any error
-func MustGetArray[T any](t testing.TB, h http.Handler, targetUrl string) (arr []T) {
+func MustGetArray[T any](ctx context.Context, t testing.TB, h http.Handler, targetUrl string) (arr []T) {
 
 	// create req
-	req, err := http.NewRequest("GET", targetUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
 	if err != nil {
-		t.Fatalf("http.NewRequest failed: %v", err)
+		t.Fatalf("http.NewRequestWithContext failed: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -198,12 +199,12 @@ func MustGetArray[T any](t testing.TB, h http.Handler, targetUrl string) (arr []
 }
 
 // MustGetFile GETs the target Url using a test handler. It expects a response with file output headers and will fail on any error
-func MustGetFile(t testing.TB, h http.Handler, targetUrl string) {
+func MustGetFile(ctx context.Context, t testing.TB, h http.Handler, targetUrl string) {
 
 	// create req
-	req, err := http.NewRequest("GET", targetUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
 	if err != nil {
-		t.Fatalf("http.NewRequest failed: %v", err)
+		t.Fatalf("http.NewRequestWithContext failed: %v", err)
 	}
 
 	// do req
@@ -235,12 +236,12 @@ func MustGetFile(t testing.TB, h http.Handler, targetUrl string) {
 }
 
 // MustGetItemResp GETs the target Url using a test handler. It expects an array of items in response and will fail on any error
-func MustGetItemResp(t testing.TB, h http.Handler, targetUrl string) (itemResp ItemAResp) {
+func MustGetItemResp(ctx context.Context, t testing.TB, h http.Handler, targetUrl string) (itemResp ItemAResp) {
 
 	// create req
-	req, err := http.NewRequest("GET", targetUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
 	if err != nil {
-		t.Fatalf("http.NewRequest failed: %v", err)
+		t.Fatalf("http.NewRequestWithContext failed: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -275,12 +276,12 @@ func MustGetItemResp(t testing.TB, h http.Handler, targetUrl string) (itemResp I
 }
 
 // MustGetValue GETs the target Url using a test handler. It expects a single T in response and will fail on any error
-func MustGetValue[T any](t testing.TB, h http.Handler, targetUrl string) (val T) {
+func MustGetValue[T any](ctx context.Context, t testing.TB, h http.Handler, targetUrl string) (val T) {
 
 	// create req
-	req, err := http.NewRequest("GET", targetUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
 	if err != nil {
-		t.Fatalf("http.NewRequest failed: %v", err)
+		t.Fatalf("http.NewRequestWithContext failed: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 

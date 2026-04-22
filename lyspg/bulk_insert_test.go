@@ -16,7 +16,7 @@ func BenchmarkBulkInsert(b *testing.B) {
 	tableName := "bulk_insert_test"
 
 	ctx := context.Background()
-	db := mustGetDb(b, ctx)
+	db := mustGetDb(ctx, b)
 	defer db.Close()
 
 	b.ResetTimer()
@@ -46,7 +46,7 @@ func BenchmarkBulkInsert(b *testing.B) {
 
 	b.StopTimer()
 
-	mustTruncateTable(b, ctx, db, schemaName, tableName)
+	mustTruncateTable(ctx, b, db, schemaName, tableName)
 }
 
 func BenchmarkBulkInsertWithoutReflection(b *testing.B) {
@@ -71,7 +71,7 @@ func BenchmarkBulkInsertWithoutReflection(b *testing.B) {
 	tableName := "bulk_insert_test"
 
 	ctx := context.Background()
-	db := mustGetDb(b, ctx)
+	db := mustGetDb(ctx, b)
 	defer db.Close()
 
 	b.ResetTimer()
@@ -101,7 +101,7 @@ func BenchmarkBulkInsertWithoutReflection(b *testing.B) {
 
 	b.StopTimer()
 
-	mustTruncateTable(b, ctx, db, schemaName, tableName)
+	mustTruncateTable(ctx, b, db, schemaName, tableName)
 }
 
 func BenchmarkGetRecsFromInputs(b *testing.B) {
@@ -136,7 +136,7 @@ func TestBulkInsertSuccess(t *testing.T) {
 	pkColName := "id"
 
 	ctx := context.Background()
-	db := mustGetDb(t, ctx)
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	// with empty inputs
@@ -193,7 +193,7 @@ func TestBulkInsertFailure(t *testing.T) {
 	tableName := "bulk_insert_test"
 
 	ctx := context.Background()
-	db := mustGetDb(t, ctx)
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	type s struct {

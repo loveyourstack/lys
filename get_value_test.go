@@ -10,11 +10,12 @@ import (
 
 func TestGetValue(t *testing.T) {
 
-	srvApp := mustGetSrvApp(t, context.Background())
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
 	// call route handled by GetValue
 	targetUrl := "/volume-test/int-1"
-	val := lysclient.MustGetValue[int](t, srvApp.getRouter(), targetUrl)
+	val := lysclient.MustGetValue[int](ctx, t, srvApp.getRouter(), targetUrl)
 	assert.EqualValues(t, 1, val)
 }

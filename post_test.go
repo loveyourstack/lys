@@ -16,12 +16,13 @@ func TestPostEmptySuccess(t *testing.T) {
 
 	// checks the result of posting a type test with as many fields missing as possible
 
-	srvApp := mustGetSrvApp(t, context.Background())
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
 	input := coretypetestm.GetEmptyInput()
-	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", input)
-	item := lysclient.MustDoToValue[coretypetestm.Model](t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
+	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](ctx, t, srvApp.getRouter(), "POST", "/type-test", input)
+	item := lysclient.MustDoToValue[coretypetestm.Model](ctx, t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
 
 	// check nullable fields are nil
 	assert.Nil(t, item.CBoolN, "CBoolN")
@@ -53,21 +54,23 @@ func TestPostFilledSuccess(t *testing.T) {
 
 	// checks the result of posting a type test with all fields entered
 
-	srvApp := mustGetSrvApp(t, context.Background())
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
 	input, err := coretypetestm.GetFilledInput()
 	if err != nil {
 		t.Fatalf("coretypetestm.GetFilledInput failed: %v", err)
 	}
-	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](t, srvApp.getRouter(), "POST", "/type-test", input)
-	item := lysclient.MustDoToValue[coretypetestm.Model](t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
+	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](ctx, t, srvApp.getRouter(), "POST", "/type-test", input)
+	item := lysclient.MustDoToValue[coretypetestm.Model](ctx, t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
 	coretypetestm.TestFilledInput(t, item.Input)
 }
 
 func TestPostFailure(t *testing.T) {
 
-	srvApp := mustGetSrvApp(t, context.Background())
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
 	// struct with unknown field
@@ -77,15 +80,15 @@ func TestPostFailure(t *testing.T) {
 	inputTestS := testS{
 		Val: "a",
 	}
-	_, err := lysclient.PostToValueTester[testS, coretypetestm.Model](srvApp.getRouter(), "POST", "/type-test", inputTestS)
+	_, err := lysclient.PostToValueTester[testS, coretypetestm.Model](ctx, srvApp.getRouter(), "POST", "/type-test", inputTestS)
 	assert.EqualValues(t, "unknown field: Val", err.Error(), "unknown field")
 
 	// nil input (fails on mandatory enum val)
-	_, err = lysclient.PostToValueTester[any, coretypetestm.Model](srvApp.getRouter(), "POST", "/type-test", nil)
+	_, err = lysclient.PostToValueTester[any, coretypetestm.Model](ctx, srvApp.getRouter(), "POST", "/type-test", nil)
 	assert.EqualValues(t, `invalid text: invalid input value for enum core.weekday: ""`, err.Error(), "nil")
 
 	// empty struct (fails on mandatory enum val)
 	inputTT := coretypetestm.Input{}
-	_, err = lysclient.PostToValueTester[coretypetestm.Input, coretypetestm.Model](srvApp.getRouter(), "POST", "/type-test", inputTT)
+	_, err = lysclient.PostToValueTester[coretypetestm.Input, coretypetestm.Model](ctx, srvApp.getRouter(), "POST", "/type-test", inputTT)
 	assert.EqualValues(t, `invalid text: invalid input value for enum core.weekday: ""`, err.Error(), "empty struct")
 }

@@ -10,11 +10,12 @@ import (
 
 func TestGetSimple(t *testing.T) {
 
-	srvApp := mustGetSrvApp(t, context.Background())
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
 	// call route handled by GetSimple
 	targetUrl := "/volume-test/any-10"
-	vals := lysclient.MustGetArray[int](t, srvApp.getRouter(), targetUrl)
+	vals := lysclient.MustGetArray[int](ctx, t, srvApp.getRouter(), targetUrl)
 	assert.EqualValues(t, 10, len(vals))
 }

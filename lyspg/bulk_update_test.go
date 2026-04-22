@@ -20,7 +20,7 @@ func TestBulkUpdateSuccess(t *testing.T) {
 	pkColName := "id"
 
 	ctx := context.Background()
-	db := mustGetDb(t, ctx)
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	// delete existing rows, if any
@@ -104,7 +104,7 @@ func TestBulkUpdateOmitFieldsSuccess(t *testing.T) {
 	pkColName := "id"
 
 	ctx := context.Background()
-	db := mustGetDb(t, ctx)
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	// insert a record
@@ -147,7 +147,7 @@ func TestBulkUpdateFailure(t *testing.T) {
 	pkColName := "id"
 
 	ctx := context.Background()
-	db := mustGetDb(t, ctx)
+	db := mustGetDb(ctx, t)
 	defer db.Close()
 
 	type s struct {

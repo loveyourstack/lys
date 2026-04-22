@@ -2,6 +2,7 @@ package lysclient
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -12,7 +13,7 @@ import (
 )
 
 // MustPostToValue sends a POST/PUT/PATCH request to targetUrl using a test handler with an inT as the body. It expects an outT in response and will fail on any error
-func MustPostToValue[inT, outT any](t testing.TB, h http.Handler, method string, targetUrl string, item inT) (val outT) {
+func MustPostToValue[inT, outT any](ctx context.Context, t testing.TB, h http.Handler, method string, targetUrl string, item inT) (val outT) {
 
 	// check method
 	if !slices.Contains([]string{"POST", "PUT", "PATCH"}, method) {
@@ -26,9 +27,9 @@ func MustPostToValue[inT, outT any](t testing.TB, h http.Handler, method string,
 	}
 
 	// create req
-	req, err := http.NewRequest(method, targetUrl, bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, method, targetUrl, bytes.NewReader(reqBody))
 	if err != nil {
-		t.Fatalf("http.NewRequest failed: %v", err)
+		t.Fatalf("http.NewRequestWithContext failed: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -58,7 +59,7 @@ func MustPostToValue[inT, outT any](t testing.TB, h http.Handler, method string,
 }
 
 // PostToValue sends a POST/PUT/PATCH request to targetUrl with an inT as the body. It expects an outT in response
-func PostToValue[inT, outT any](client http.Client, method string, targetUrl string, item inT) (val outT, err error) {
+func PostToValue[inT, outT any](ctx context.Context, client http.Client, method string, targetUrl string, item inT) (val outT, err error) {
 
 	// check method
 	if !slices.Contains([]string{"POST", "PUT", "PATCH"}, method) {
@@ -72,9 +73,9 @@ func PostToValue[inT, outT any](client http.Client, method string, targetUrl str
 	}
 
 	// create req
-	req, err := http.NewRequest(method, targetUrl, bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, method, targetUrl, bytes.NewReader(reqBody))
 	if err != nil {
-		return val, fmt.Errorf("http.NewRequest failed: %w", err)
+		return val, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -84,6 +85,11 @@ func PostToValue[inT, outT any](client http.Client, method string, targetUrl str
 		return val, fmt.Errorf("client.Do failed: %w", err)
 	}
 	defer resp.Body.Close()
+
+	// check status code
+	if resp.StatusCode != http.StatusOK {
+		return val, fmt.Errorf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, resp.StatusCode, targetUrl)
+	}
 
 	// read body
 	respBody, err := io.ReadAll(resp.Body)
@@ -107,7 +113,7 @@ func PostToValue[inT, outT any](client http.Client, method string, targetUrl str
 }
 
 // PostToValueTester sends a POST/PUT/PATCH request to targetUrl using a test handler with an inT as the body. It expects an outT in response
-func PostToValueTester[inT, outT any](h http.Handler, method string, targetUrl string, item inT) (val outT, err error) {
+func PostToValueTester[inT, outT any](ctx context.Context, h http.Handler, method string, targetUrl string, item inT) (val outT, err error) {
 
 	// check method
 	if !slices.Contains([]string{"POST", "PUT", "PATCH"}, method) {
@@ -121,9 +127,9 @@ func PostToValueTester[inT, outT any](h http.Handler, method string, targetUrl s
 	}
 
 	// create req
-	req, err := http.NewRequest(method, targetUrl, bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, method, targetUrl, bytes.NewReader(reqBody))
 	if err != nil {
-		return val, fmt.Errorf("http.NewRequest failed: %w", err)
+		return val, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -153,7 +159,7 @@ func PostToValueTester[inT, outT any](h http.Handler, method string, targetUrl s
 }
 
 // PostArrayToValueTester sends a POST/PUT/PATCH request to targetUrl using a test handler with an inT slice as the body. It expects an outT in response
-func PostArrayToValueTester[inT, outT any](h http.Handler, method string, targetUrl string, items []inT) (val outT, err error) {
+func PostArrayToValueTester[inT, outT any](ctx context.Context, h http.Handler, method string, targetUrl string, items []inT) (val outT, err error) {
 
 	// check method
 	if !slices.Contains([]string{"POST", "PUT", "PATCH"}, method) {
@@ -167,9 +173,9 @@ func PostArrayToValueTester[inT, outT any](h http.Handler, method string, target
 	}
 
 	// create req
-	req, err := http.NewRequest(method, targetUrl, bytes.NewReader(reqBody))
+	req, err := http.NewRequestWithContext(ctx, method, targetUrl, bytes.NewReader(reqBody))
 	if err != nil {
-		return val, fmt.Errorf("http.NewRequest failed: %w", err)
+		return val, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 

@@ -1,6 +1,7 @@
 package lysclient
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -10,12 +11,12 @@ import (
 )
 
 // DoToValue sends a request without a body to targetUrl. It expects a T in response
-func DoToValue[T any](client http.Client, method string, targetUrl string) (val T, err error) {
+func DoToValue[T any](ctx context.Context, client http.Client, method string, targetUrl string) (val T, err error) {
 
 	// create req
-	req, err := http.NewRequest(method, targetUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, method, targetUrl, nil)
 	if err != nil {
-		return val, fmt.Errorf("http.NewRequest failed: %w", err)
+		return val, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -54,12 +55,12 @@ func DoToValue[T any](client http.Client, method string, targetUrl string) (val 
 }
 
 // DoToValueTester sends a request without a body to targetUrl using a test handler. It expects a T in response
-func DoToValueTester[T any](h http.Handler, method string, targetUrl string) (val T, err error) {
+func DoToValueTester[T any](ctx context.Context, h http.Handler, method string, targetUrl string) (val T, err error) {
 
 	// create req
-	req, err := http.NewRequest(method, targetUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, method, targetUrl, nil)
 	if err != nil {
-		return val, fmt.Errorf("http.NewRequest failed: %w", err)
+		return val, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
@@ -92,12 +93,12 @@ func DoToValueTester[T any](h http.Handler, method string, targetUrl string) (va
 }
 
 // MustDoToValue sends a request without a body to targetUrl using a test handler. It expects a T in response and will fail on any error
-func MustDoToValue[T any](t testing.TB, h http.Handler, method string, targetUrl string) (val T) {
+func MustDoToValue[T any](ctx context.Context, t testing.TB, h http.Handler, method string, targetUrl string) (val T) {
 
 	// create req
-	req, err := http.NewRequest(method, targetUrl, nil)
+	req, err := http.NewRequestWithContext(ctx, method, targetUrl, nil)
 	if err != nil {
-		t.Fatalf("http.NewRequest failed: %v", err)
+		t.Fatalf("http.NewRequestWithContext failed: %v", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
 
