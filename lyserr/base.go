@@ -6,18 +6,6 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 )
 
-// User is an error that is caused by the user and should be reported back to him and not logged
-type User struct {
-	Message    string // shown to user to help him identify error
-	StatusCode int    // optional, for HTTP server: if not supplied, 400 - BadRequest will be used
-}
-
-func (e User) Error() string {
-	return e.Message
-}
-
-// ---------------
-
 // Db is an error that comes from the Postgres database. It might contain a wrapped pgx PgError.
 type Db struct {
 	Err  error
@@ -38,9 +26,9 @@ func (e Db) Unwrap() error {
 	return e.Err
 }
 
-// ---------------
+// ------------------------------------------------------------------------------------------------------------------------
 
-// Ext is an error that comes from an external API. It should be both logged, and the message shown to users
+// Ext is an error that comes from an external API. It should be both logged, and the API message shown to users, if it is relevant to them
 type Ext struct {
 	Err     error
 	Message string // user-readable message from the API
@@ -48,4 +36,16 @@ type Ext struct {
 
 func (e Ext) Error() string {
 	return e.Err.Error()
+}
+
+// ------------------------------------------------------------------------------------------------------------------------
+
+// User is an error that is caused by the user and should be reported back to him and not logged
+type User struct {
+	Message    string // shown to user to help him identify error
+	StatusCode int    // optional, for HTTP server: if not supplied, 400 - BadRequest will be used
+}
+
+func (e User) Error() string {
+	return e.Message
 }

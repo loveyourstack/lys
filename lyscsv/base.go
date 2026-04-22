@@ -15,14 +15,13 @@ import (
 // WriteItemsToFile creates a csv file from items
 // T must have json tags set. Only the fields with a json tag get written
 // jsonTagTypeMap is a map of [json tag]type name
-// if filePath exists, it gets overwritten
 func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]string, filePath string, delimiter rune) (err error) {
 
 	if len(items) == 0 {
 		return fmt.Errorf("items is empty")
 	}
 	if len(jsonTagTypeMap) == 0 {
-		return fmt.Errorf("jsonTagMap is empty")
+		return fmt.Errorf("jsonTagTypeMap is empty")
 	}
 	if filePath == "" {
 		return fmt.Errorf("filePath is mandatory")
