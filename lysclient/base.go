@@ -1,5 +1,7 @@
 package lysclient
 
+import "net/http"
+
 // structs and funcs for testing lys endpoints which return StdResponse
 
 // ArrayResp is expected when StdResponse returns an array of T
@@ -9,6 +11,7 @@ type ArrayResp[T any] struct {
 	ErrDescription string `json:"err_description"`
 }
 
+// GetMetadata contains the metadata for a GET request which returns an array of items (db records)
 type GetMetadata struct {
 	Count                 int   `json:"count"`
 	TotalCount            int64 `json:"total_count"`
@@ -31,3 +34,5 @@ type ValueResp[T any] struct {
 }
 
 const successStatus string = "succeeded"
+
+var allowedPostMethods = []string{http.MethodPost, http.MethodPut, http.MethodPatch}

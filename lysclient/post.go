@@ -16,7 +16,7 @@ import (
 func MustPostToValue[inT, outT any](ctx context.Context, t testing.TB, h http.Handler, method string, targetUrl string, item inT) (val outT) {
 
 	// check method
-	if !slices.Contains([]string{"POST", "PUT", "PATCH"}, method) {
+	if !slices.Contains(allowedPostMethods, method) {
 		t.Fatalf("invalid method: %s", method)
 	}
 
@@ -62,7 +62,7 @@ func MustPostToValue[inT, outT any](ctx context.Context, t testing.TB, h http.Ha
 func PostToValue[inT, outT any](ctx context.Context, client http.Client, method string, targetUrl string, item inT) (val outT, err error) {
 
 	// check method
-	if !slices.Contains([]string{"POST", "PUT", "PATCH"}, method) {
+	if !slices.Contains(allowedPostMethods, method) {
 		return val, fmt.Errorf("invalid method: %s", method)
 	}
 
@@ -116,7 +116,7 @@ func PostToValue[inT, outT any](ctx context.Context, client http.Client, method 
 func PostToValueTester[inT, outT any](ctx context.Context, h http.Handler, method string, targetUrl string, item inT) (val outT, err error) {
 
 	// check method
-	if !slices.Contains([]string{"POST", "PUT", "PATCH"}, method) {
+	if !slices.Contains(allowedPostMethods, method) {
 		return val, fmt.Errorf("invalid method: %s", method)
 	}
 
@@ -162,7 +162,7 @@ func PostToValueTester[inT, outT any](ctx context.Context, h http.Handler, metho
 func PostArrayToValueTester[inT, outT any](ctx context.Context, h http.Handler, method string, targetUrl string, items []inT) (val outT, err error) {
 
 	// check method
-	if !slices.Contains([]string{"POST", "PUT", "PATCH"}, method) {
+	if !slices.Contains(allowedPostMethods, method) {
 		return val, fmt.Errorf("invalid method: %s", method)
 	}
 
