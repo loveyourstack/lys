@@ -27,8 +27,9 @@ func TestAnalyzeStructSuccess(t *testing.T) {
 	res := mustAnalyzeStruct(t, reflect.ValueOf(&inner{}).Elem())
 	assert.EqualValues(t, []string{"a1"}, res.DbTags, "regular: DbTags")
 	assert.EqualValues(t, []string{"a2"}, res.JsonTags, "regular: JsonTags")
-	jttMap := make(map[string]string)
-	jttMap["a2"] = "string"
+
+	jttMap := make(map[string]reflect.Type)
+	jttMap["a2"] = reflect.TypeFor[string]()
 	assert.EqualValues(t, jttMap, res.JsonTagTypeMap, "regular: JsonTagTypeMap")
 
 	type outer struct {
@@ -40,9 +41,10 @@ func TestAnalyzeStructSuccess(t *testing.T) {
 	res = mustAnalyzeStruct(t, reflect.ValueOf(&outer{}).Elem())
 	assert.EqualValues(t, []string{"b1", "a1"}, res.DbTags, "with embedding: DbTags")
 	assert.EqualValues(t, []string{"b2", "a2"}, res.JsonTags, "with embedding: JsonTags")
-	jttMap = make(map[string]string)
-	jttMap["b2"] = "int64"
-	jttMap["a2"] = "string"
+
+	jttMap = make(map[string]reflect.Type)
+	jttMap["b2"] = reflect.TypeFor[int64]()
+	jttMap["a2"] = reflect.TypeFor[string]()
 	assert.EqualValues(t, jttMap, res.JsonTagTypeMap, "with embedding: JsonTagTypeMap")
 
 	type noTags struct {
@@ -55,6 +57,7 @@ func TestAnalyzeStructSuccess(t *testing.T) {
 	assert.EqualValues(t, 0, len(res.JsonTags), "no tags: JsonTags")
 	assert.EqualValues(t, 0, len(res.JsonTagTypeMap), "no tags: JsonTagTypeMap")
 
+	// embedding with no tags: embedded is skipped and tags are from outer only
 	type outer2 struct {
 		B int64 `db:"b1" json:"b2"`
 		noTags
@@ -64,8 +67,9 @@ func TestAnalyzeStructSuccess(t *testing.T) {
 	res = mustAnalyzeStruct(t, reflect.ValueOf(&outer2{}).Elem())
 	assert.EqualValues(t, []string{"b1"}, res.DbTags, "embedding with no tags: DbTags")
 	assert.EqualValues(t, []string{"b2"}, res.JsonTags, "embedding with no tags: JsonTags")
-	jttMap = make(map[string]string)
-	jttMap["b2"] = "int64"
+
+	jttMap = make(map[string]reflect.Type)
+	jttMap["b2"] = reflect.TypeFor[int64]()
 	assert.EqualValues(t, jttMap, res.JsonTagTypeMap, "embedding with no tags: JsonTagTypeMap")
 }
 

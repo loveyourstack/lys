@@ -4,9 +4,9 @@ import (
 	"encoding/csv"
 	"fmt"
 	"os"
+	"reflect"
 	"slices"
 	"strconv"
-	"time"
 
 	"github.com/loveyourstack/lys/lystype"
 	"golang.org/x/exp/maps"
@@ -15,7 +15,7 @@ import (
 // WriteItemsToFile creates a csv file from items
 // T must have json tags set. Only the fields with a json tag get written
 // jsonTagTypeMap is a map of [json tag]type name
-func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]string, filePath string, delimiter rune) (err error) {
+func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, filePath string, delimiter rune) (err error) {
 
 	if len(items) == 0 {
 		return fmt.Errorf("items is empty")
@@ -70,7 +70,7 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]string, filePa
 	return nil
 }
 
-func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]string) (data [][]string, err error) {
+func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type) (data [][]string, err error) {
 
 	// return 1 row per record, plus 1 for the header row
 	data = make([][]string, len(recsMap)+1)
@@ -95,10 +95,10 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]string) (dat
 
 			val := recsMap[i][key]
 
-			// use jsonTagTypeMap to call the appropriate cell.SetType func for each type
+			// use jsonTagTypeMap to call the appropriate formatting func for each type
 			switch jsonTagTypeMap[key] {
 
-			case "bool":
+			case reflect.TypeFor[bool]():
 				boolVal, ok := val.(bool)
 				if ok {
 					row[j] = strconv.FormatBool(boolVal)
@@ -106,7 +106,7 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]string) (dat
 					row[j] = ""
 				}
 
-			case "float32", "float64":
+			case reflect.TypeFor[float32](), reflect.TypeFor[float64]():
 				f64Val, ok := val.(float64)
 				if ok {
 					row[j] = strconv.FormatFloat(f64Val, 'f', -1, 64)
@@ -114,40 +114,34 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]string) (dat
 					row[j] = ""
 				}
 
-			case "int", "int32", "int64": // needs float64 fallback
-				intVal, ok := val.(int)
+			case reflect.TypeFor[int](), reflect.TypeFor[int32](), reflect.TypeFor[int64]():
+				intVal, ok := val.(int64)
 				if ok {
-					row[j] = strconv.Itoa(intVal)
+					row[j] = strconv.FormatInt(intVal, 10)
 				} else {
-					f64Val, ok := val.(float64)
-					if ok {
-						row[j] = strconv.FormatFloat(f64Val, 'f', -1, 64)
-					} else {
-						row[j] = ""
-					}
+					row[j] = ""
 				}
 
-			case "lystype.Date":
-				strVal, ok := val.(string)
+			case reflect.TypeFor[lystype.Date]():
+				timeVal, ok := val.(lystype.Date)
 				if !ok {
 					continue
-				}
-				timeVal, err := time.Parse(lystype.DateFormat, strVal)
-				if err != nil {
-					return nil, fmt.Errorf("time.Parse failed: %w", err)
 				}
 				row[j] = timeVal.Format(lystype.DateFormat)
 
-			case "lystype.Datetime":
-				strVal, ok := val.(string)
+			case reflect.TypeFor[lystype.Datetime]():
+				timeVal, ok := val.(lystype.Datetime)
 				if !ok {
 					continue
 				}
-				timeVal, err := time.Parse(lystype.DatetimeFormat, strVal)
-				if err != nil {
-					return nil, fmt.Errorf("time.Parse failed: %w", err)
-				}
 				row[j] = timeVal.Format(lystype.DatetimeFormat)
+
+			case reflect.TypeFor[lystype.Time]():
+				timeVal, ok := val.(lystype.Time)
+				if !ok {
+					continue
+				}
+				row[j] = timeVal.Format(lystype.TimeFormat)
 
 			default:
 				strVal, ok := val.(string)

@@ -2,6 +2,7 @@ package lysexcel
 
 import (
 	"fmt"
+	"reflect"
 	"slices"
 	"time"
 
@@ -15,13 +16,13 @@ import (
 // jsonTagTypeMap is a map of [json tag]type name
 // if filePath exists, it gets overwritten
 // sheetName is optional and defaults to "data"
-func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]string, filePath, sheetName string) (err error) {
+func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, filePath, sheetName string) (err error) {
 
 	if len(items) == 0 {
 		return fmt.Errorf("items is empty")
 	}
 	if len(jsonTagTypeMap) == 0 {
-		return fmt.Errorf("jsonTagMap is empty")
+		return fmt.Errorf("jsonTagTypeMap is empty")
 	}
 	if filePath == "" {
 		return fmt.Errorf("filePath is mandatory")
@@ -49,7 +50,7 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]string, filePa
 	return nil
 }
 
-func writeData(recsMap []map[string]any, jsonTagTypeMap map[string]string, sheetName string) (wb *xlsx.File, sh *xlsx.Sheet, err error) {
+func writeData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type, sheetName string) (wb *xlsx.File, sh *xlsx.Sheet, err error) {
 
 	if sheetName == "" {
 		sheetName = "data"
@@ -99,49 +100,41 @@ func writeData(recsMap []map[string]any, jsonTagTypeMap map[string]string, sheet
 			// use jsonTagTypeMap to call the appropriate cell.SetType func for each type
 			switch jsonTagTypeMap[key] {
 
-			case "bool":
+			case reflect.TypeFor[bool]():
 				boolVal, ok := val.(bool)
 				if ok {
 					cell.SetBool(boolVal)
 				}
 
-			case "float32", "float64":
+			case reflect.TypeFor[float32](), reflect.TypeFor[float64]():
 				f64Val, ok := val.(float64)
 				if ok {
 					cell.SetFloat(f64Val)
 				}
 
-			case "int", "int32", "int64": // needs float64 fallback
-				intVal, ok := val.(int)
+			case reflect.TypeFor[int](), reflect.TypeFor[int32](), reflect.TypeFor[int64]():
+				intVal, ok := val.(int64)
 				if ok {
-					cell.SetInt(intVal)
-				}
-				f64Val, ok := val.(float64)
-				if ok {
-					cell.SetFloat(f64Val)
+					cell.SetInt64(intVal)
 				}
 
-			case "lystype.Date":
-				strVal, ok := val.(string)
-				if !ok {
-					continue
+			case reflect.TypeFor[lystype.Date]():
+				timeVal, ok := val.(lystype.Date)
+				if ok {
+					cell.SetDate(time.Time(timeVal))
 				}
-				timeVal, err := time.Parse(lystype.DateFormat, strVal)
-				if err != nil {
-					return nil, nil, fmt.Errorf("time.Parse failed: %w", err)
-				}
-				cell.SetDate(timeVal)
 
-			case "lystype.Datetime":
-				strVal, ok := val.(string)
-				if !ok {
-					continue
+			case reflect.TypeFor[lystype.Datetime]():
+				timeVal, ok := val.(lystype.Datetime)
+				if ok {
+					cell.SetDateTime(time.Time(timeVal))
 				}
-				timeVal, err := time.Parse(lystype.DatetimeFormat, strVal)
-				if err != nil {
-					return nil, nil, fmt.Errorf("time.Parse failed: %w", err)
+
+			case reflect.TypeFor[lystype.Time]():
+				timeVal, ok := val.(lystype.Time)
+				if ok {
+					cell.SetString(timeVal.Format(lystype.TimeFormat))
 				}
-				cell.SetDateTime(timeVal)
 
 			default:
 				strVal, ok := val.(string)

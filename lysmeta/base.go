@@ -9,9 +9,9 @@ import (
 
 // Result contains struct metadata
 type Result struct {
-	DbTags         []string          // all combined "db" tags in the struct(s) passed
-	JsonTags       []string          // all combined "json" tags in the struct(s) passed, excluding "-"
-	JsonTagTypeMap map[string]string // a map of [json tag]type name
+	DbTags         []string                // all combined "db" tags in the struct(s) passed
+	JsonTags       []string                // all combined "json" tags in the struct(s) passed, excluding "-"
+	JsonTagTypeMap map[string]reflect.Type // a map of [json tag]type
 }
 
 // AnalyzeStruct reflects the supplied struct and returns a Result.
@@ -54,7 +54,7 @@ func AnalyzeStruct(reflVal reflect.Value) (res Result, err error) {
 
 func getStructResult(reflVal reflect.Value) (res Result) {
 
-	res.JsonTagTypeMap = make(map[string]string)
+	res.JsonTagTypeMap = make(map[string]reflect.Type)
 
 	reflType := reflVal.Type()
 
@@ -95,7 +95,7 @@ func getStructResult(reflVal reflect.Value) (res Result) {
 		if jsonTag != "" && jsonTag != "-" {
 			res.JsonTags = append(res.JsonTags, jsonTag)
 
-			res.JsonTagTypeMap[jsonTag] = fmt.Sprintf("%v", field.Type)
+			res.JsonTagTypeMap[jsonTag] = field.Type
 		}
 
 	} // next field
