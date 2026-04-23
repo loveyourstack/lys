@@ -3,6 +3,7 @@ package lyscsv
 import (
 	"encoding/csv"
 	"fmt"
+	"io"
 	"os"
 	"reflect"
 	"slices"
@@ -12,10 +13,10 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// WriteItemsToFile creates a csv file from items
-// T must have json tags set. Only the fields with a json tag get written
-// jsonTagTypeMap is a map of [json tag]type name
-func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, filePath string, delimiter rune) (err error) {
+// WriteItems writes csv data to a writer from items.
+// T must have json tags set. Only the fields with a json tag get written.
+// jsonTagTypeMap is a map of [json tag]type.
+func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, delimiter rune, w io.Writer) (err error) {
 
 	if len(items) == 0 {
 		return fmt.Errorf("items is empty")
@@ -23,11 +24,11 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, 
 	if len(jsonTagTypeMap) == 0 {
 		return fmt.Errorf("jsonTagTypeMap is empty")
 	}
-	if filePath == "" {
-		return fmt.Errorf("filePath is mandatory")
-	}
 	if delimiter == 0 {
 		return fmt.Errorf("delimiter is mandatory")
+	}
+	if w == nil {
+		return fmt.Errorf("writer is mandatory")
 	}
 
 	// convert items to []map[string]any
@@ -42,6 +43,32 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, 
 		return fmt.Errorf("getStrData failed: %w", err)
 	}
 
+	// write csv to writer
+	csvWriter := csv.NewWriter(w)
+	csvWriter.Comma = delimiter
+	for _, rec := range data {
+		if err := csvWriter.Write(rec); err != nil {
+			return fmt.Errorf("failed to write line: %s: %w", rec, err)
+		}
+	}
+	csvWriter.Flush()
+
+	if err := csvWriter.Error(); err != nil {
+		return fmt.Errorf("csv.NewWriter: flush: %w", err)
+	}
+
+	return nil
+}
+
+// WriteItemsToFile creates a csv file from items.
+// T must have json tags set. Only the fields with a json tag get written.
+// jsonTagTypeMap is a map of [json tag]type.
+func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, delimiter rune, filePath string) (err error) {
+
+	if filePath == "" {
+		return fmt.Errorf("filePath is mandatory")
+	}
+
 	// open file for writing
 	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
 	if err != nil {
@@ -53,18 +80,8 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, 
 		}
 	}()
 
-	// write file
-	w := csv.NewWriter(f)
-	w.Comma = delimiter
-	for _, rec := range data {
-		if err := w.Write(rec); err != nil {
-			return fmt.Errorf("failed to write line: %s: %w", rec, err)
-		}
-	}
-	w.Flush()
-
-	if err := w.Error(); err != nil {
-		return fmt.Errorf("csv.NewWriter: flush: %w", err)
+	if err := WriteItems(items, jsonTagTypeMap, delimiter, f); err != nil {
+		return fmt.Errorf("WriteItems failed: %w", err)
 	}
 
 	return nil
@@ -96,6 +113,7 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type
 			val := recsMap[i][key]
 
 			// use jsonTagTypeMap to call the appropriate formatting func for each type
+			// to allow for optional fields, skip values that cannot be asserted rather than returning an error
 			switch jsonTagTypeMap[key] {
 
 			case reflect.TypeFor[bool]():

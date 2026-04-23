@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 
 	"github.com/loveyourstack/lys/lyscsv"
 	"github.com/loveyourstack/lys/lysexcel"
@@ -111,27 +110,16 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 				return
 			}
 
-			// create unique temp file
-			f, err := os.CreateTemp("", store.GetName()+".*.csv")
-			if err != nil {
-				HandleInternalError(r.Context(), fmt.Errorf("Get: os.CreateTemp failed: %w", err), env.ErrorLog, w)
-				return
-			}
-			err = f.Close()
-			if err != nil {
-				HandleInternalError(r.Context(), fmt.Errorf("Get: f.Close failed: %w", err), env.ErrorLog, w)
-				return
-			}
+			// set file download headers
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.csv", store.GetName()))
 
-			// write items to temp file
-			err = lyscsv.WriteItemsToFile(items, store.GetMeta().JsonTagTypeMap, f.Name(), env.GetOptions.CsvDelimiter)
+			// stream csv to response writer
+			err = lyscsv.WriteItems(items, store.GetMeta().JsonTagTypeMap, env.GetOptions.CsvDelimiter, w)
 			if err != nil {
-				HandleInternalError(r.Context(), fmt.Errorf("Get: lyscsv.WriteItemsToFile failed: %w", err), env.ErrorLog, w)
+				HandleInternalError(r.Context(), fmt.Errorf("Get: lyscsv.WriteItems failed: %w", err), env.ErrorLog, w)
 				return
 			}
-
-			// copy file into response then remove it
-			FileResponse(f.Name(), store.GetName()+".csv", true, w)
 
 		case FormatExcel:
 
@@ -145,27 +133,16 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 				return
 			}
 
-			// create unique temp file
-			f, err := os.CreateTemp("", store.GetName()+".*.xlsx")
-			if err != nil {
-				HandleInternalError(r.Context(), fmt.Errorf("Get: os.CreateTemp failed: %w", err), env.ErrorLog, w)
-				return
-			}
-			err = f.Close()
-			if err != nil {
-				HandleInternalError(r.Context(), fmt.Errorf("Get: f.Close failed: %w", err), env.ErrorLog, w)
-				return
-			}
+			// set file download headers
+			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.xlsx", store.GetName()))
 
-			// write items to temp file as Excel workbook
-			err = lysexcel.WriteItemsToFile(items, store.GetMeta().JsonTagTypeMap, f.Name(), "")
+			// stream Excel to response writer
+			err = lysexcel.WriteItems(items, store.GetMeta().JsonTagTypeMap, "", w)
 			if err != nil {
-				HandleInternalError(r.Context(), fmt.Errorf("Get: lysexcel.WriteItemsToFile failed: %w", err), env.ErrorLog, w)
+				HandleInternalError(r.Context(), fmt.Errorf("Get: lysexcel.WriteItems failed: %w", err), env.ErrorLog, w)
 				return
 			}
-
-			// copy file into response then remove it
-			FileResponse(f.Name(), store.GetName()+".xlsx", true, w)
 
 		case FormatJson:
 

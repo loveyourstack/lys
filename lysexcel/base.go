@@ -2,6 +2,8 @@ package lysexcel
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"reflect"
 	"slices"
 	"time"
@@ -11,12 +13,11 @@ import (
 	"golang.org/x/exp/maps"
 )
 
-// WriteItemsToFile creates an Excel workbook from items
-// T must have json tags set. Only the fields with a json tag get written
-// jsonTagTypeMap is a map of [json tag]type name
-// if filePath exists, it gets overwritten
-// sheetName is optional and defaults to "data"
-func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, filePath, sheetName string) (err error) {
+// WriteItems writes an Excel workbook to a writer from items.
+// T must have json tags set. Only the fields with a json tag get written.
+// jsonTagTypeMap is a map of [json tag]type.
+// sheetName is optional and defaults to "data".
+func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, sheetName string, w io.Writer) (err error) {
 
 	if len(items) == 0 {
 		return fmt.Errorf("items is empty")
@@ -24,8 +25,8 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, 
 	if len(jsonTagTypeMap) == 0 {
 		return fmt.Errorf("jsonTagTypeMap is empty")
 	}
-	if filePath == "" {
-		return fmt.Errorf("filePath is mandatory")
+	if w == nil {
+		return fmt.Errorf("writer is mandatory")
 	}
 
 	// convert items to []map[string]any
@@ -41,10 +42,38 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, 
 	}
 	defer sh.Close()
 
-	// save workbook to disk
-	err = wb.Save(filePath)
+	// write workbook
+	err = wb.Write(w)
 	if err != nil {
-		return fmt.Errorf("wb.Save failed: %w", err)
+		return fmt.Errorf("wb.Write failed: %w", err)
+	}
+
+	return nil
+}
+
+// WriteItemsToFile creates an Excel workbook from items.
+// T must have json tags set. Only the fields with a json tag get written.
+// jsonTagTypeMap is a map of [json tag]type.
+// sheetName is optional and defaults to "data".
+func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, sheetName, filePath string) (err error) {
+
+	if filePath == "" {
+		return fmt.Errorf("filePath is mandatory")
+	}
+
+	// open file for writing
+	f, err := os.OpenFile(filePath, os.O_APPEND|os.O_WRONLY, os.ModeAppend)
+	if err != nil {
+		return fmt.Errorf("os.OpenFile failed: %w", err)
+	}
+	defer func() {
+		if err = f.Close(); err != nil {
+			fmt.Printf("f.Close failed: %s", err.Error())
+		}
+	}()
+
+	if err := WriteItems(items, jsonTagTypeMap, sheetName, f); err != nil {
+		return fmt.Errorf("WriteItems failed: %w", err)
 	}
 
 	return nil
@@ -98,6 +127,7 @@ func writeData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type,
 			val := recsMap[i][key]
 
 			// use jsonTagTypeMap to call the appropriate cell.SetType func for each type
+			// to allow for optional fields, skip values that cannot be asserted rather than returning an error
 			switch jsonTagTypeMap[key] {
 
 			case reflect.TypeFor[bool]():
