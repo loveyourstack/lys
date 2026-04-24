@@ -22,13 +22,13 @@ func Sleep(ctx context.Context, db PoolOrTx, secs int) (err error) {
 	if err != nil {
 
 		// request canceled via context. Test by starting a request then canceling it (e.g. using Postman)
-		if errors.Is(err, context.Canceled) {
+		if errors.Is(ctx.Err(), context.Canceled) || errors.Is(err, context.Canceled) {
 			fmt.Println("canceled via context")
 			return err
 		}
 
 		// deadline exceeded via context. Test by setting a context timeout
-		if errors.Is(err, context.DeadlineExceeded) {
+		if errors.Is(ctx.Err(), context.DeadlineExceeded) || errors.Is(err, context.DeadlineExceeded) {
 			fmt.Println("canceled due to context deadline exceeded")
 			return err
 		}

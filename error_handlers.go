@@ -122,7 +122,9 @@ func HandleDbError(ctx context.Context, line int, stmt string, err error, errorL
 func HandleError(ctx context.Context, err error, errorLog *slog.Logger, w http.ResponseWriter) {
 
 	// expected error: request canceled
-	if errors.Is(err, context.Canceled) {
+	// ctx.Err() checks context state directly
+	// err checks for wrapped cancellation from other errors, e.g. from db calls
+	if errors.Is(ctx.Err(), context.Canceled) || errors.Is(err, context.Canceled) {
 		return
 	}
 
