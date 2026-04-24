@@ -15,8 +15,7 @@ import (
 // BulkUpdate changes multiple records in the same table in a single pg batch. The records are identified by pkVals with the values contained in inputs
 // T must be a struct with "db" tags
 // partial success possible: if some pkVals are not found, an error will be returned containing the failed pks, but the other rows will be updated
-func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, inputs []T, pkVals []pkT,
-	options ...UpdateOption) error {
+func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, inputs []T, pkVals []pkT) error {
 
 	if len(inputs) == 0 {
 		return fmt.Errorf("len(inputs) is %v", len(inputs))
@@ -35,13 +34,7 @@ func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sch
 		return fmt.Errorf("input type does not have db tags")
 	}
 
-	// get fields to omit from the update, if any
-	omitFields := getOmitFields(options...)
-
-	// get updateFields (dbTags with omitted fields removed)
-	updateFields := getUpdateFields(meta.DbTags, omitFields)
-
-	stmt := getUpdateStmt(schemaName, tableName, pkColName, updateFields)
+	stmt := getUpdateStmt(schemaName, tableName, pkColName, meta.DbTags)
 	batch := &pgx.Batch{}
 	invalidPkVals := []pkT{}
 
@@ -50,7 +43,7 @@ func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sch
 
 		// get input values by reflecting input
 		inputReflVals := reflect.ValueOf(inputs[i])
-		inputVals := getInputValsFromStruct(inputReflVals, omitFields)
+		inputVals := getInputValsFromStruct(inputReflVals)
 
 		// add pk as final input val
 		inputVals = append(inputVals, pkVals[i])

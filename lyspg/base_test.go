@@ -17,7 +17,7 @@ func TestGetInputValsFromStruct_FlatStruct(t *testing.T) {
 	}
 
 	in := input{Name: "Alice", Age: 30}
-	vals := getInputValsFromStruct(reflect.ValueOf(in), nil)
+	vals := getInputValsFromStruct(reflect.ValueOf(in))
 
 	assert.Equal(t, 2, len(vals))
 	assert.Equal(t, "Alice", vals[0])
@@ -39,30 +39,12 @@ func TestGetInputValsFromStruct_NestedStruct(t *testing.T) {
 		Inner:     inner{Name: "Bob", Age: 25},
 		CreatedBy: "admin",
 	}
-	vals := getInputValsFromStruct(reflect.ValueOf(in), nil)
+	vals := getInputValsFromStruct(reflect.ValueOf(in))
 
 	assert.Equal(t, 3, len(vals))
 	assert.Equal(t, "Bob", vals[0])
 	assert.Equal(t, 25, vals[1])
 	assert.Equal(t, "admin", vals[2])
-}
-
-func TestGetInputValsFromStruct_OmitDbTags(t *testing.T) {
-
-	type input struct {
-		Name string `db:"name"`
-		Age  int    `db:"age"`
-		City string `db:"city"`
-	}
-
-	in := input{Name: "Carol", Age: 40, City: "Berlin"}
-
-	// omit age
-	vals := getInputValsFromStruct(reflect.ValueOf(in), []string{"age"})
-
-	assert.Equal(t, 2, len(vals))
-	assert.Equal(t, "Carol", vals[0])
-	assert.Equal(t, "Berlin", vals[1])
 }
 
 func TestGetInputValsFromStruct_LystypeDate(t *testing.T) {
@@ -76,7 +58,7 @@ func TestGetInputValsFromStruct_LystypeDate(t *testing.T) {
 	assert.NoError(t, err)
 
 	in := input{Name: "Dave", StartDt: lystype.Date(dt)}
-	vals := getInputValsFromStruct(reflect.ValueOf(in), nil)
+	vals := getInputValsFromStruct(reflect.ValueOf(in))
 
 	assert.Equal(t, 2, len(vals))
 	assert.Equal(t, "Dave", vals[0])
@@ -94,7 +76,7 @@ func TestGetInputValsFromStruct_LystypeTime(t *testing.T) {
 	assert.NoError(t, err)
 
 	in := input{Label: "morning", StartTm: lystype.Time(tm)}
-	vals := getInputValsFromStruct(reflect.ValueOf(in), nil)
+	vals := getInputValsFromStruct(reflect.ValueOf(in))
 
 	assert.Equal(t, 2, len(vals))
 	assert.Equal(t, "morning", vals[0])
@@ -112,7 +94,7 @@ func TestGetInputValsFromStruct_LystypeDatetime(t *testing.T) {
 	assert.NoError(t, err)
 
 	in := input{Label: "event", EventDt: lystype.Datetime(dt)}
-	vals := getInputValsFromStruct(reflect.ValueOf(in), nil)
+	vals := getInputValsFromStruct(reflect.ValueOf(in))
 
 	assert.Equal(t, 2, len(vals))
 	assert.Equal(t, "event", vals[0])
@@ -132,14 +114,14 @@ func TestGetInputValsFromStruct_LystypeDatePointer(t *testing.T) {
 
 	// non-nil pointer
 	in := input{Name: "Eve", StartDt: &d}
-	vals := getInputValsFromStruct(reflect.ValueOf(in), nil)
+	vals := getInputValsFromStruct(reflect.ValueOf(in))
 	assert.Equal(t, 2, len(vals))
 	assert.Equal(t, "Eve", vals[0])
 	assert.Equal(t, "2024-06-01", vals[1])
 
 	// nil pointer
 	in2 := input{Name: "Eve", StartDt: nil}
-	vals2 := getInputValsFromStruct(reflect.ValueOf(in2), nil)
+	vals2 := getInputValsFromStruct(reflect.ValueOf(in2))
 	assert.Equal(t, 2, len(vals2))
 	assert.Equal(t, "Eve", vals2[0])
 	assert.Nil(t, vals2[1])
@@ -163,7 +145,7 @@ func TestGetInputValsFromStruct_NestedWithLystype(t *testing.T) {
 		Inner:     inner{Name: "Frank", StartDt: lystype.Date(dt)},
 		CreatedBy: "system",
 	}
-	vals := getInputValsFromStruct(reflect.ValueOf(in), nil)
+	vals := getInputValsFromStruct(reflect.ValueOf(in))
 
 	assert.Equal(t, 3, len(vals))
 	assert.Equal(t, "Frank", vals[0])
@@ -171,34 +153,12 @@ func TestGetInputValsFromStruct_NestedWithLystype(t *testing.T) {
 	assert.Equal(t, "system", vals[2])
 }
 
-func TestGetInputValsFromStruct_NestedOmitDbTags(t *testing.T) {
-
-	type inner struct {
-		Name string `db:"name"`
-		Age  int    `db:"age"`
-	}
-	type outer struct {
-		Inner     inner
-		CreatedBy string `db:"created_by"`
-	}
-
-	in := outer{
-		Inner:     inner{Name: "Grace", Age: 50},
-		CreatedBy: "admin",
-	}
-	vals := getInputValsFromStruct(reflect.ValueOf(in), []string{"age"})
-
-	assert.Equal(t, 2, len(vals))
-	assert.Equal(t, "Grace", vals[0])
-	assert.Equal(t, "admin", vals[1])
-}
-
 func TestGetInputValsFromStruct_EmptyStruct(t *testing.T) {
 
 	type input struct{}
 
 	in := input{}
-	vals := getInputValsFromStruct(reflect.ValueOf(in), nil)
+	vals := getInputValsFromStruct(reflect.ValueOf(in))
 
 	assert.Equal(t, 0, len(vals))
 }

@@ -39,7 +39,7 @@ func Insert[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sc
 	}
 
 	// get the input values via reflection
-	inputVals := getInputValsFromStruct(inputReflVals, nil)
+	inputVals := getInputValsFromStruct(inputReflVals)
 
 	stmt := getInsertStmt(schemaName, tableName, pkColName, meta.DbTags)
 
@@ -66,7 +66,7 @@ func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schem
 	}
 
 	// get the input values via reflection
-	inputVals := getInputValsFromStruct(inputReflVals, nil)
+	inputVals := getInputValsFromStruct(inputReflVals)
 
 	stmt := getInsertStmt(schemaName, tableName, pkColName, meta.DbTags)
 

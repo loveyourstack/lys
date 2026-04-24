@@ -79,7 +79,7 @@ func getRecsFromInputs[T any](inputs []T) (recs [][]any) {
 
 		// get input values by reflection
 		inputReflVals := reflect.ValueOf(input)
-		recs[i] = getInputValsFromStruct(inputReflVals, nil)
+		recs[i] = getInputValsFromStruct(inputReflVals)
 	}
 
 	return recs

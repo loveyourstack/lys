@@ -29,13 +29,9 @@ func getUpdateStmt(schemaName, tableName, pkColName string, inputFields []string
 		schemaName, tableName, strings.Join(assignments, ", "), pkColName, len(inputFields)+1)
 }
 
-type UpdateOption struct {
-	OmitFields []string // db columns to exclude from update
-}
-
 // Update changes a single record with the values contained in input
 // T must be a struct with "db" tags
-func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT, options ...UpdateOption) error {
+func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT) error {
 
 	// get columns to update by reflecting input T
 	inputReflVals := reflect.ValueOf(input)
@@ -44,16 +40,10 @@ func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaN
 		return fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
 	}
 
-	// get fields to omit from the update, if any
-	omitFields := getOmitFields(options...)
-
-	// get updateFields (dbTags with omitted fields removed)
-	updateFields := getUpdateFields(meta.DbTags, omitFields)
-
 	// get input values by reflecting input T
-	inputVals := getInputValsFromStruct(inputReflVals, omitFields)
+	inputVals := getInputValsFromStruct(inputReflVals)
 
-	stmt := getUpdateStmt(schemaName, tableName, pkColName, updateFields)
+	stmt := getUpdateStmt(schemaName, tableName, pkColName, meta.DbTags)
 	inputVals = append(inputVals, pkVal)
 
 	cmdTag, err := db.Exec(ctx, stmt, inputVals...)
@@ -69,39 +59,8 @@ func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaN
 	return nil
 }
 
-func getOmitFields(options ...UpdateOption) (omitFields []string) {
-
-	for _, option := range options {
-		if len(option.OmitFields) == 0 {
-			continue
-		}
-		omitFields = append(omitFields, option.OmitFields...)
-	}
-
-	return omitFields
-}
-
-func getUpdateFields(dbTags, omitFields []string) (updateFields []string) {
-
-	for _, dbTag := range dbTags {
-		found := false
-		for _, omitField := range omitFields {
-			if dbTag == omitField {
-				found = true
-				break
-			}
-		}
-		if !found {
-			updateFields = append(updateFields, dbTag)
-		}
-	}
-
-	return updateFields
-}
-
 // UpdateWithLastUserBy is a wrapper for Update that adds a last_user_update_by field to the input struct and sets it to the supplied lastUserUpdateBy value
-func UpdateWithLastUserBy[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT,
-	lastUserUpdateBy string, options ...UpdateOption) error {
+func UpdateWithLastUserBy[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT, lastUserUpdateBy string) error {
 
 	type inputWithLastUserBy struct {
 		Input            T
@@ -110,5 +69,5 @@ func UpdateWithLastUserBy[T any, pkT PrimaryKeyType](ctx context.Context, db Poo
 	var inputLub inputWithLastUserBy
 	inputLub.Input = input
 	inputLub.LastUserUpdateBy = lastUserUpdateBy
-	return Update(ctx, db, schemaName, tableName, pkColName, inputLub, pkVal, options...)
+	return Update(ctx, db, schemaName, tableName, pkColName, inputLub, pkVal)
 }

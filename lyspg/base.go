@@ -3,7 +3,6 @@ package lyspg
 import (
 	"context"
 	"reflect"
-	"slices"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -71,7 +70,7 @@ type PrimaryKeyType interface {
 var TrackingColNames = []string{"created_at", "created_by", "updated_at", "last_user_update_by"}
 
 // getInputValsFromStruct returns input values for pg operations from the supplied reflected struct variable
-func getInputValsFromStruct(reflVal reflect.Value, omitDbTags []string) (inputVals []any) {
+func getInputValsFromStruct(reflVal reflect.Value) (inputVals []any) {
 
 	reflType := reflVal.Type()
 
@@ -80,25 +79,11 @@ func getInputValsFromStruct(reflVal reflect.Value, omitDbTags []string) (inputVa
 
 		field := reflType.Field(i)
 
-		// if there are omissions
-		if len(omitDbTags) > 0 {
-
-			// get field db tag
-			typeField := reflVal.Type().Field(i)
-			tag := typeField.Tag
-			dbTag := tag.Get("db")
-
-			// skip if dbTag should be omitted
-			if dbTag != "" && slices.Contains(omitDbTags, dbTag) {
-				continue
-			}
-		}
-
 		// if this field is a struct (embedded or named) and has db or json tags (omits structs like time.Time that would cause a panic due to unexported fields)
 		if field.Type.Kind() == reflect.Struct && lysmeta.HasDbOrJsonTags(field.Type) {
 
 			// recurse into it
-			innerInputVals := getInputValsFromStruct(reflVal.Field(i), omitDbTags)
+			innerInputVals := getInputValsFromStruct(reflVal.Field(i))
 			inputVals = append(inputVals, innerInputVals...)
 			continue
 		}

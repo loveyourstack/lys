@@ -7,9 +7,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/loveyourstack/lys/internal/stores/core/corearchivetestm"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
-	"github.com/loveyourstack/lys/lystype"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -95,49 +93,6 @@ func TestBulkUpdateSuccess(t *testing.T) {
 		t.Fatalf("pgx.CollectExactlyOneRow (3rd) failed: %v", err)
 	}
 	coretypetestm.TestEmptyInput(t, item.Input)
-}
-
-func TestBulkUpdateOmitFieldsSuccess(t *testing.T) {
-
-	schemaName := "core"
-	tableName := "bulk_update_omit_fields_test"
-	pkColName := "id"
-
-	ctx := context.Background()
-	db := mustGetDb(ctx, t)
-	defer db.Close()
-
-	// insert a record
-	input := corearchivetestm.Input{
-		CInt:  lystype.ToPtr(int64(1)),
-		CText: lystype.ToPtr("a"),
-	}
-	newPk, err := Insert[corearchivetestm.Input, int64](ctx, db, schemaName, tableName, pkColName, input)
-	if err != nil {
-		t.Fatalf("Insert failed: %v", err)
-	}
-
-	input = corearchivetestm.Input{
-		CInt:  lystype.ToPtr(int64(2)),
-		CText: lystype.ToPtr("b"),
-	}
-
-	// bulk update CInt, but not CText
-	err = BulkUpdate(ctx, db, schemaName, tableName, pkColName, []corearchivetestm.Input{input}, []int64{newPk}, UpdateOption{OmitFields: []string{"c_text"}})
-	if err != nil {
-		t.Fatalf("BulkUpdate failed: %v", err)
-	}
-
-	// select record and test
-	stmt := fmt.Sprintf("SELECT * FROM %s.%s WHERE %s = $1;", schemaName, tableName, pkColName)
-	rows, _ := db.Query(ctx, stmt, newPk)
-	item, err := pgx.CollectExactlyOneRow(rows, pgx.RowToStructByNameLax[corearchivetestm.Model])
-	if err != nil {
-		t.Fatalf("pgx.CollectExactlyOneRow failed: %v", err)
-	}
-
-	assert.EqualValues(t, 2, *item.CInt, "CInt has changed")
-	assert.EqualValues(t, "a", *item.CText, "CText has not changed")
 }
 
 func TestBulkUpdateFailure(t *testing.T) {
