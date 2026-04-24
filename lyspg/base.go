@@ -67,6 +67,9 @@ type PrimaryKeyType interface {
 	constraints.Integer | uuid.UUID | ~string
 }
 
+// TrackingColNames is the list of reserved tracking column names that are automatically set in Store operations
+var TrackingColNames = []string{"created_at", "created_by", "updated_at", "last_user_update_by"}
+
 // getInputValsFromStruct returns input values for pg operations from the supplied reflected struct variable
 func getInputValsFromStruct(reflVal reflect.Value, omitDbTags []string) (inputVals []any) {
 

@@ -3,34 +3,33 @@ package lysgen
 import (
 	"fmt"
 	"os/exec"
+	"strings"
 )
 
 // GetGoDataTypeFromPg returns a Go data type from a PostgreSQL data type
-func GetGoDataTypeFromPg(pgType string) (goType string, err error) {
+func GetGoDataTypeFromPg(pgType string) (goType, omitStr string, err error) {
 
 	switch pgType {
 	case "ARRAY":
-		return "[]string", nil
+		return "[]string", "omitempty", nil // defaulting to string, change type manually as needed
 	case "bigint", "bigserial":
-		return "int64", nil
+		return "int64", "omitempty", nil
 	case "bit", "boolean":
-		return "bool", nil
-	case "character", "character varying", "text", "USER-DEFINED": // "USER-DEFINED" is enum
-		return "string", nil
+		return "bool", "omitempty", nil
+	case "character", "character varying", "text", "USER-DEFINED": // "USER-DEFINED" is enum or domain. Change as needed
+		return "string", "omitempty", nil
 	case "date":
-		return "lystype.Date", nil
-	case "double precision", "real":
-		return "float32", nil
+		return "lystype.Date", "omitzero", nil
+	case "double precision", "money", "numeric", "real":
+		return "float64", "omitempty", nil
 	case "integer", "serial", "smallint", "smallserial":
-		return "int", nil
-	case "money", "numeric":
-		return "float64", nil
+		return "int", "omitempty", nil
 	case "time", "time without time zone":
-		return "lystype.Time", nil
+		return "lystype.Time", "omitzero", nil
 	case "timestamp", "timestamp with time zone":
-		return "lystype.Datetime", nil
+		return "lystype.Datetime", "omitzero", nil
 	default:
-		return "", fmt.Errorf("no go type found for pgType: %s", pgType)
+		return "", "", fmt.Errorf("no go type found for pgType: %s", pgType)
 	}
 }
 
@@ -39,14 +38,14 @@ func GetTsDataTypeFromPg(pgType string) (tsType string, err error) {
 
 	switch pgType {
 	case "ARRAY":
-		return "string[]", nil
+		return "string[]", nil // defaulting to string, change type manually as needed
 	case "bigint", "bigserial", "double precision", "integer", "money", "numeric", "real", "serial", "smallint", "smallserial":
 		return "number", nil
 	case "bit", "boolean":
 		return "boolean", nil
-	case "character", "character varying", "text", "USER-DEFINED": // "USER-DEFINED" is enum
+	case "character", "character varying", "date", "text", "time", "time without time zone", "USER-DEFINED": // "USER-DEFINED" is enum or domain
 		return "string", nil
-	case "date", "time", "time without time zone", "timestamp", "timestamp with time zone":
+	case "timestamp", "timestamp with time zone":
 		return "Date", nil
 	default:
 		return "", fmt.Errorf("no Typescript type found for pgType: %s", pgType)
@@ -55,6 +54,7 @@ func GetTsDataTypeFromPg(pgType string) (tsType string, err error) {
 
 // currently only tested on WSL2
 func WriteToClipboard(s string) error {
-	cmd := exec.Command("bash", "-c", "echo '"+s+"' | clip.exe")
+	cmd := exec.Command("clip.exe")
+	cmd.Stdin = strings.NewReader(s)
 	return cmd.Run()
 }

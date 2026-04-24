@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGetTsInputTypesSuccess(t *testing.T) {
+func TestGetTsInputIFaceSuccess(t *testing.T) {
 
 	cols := []lyspg.Column{
 
@@ -27,38 +27,38 @@ func TestGetTsInputTypesSuccess(t *testing.T) {
 		{Name: "user_defined", DataType: "USER-DEFINED"}, // enum
 	}
 
-	actualA, err := getTsInput("MyTable", cols)
+	actualA, err := getTsInputIFace("MyTable", cols)
 	if err != nil {
-		t.Fatalf("getTsInput failed: %s", err.Error())
+		t.Fatalf("getTsInputIFace failed: %s", err.Error())
 	}
 
 	expectedA := []string{
 		"export interface MyTableInput {",
-		"  array: string[]",
-		"  bigint: number",
-		"  date: Date",
-		"  numeric: number",
-		"  text: string",
-		"  time: Date",
-		"  timestamp_with_time_zone: Date",
-		"  user_defined: string",
+		"  array: string[] | undefined",
+		"  bigint: number | undefined",
+		"  date: string | undefined",
+		"  numeric: number | undefined",
+		"  text: string | undefined",
+		"  time: string | undefined",
+		"  timestamp_with_time_zone: Date | undefined",
+		"  user_defined: string | undefined",
 		"}",
 	}
 
 	assert.EqualValues(t, expectedA, actualA)
 }
 
-func TestGetTsInputTypesFailure(t *testing.T) {
+func TestGetTsInputIFaceFailure(t *testing.T) {
 
 	cols := []lyspg.Column{
 		{Name: "unknown", DataType: "unknown"},
 	}
 
-	_, err := getTsInput("MyTable", cols)
+	_, err := getTsInputIFace("MyTable", cols)
 	assert.EqualError(t, err, "GetTsDataTypeFromPg failed: no Typescript type found for pgType: unknown")
 }
 
-func TestGetTsDefinitionSuccess(t *testing.T) {
+func TestGetTsIFaceSuccess(t *testing.T) {
 
 	cols := []lyspg.Column{
 
@@ -79,9 +79,9 @@ func TestGetTsDefinitionSuccess(t *testing.T) {
 		{ChildTable: "child_lvl1"},
 	}
 
-	actualA, err := getTsDefinition("MyTable", cols, parentCols, childFks)
+	actualA, err := getTsIFace("MyTable", cols, parentCols, childFks)
 	if err != nil {
-		t.Fatalf("getTsDefinition failed: %s", err.Error())
+		t.Fatalf("getTsIFace failed: %s", err.Error())
 	}
 
 	expectedA := []string{

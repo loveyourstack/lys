@@ -69,21 +69,21 @@ func getEqual(cols []lyspg.Column) (resA []string, err error) {
 
 		switch col.DataType {
 		case "ARRAY":
-			colVal.WriteString(fmt.Sprintf("lysslices.EqualUnordered(a.%s, b.%s)", goName, goName))
+			fmt.Fprintf(&colVal, "lysslices.EqualUnordered(a.%s, b.%s)", goName, goName)
 		case "bigint", "bigserial", "integer", "serial", "smallint", "smallserial":
-			colVal.WriteString(fmt.Sprintf("a.%s == b.%s", goName, goName))
+			fmt.Fprintf(&colVal, "a.%s == b.%s", goName, goName)
 		case "bit", "boolean":
-			colVal.WriteString(fmt.Sprintf("a.%s == b.%s", goName, goName))
+			fmt.Fprintf(&colVal, "a.%s == b.%s", goName, goName)
 		case "character", "character varying", "text", "USER-DEFINED": // "USER-DEFINED" is enum
-			colVal.WriteString(fmt.Sprintf("a.%s == b.%s", goName, goName))
+			fmt.Fprintf(&colVal, "a.%s == b.%s", goName, goName)
 		case "date":
-			colVal.WriteString(fmt.Sprintf("a.%s.Format(lystype.DateFormat) == b.%s.Format(lystype.DateFormat)", goName, goName))
+			fmt.Fprintf(&colVal, "a.%s.Format(lystype.DateFormat) == b.%s.Format(lystype.DateFormat)", goName, goName)
 		case "double precision", "money", "numeric", "real":
-			colVal.WriteString(fmt.Sprintf("fmt.Sprintf(\"%%.4f\", a.%s) == fmt.Sprintf(\"%%.4f\", b.%s)", goName, goName))
-		case "time":
-			colVal.WriteString(fmt.Sprintf("a.%s.Format(lystype.TimeFormat) == b.%s.Format(lystype.TimeFormat)", goName, goName))
+			fmt.Fprintf(&colVal, "fmt.Sprintf(\"%%.4f\", a.%s) == fmt.Sprintf(\"%%.4f\", b.%s)", goName, goName)
+		case "time", "time without time zone":
+			fmt.Fprintf(&colVal, "a.%s.Format(lystype.TimeFormat) == b.%s.Format(lystype.TimeFormat)", goName, goName)
 		case "timestamp", "timestamp with time zone":
-			colVal.WriteString(fmt.Sprintf("a.%s.Format(lystype.DatetimeFormat) == b.%s.Format(lystype.DatetimeFormat)", goName, goName))
+			fmt.Fprintf(&colVal, "a.%s.Format(lystype.DatetimeFormat) == b.%s.Format(lystype.DatetimeFormat)", goName, goName)
 		default:
 			return nil, fmt.Errorf("no rule type found for DataType: %s", col.DataType)
 		}

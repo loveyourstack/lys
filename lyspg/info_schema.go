@@ -2,11 +2,14 @@ package lyspg
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"strings"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/loveyourstack/lys/lyserr"
 )
 
@@ -45,6 +48,10 @@ func GetChildForeignKeys(ctx context.Context, db PoolOrTx, schemaName, tableName
 	rows, _ := db.Query(ctx, stmt, schemaName, tableName)
 	fks, err = pgx.CollectRows(rows, pgx.RowToStructByNameLax[ForeignKey])
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UndefinedTable {
+			return nil, lyserr.User{Message: "table does not exist"}
+		}
 		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
 	}
 
@@ -65,6 +72,10 @@ func GetForeignKeys(ctx context.Context, db PoolOrTx, schemaName, tableName stri
 	rows, _ := db.Query(ctx, stmt, schemaName, tableName)
 	fks, err = pgx.CollectRows(rows, pgx.RowToStructByNameLax[ForeignKey])
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UndefinedTable {
+			return nil, lyserr.User{Message: "table does not exist"}
+		}
 		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
 	}
 
@@ -83,6 +94,9 @@ func GetTableColumns(ctx context.Context, db PoolOrTx, schemaName, tableName str
 
 	rows, _ := db.Query(ctx, stmt, schemaName, tableName)
 	cols, err = pgx.CollectRows(rows, pgx.RowToStructByNameLax[Column])
+	if len(cols) == 0 {
+		return nil, lyserr.User{Message: "table does not exist"}
+	}
 	if err != nil {
 		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
 	}
@@ -93,7 +107,7 @@ func GetTableColumns(ctx context.Context, db PoolOrTx, schemaName, tableName str
 		cols[i].TableName = tableName
 
 		// assign tracking cols
-		if slices.Contains([]string{"created_at", "created_by", "updated_at", "updated_by"}, cols[i].Name) {
+		if slices.Contains(TrackingColNames, cols[i].Name) {
 			cols[i].IsTracking = true
 		}
 	}
@@ -108,6 +122,10 @@ func GetStatsRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName st
 	rows, _ := db.Query(ctx, stmt)
 	rowCount, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[int64])
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UndefinedTable {
+			return 0, lyserr.User{Message: "table does not exist"}
+		}
 		return 0, lyserr.Db{Err: fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err), Stmt: stmt}
 	}
 
@@ -121,6 +139,10 @@ func GetTableColumnNames(ctx context.Context, db PoolOrTx, schemaName, tableName
 	rows, _ := db.Query(ctx, stmt, schemaName, tableName)
 	colNames, err = pgx.CollectRows(rows, pgx.RowTo[string])
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UndefinedTable {
+			return nil, lyserr.User{Message: "table does not exist"}
+		}
 		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
 	}
 
@@ -134,6 +156,10 @@ func GetTableComment(ctx context.Context, db PoolOrTx, schemaName, tableName str
 	rows, _ := db.Query(ctx, stmt)
 	comment, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[string])
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UndefinedTable {
+			return "", lyserr.User{Message: "table does not exist"}
+		}
 		return "", lyserr.Db{Err: fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err), Stmt: stmt}
 	}
 

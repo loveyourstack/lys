@@ -34,14 +34,14 @@ func TestGetInputTypesSuccess(t *testing.T) {
 
 	expectedA := []string{
 		"type Input struct {",
-		"    Array  []string  `db:\"array\" json:\"array\"`",
-		"    Bigint  int64  `db:\"bigint\" json:\"bigint\"`",
-		"    Date  lystype.Date  `db:\"date\" json:\"date\"`",
-		"    Numeric  float64  `db:\"numeric\" json:\"numeric\"`",
-		"    Text  string  `db:\"text\" json:\"text\"`",
-		"    Time  lystype.Time  `db:\"time\" json:\"time\"`",
-		"    TimestampWithTimeZone  lystype.Datetime  `db:\"timestamp_with_time_zone\" json:\"timestamp_with_time_zone\"`",
-		"    UserDefined  string  `db:\"user_defined\" json:\"user_defined\"`",
+		"    Array  []string  `db:\"array\" json:\"array,omitempty\"`",
+		"    Bigint  int64  `db:\"bigint\" json:\"bigint,omitempty\"`",
+		"    Date  lystype.Date  `db:\"date\" json:\"date,omitzero\"`",
+		"    Numeric  float64  `db:\"numeric\" json:\"numeric,omitempty\"`",
+		"    Text  string  `db:\"text\" json:\"text,omitempty\"`",
+		"    Time  lystype.Time  `db:\"time\" json:\"time,omitzero\"`",
+		"    TimestampWithTimeZone  lystype.Datetime  `db:\"timestamp_with_time_zone\" json:\"timestamp_with_time_zone,omitzero\"`",
+		"    UserDefined  string  `db:\"user_defined\" json:\"user_defined,omitempty\"`",
 		"}",
 	}
 
@@ -71,7 +71,7 @@ func TestGetInputWithValidationSuccess(t *testing.T) {
 
 	expectedA := []string{
 		"type Input struct {",
-		"    Text  string  `db:\"text\" json:\"text\" validate:\"required\"`",
+		"    Text  string  `db:\"text\" json:\"text,omitempty\" validate:\"required\"`",
 		"}",
 	}
 
@@ -106,11 +106,11 @@ func TestGetModelSuccess(t *testing.T) {
 
 	expectedA := []string{
 		"type Model struct {",
-		"    Id  int64  `db:\"id\" json:\"id\"`",
-		"    Generated  string  `db:\"generated\" json:\"generated\"`",
-		"    CreatedAt  lystype.Datetime  `db:\"created_at\" json:\"created_at\"`",
-		"    ParentLvl1Name  string  `db:\"parent_lvl1_name\" json:\"parent_lvl1_name\"`",
-		"    ChildLvl1Count  int  `db:\"child_lvl1_count\" json:\"child_lvl1_count\"`",
+		"    Id  int64  `db:\"id\" json:\"id,omitempty\"`",
+		"    Generated  string  `db:\"generated\" json:\"generated,omitempty\"`",
+		"    CreatedAt  lystype.Datetime  `db:\"created_at\" json:\"created_at,omitzero\"`",
+		"    ParentLvl1Name  string  `db:\"parent_lvl1_name\" json:\"parent_lvl1_name,omitempty\"`",
+		"    ChildLvl1Count  int  `db:\"child_lvl1_count\" json:\"child_lvl1_count,omitempty\"`",
 		"    Input",
 		"}",
 	}

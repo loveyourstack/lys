@@ -59,17 +59,20 @@ func View(ctx context.Context, db *pgxpool.Pool, schema, table string) (res stri
 		// for each FK
 		for _, fk := range parentFks {
 
-			if col.Name != fk.ParentColumn {
+			if col.Name != fk.ChildColumn {
 				continue
 			}
 
 			// this col is FK - get its column values and parentJoin
-			parentfkColVals, parentJoin, err := getViewParentFkInfo(ctx, db, fk, alias)
+			parentFkColVals, parentJoin, err := getViewParentFkInfo(ctx, db, fk, alias)
 			if err != nil {
 				return "", fmt.Errorf("getViewParentFkInfo failed for parent table: %s.%s: %w", fk.ParentSchema, fk.ParentTable, err)
 			}
 
-			colVals = append(colVals, parentfkColVals...)
+			// add parent fk cols with an indent
+			for _, parentFkColVal := range parentFkColVals {
+				colVals = append(colVals, "  "+parentFkColVal)
+			}
 			joins = append(joins, parentJoin)
 		}
 	}
@@ -130,7 +133,11 @@ func getViewParentFkInfo(ctx context.Context, db *pgxpool.Pool, fk lyspg.Foreign
 			continue
 		}
 
-		colVal := fmt.Sprintf("    %s.%s AS %s_%s", parentAlias, parCol.Name, fk.ParentTable, parCol.Name)
+		colAlias := fmt.Sprintf("%s_%s", fk.ParentTable, parCol.Name)
+		if parCol.Name == "name" {
+			colAlias = fk.ParentTable
+		}
+		colVal := fmt.Sprintf("    %s.%s AS %s", parentAlias, parCol.Name, colAlias)
 		colVals = append(colVals, colVal)
 	}
 
@@ -151,10 +158,10 @@ func getViewChildFkInfo(ctx context.Context, db *pgxpool.Pool, fk lyspg.ForeignK
 	}
 
 	// define count colVal
-	colVal = fmt.Sprintf("    COALESCE(%s.%s_count,0) AS %s_count", childAlias, fk.ChildTable, fk.ChildTable)
+	colVal = fmt.Sprintf("    COALESCE(%s.%s_cnt,0) AS %s_count", childAlias, fk.ChildTable, fk.ChildTable)
 
 	// add a LEFT JOIN aggregate to the parent table
-	join = fmt.Sprintf("  LEFT JOIN (SELECT %s, count(*) AS %s_count FROM %s.%s GROUP BY 1) %s ON %s.%s = %s.%s",
+	join = fmt.Sprintf("  LEFT JOIN (SELECT %s, count(*) AS %s_cnt FROM %s.%s GROUP BY 1) %s ON %s.%s = %s.%s",
 		fk.ChildColumn, fk.ChildTable, fk.ChildSchema, fk.ChildTable, childAlias, childAlias, fk.ChildColumn, mainAlias, fk.ParentColumn)
 
 	return colVal, join, nil

@@ -93,14 +93,14 @@ func getInput(cols []lyspg.Column, withValidation bool) (resA []string, err erro
 		goName := lysstring.Convert(col.Name, "_", "", lysstring.Title)
 
 		// get Go data type
-		goDataType, err := GetGoDataTypeFromPg(col.DataType)
+		goDataType, omitStr, err := GetGoDataTypeFromPg(col.DataType)
 		if err != nil {
 			return nil, fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
 		}
 
 		// add line for column
-		colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s\"", goName, goDataType, col.Name, col.Name)
-		if withValidation {
+		colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s,%s\"", goName, goDataType, col.Name, col.Name, omitStr)
+		if withValidation && goDataType != "bool" {
 			colVal += " validate:\"required\""
 		}
 		colVal += "`"
@@ -132,13 +132,13 @@ func getModel(cols []lyspg.Column, parentCols []lyspg.Column, childFks []lyspg.F
 		goName := lysstring.Convert(col.Name, "_", "", lysstring.Title)
 
 		// get Go data type
-		goDataType, err := GetGoDataTypeFromPg(col.DataType)
+		goDataType, omitStr, err := GetGoDataTypeFromPg(col.DataType)
 		if err != nil {
 			return nil, fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
 		}
 
 		// add line for column
-		colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s\"`", goName, goDataType, col.Name, col.Name)
+		colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s,%s\"`", goName, goDataType, col.Name, col.Name, omitStr)
 		colVals = append(colVals, colVal)
 	}
 
@@ -157,13 +157,13 @@ func getModel(cols []lyspg.Column, parentCols []lyspg.Column, childFks []lyspg.F
 		goName := lysstring.Convert(prefixedColName, "_", "", lysstring.Title)
 
 		// get Go data type
-		goDataType, err := GetGoDataTypeFromPg(parCol.DataType)
+		goDataType, omitStr, err := GetGoDataTypeFromPg(parCol.DataType)
 		if err != nil {
 			return nil, fmt.Errorf("GetGoDataTypeFromPg failed: %w", err)
 		}
 
 		// add line for column
-		colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s\"`", goName, goDataType, prefixedColName, prefixedColName)
+		colVal := fmt.Sprintf("    %s  %s  `db:\"%s\" json:\"%s,%s\"`", goName, goDataType, prefixedColName, prefixedColName, omitStr)
 		colVals = append(colVals, colVal)
 	}
 
@@ -174,7 +174,7 @@ func getModel(cols []lyspg.Column, parentCols []lyspg.Column, childFks []lyspg.F
 		goTableName := lysstring.Convert(fk.ChildTable, "_", "", lysstring.Title)
 
 		// add count line
-		colVal := fmt.Sprintf("    %sCount  int  `db:\"%s_count\" json:\"%s_count\"`", goTableName, fk.ChildTable, fk.ChildTable)
+		colVal := fmt.Sprintf("    %sCount  int  `db:\"%s_count\" json:\"%s_count,omitempty\"`", goTableName, fk.ChildTable, fk.ChildTable)
 		colVals = append(colVals, colVal)
 	}
 
