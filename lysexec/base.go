@@ -21,11 +21,9 @@ type RunOptions struct {
 	Stdin io.Reader
 
 	// additional options for output handling
-	StdoutWriter    io.Writer
-	StderrWriter    io.Writer
 	TeeStdout       bool // if true, also write stdout to os.Stdout
 	TeeStderr       bool // if true, also write stderr to os.Stderr
-	MaxCaptureBytes int  // <= 0 means unlimited capture
+	MaxCaptureBytes int  // if 0, unlimited capture
 }
 
 // RunResult contains captured command execution details.
@@ -50,18 +48,12 @@ func Run(ctx context.Context, name string, opts RunOptions, args ...string) (res
 	stderrCapture := newCaptureBuffer(opts.MaxCaptureBytes)
 
 	stdoutWriters := []io.Writer{stdoutCapture}
-	if opts.StdoutWriter != nil {
-		stdoutWriters = append(stdoutWriters, opts.StdoutWriter)
-	}
 	if opts.TeeStdout {
 		stdoutWriters = append(stdoutWriters, os.Stdout)
 	}
 	cmd.Stdout = io.MultiWriter(stdoutWriters...)
 
 	stderrWriters := []io.Writer{stderrCapture}
-	if opts.StderrWriter != nil {
-		stderrWriters = append(stderrWriters, opts.StderrWriter)
-	}
 	if opts.TeeStderr {
 		stderrWriters = append(stderrWriters, os.Stderr)
 	}

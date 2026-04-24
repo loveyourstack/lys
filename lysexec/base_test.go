@@ -22,17 +22,12 @@ func TestRunSuccess(t *testing.T) {
 	assert.GreaterOrEqual(t, res.DurationMs, int64(0))
 }
 
-func TestRunTimedOut(t *testing.T) {
+func TestRunMaxCaptureBytes(t *testing.T) {
 
-	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
-	defer cancel()
+	res, err := Run(context.Background(), "sh", RunOptions{MaxCaptureBytes: 5}, "-c", "printf 'hello world'")
 
-	res, err := Run(ctx, "sleep", RunOptions{}, "5")
-
-	require.Error(t, err)
-	assert.True(t, res.TimedOut)
-	assert.False(t, res.Canceled)
-	assert.NotEqual(t, 0, res.ExitCode)
+	require.NoError(t, err)
+	assert.Equal(t, "hello", res.Stdout)
 }
 
 func TestRunCanceledByContext(t *testing.T) {
@@ -48,5 +43,18 @@ func TestRunCanceledByContext(t *testing.T) {
 	require.Error(t, err)
 	assert.False(t, res.TimedOut)
 	assert.True(t, res.Canceled)
+	assert.NotEqual(t, 0, res.ExitCode)
+}
+
+func TestRunTimedOut(t *testing.T) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+
+	res, err := Run(ctx, "sleep", RunOptions{}, "5")
+
+	require.Error(t, err)
+	assert.True(t, res.TimedOut)
+	assert.False(t, res.Canceled)
 	assert.NotEqual(t, 0, res.ExitCode)
 }
