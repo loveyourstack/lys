@@ -94,11 +94,11 @@ func GetTableColumns(ctx context.Context, db PoolOrTx, schemaName, tableName str
 
 	rows, _ := db.Query(ctx, stmt, schemaName, tableName)
 	cols, err = pgx.CollectRows(rows, pgx.RowToStructByNameLax[Column])
-	if len(cols) == 0 {
-		return nil, lyserr.User{Message: "table does not exist"}
-	}
 	if err != nil {
 		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
+	}
+	if len(cols) == 0 {
+		return nil, lyserr.User{Message: "table does not exist"}
 	}
 
 	for i := range cols {

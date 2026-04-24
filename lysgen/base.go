@@ -2,7 +2,9 @@ package lysgen
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"runtime"
 	"strings"
 )
 
@@ -52,9 +54,35 @@ func GetTsDataTypeFromPg(pgType string) (tsType string, err error) {
 	}
 }
 
-// currently only tested on WSL2
+// WriteToClipboard writes s to the clipboard. Only tested on WSL2 so far
 func WriteToClipboard(s string) error {
-	cmd := exec.Command("clip.exe")
+	var cmd *exec.Cmd
+
+	switch runtime.GOOS {
+	case "darwin": // macOS
+		cmd = exec.Command("pbcopy")
+	case "linux":
+		// Check if running in WSL
+		if isWSL() {
+			cmd = exec.Command("clip.exe")
+		} else {
+			cmd = exec.Command("xclip", "-selection", "clipboard")
+		}
+	case "windows":
+		cmd = exec.Command("clip.exe")
+	default:
+		return fmt.Errorf("WriteToClipboard not supported on %s", runtime.GOOS)
+	}
+
 	cmd.Stdin = strings.NewReader(s)
 	return cmd.Run()
+}
+
+func isWSL() bool {
+	content, err := os.ReadFile("/proc/version")
+	if err != nil {
+		return false
+	}
+	return strings.Contains(strings.ToLower(string(content)), "microsoft") ||
+		strings.Contains(strings.ToLower(string(content)), "wsl")
 }
