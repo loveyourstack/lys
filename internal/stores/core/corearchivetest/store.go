@@ -3,7 +3,6 @@ package corearchivetest
 import (
 	"context"
 	"log"
-	"reflect"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -25,14 +24,14 @@ const (
 // Input and Model are in a separate package, corearchivetestm, so that they can be used for testing in lyspg
 
 var (
-	meta lysmeta.Result
+	plan lysmeta.Plan
 )
 
 func init() {
 	var err error
-	meta, err = lysmeta.AnalyzeStruct(reflect.ValueOf(&corearchivetestm.Model{}).Elem())
+	plan, err = lysmeta.AnalyzeAndCheckT(corearchivetestm.Model{})
 	if err != nil {
-		log.Fatalf("lysmeta.AnalyzeStruct failed for %s.%s: %s", schemaName, tableName, err.Error())
+		log.Fatalf("lysmeta.AnalyzeAndCheckT failed for %s.%s: %s", schemaName, tableName, err.Error())
 	}
 }
 
@@ -48,11 +47,11 @@ func (s Store) ArchiveByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 	return lyspg.Archive(ctx, tx, schemaName, tableName, "id_uu", id, false)
 }
 
-func (s Store) GetMeta() lysmeta.Result {
-	return meta
-}
 func (s Store) GetName() string {
 	return name
+}
+func (s Store) GetPlan() lysmeta.Plan {
+	return plan
 }
 
 func (s Store) RestoreById(ctx context.Context, tx pgx.Tx, id int64) error {
@@ -64,7 +63,7 @@ func (s Store) RestoreByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 }
 
 func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []corearchivetestm.Model, unpagedCount lyspg.TotalCount, err error) {
-	return lyspg.Select[corearchivetestm.Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, meta.DbTags, params)
+	return lyspg.Select[corearchivetestm.Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, plan.DbNames(), params)
 }
 
 func (s Store) SelectById(ctx context.Context, id int64) (item corearchivetestm.Model, err error) {

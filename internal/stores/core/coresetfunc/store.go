@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -26,14 +25,14 @@ type Model struct {
 }
 
 var (
-	meta lysmeta.Result
+	plan lysmeta.Plan
 )
 
 func init() {
 	var err error
-	meta, err = lysmeta.AnalyzeStruct(reflect.ValueOf(&Model{}).Elem())
+	plan, err = lysmeta.AnalyzeAndCheckT(Model{})
 	if err != nil {
-		log.Fatalf("lysmeta.AnalyzeStruct failed for %s.%s: %s", schemaName, setFuncName, err.Error())
+		log.Fatalf("lysmeta.AnalyzeAndCheckT failed for %s.%s: %s", schemaName, setFuncName, err.Error())
 	}
 }
 
@@ -41,11 +40,11 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
-func (s Store) GetMeta() lysmeta.Result {
-	return meta
-}
 func (s Store) GetName() string {
 	return name
+}
+func (s Store) GetPlan() lysmeta.Plan {
+	return plan
 }
 func (s Store) GetSetFuncUrlParamNames() []string {
 	return []string{"p_text", "p_int", "p_inta"}
@@ -68,5 +67,5 @@ func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []M
 		params.SetFuncParamValues[2] = pIntA
 	}
 
-	return lyspg.Select[Model](ctx, s.Db, schemaName, "", setFuncName, defaultOrderBy, meta.DbTags, params)
+	return lyspg.Select[Model](ctx, s.Db, schemaName, "", setFuncName, defaultOrderBy, plan.DbNames(), params)
 }

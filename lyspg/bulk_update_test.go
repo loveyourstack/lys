@@ -122,7 +122,7 @@ func TestBulkUpdateFailure(t *testing.T) {
 
 	// inputs have no db tags
 	err = BulkUpdate(ctx, db, schemaName, tableName, pkColName, inputs, []int64{1})
-	assert.EqualError(t, err, "input type does not have db tags")
+	assert.EqualError(t, err, "plan.DbValues failed on input 0: no fields have db tags")
 
 	type s2 struct {
 		A string `db:"a"`

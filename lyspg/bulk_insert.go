@@ -3,7 +3,6 @@ package lyspg
 import (
 	"context"
 	"fmt"
-	"reflect"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
@@ -19,21 +18,20 @@ func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName s
 		return 0, fmt.Errorf("inputs has len 0")
 	}
 
-	// get db tags of first input
-	inputReflVals := reflect.ValueOf(inputs[0])
-	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
+	// analyze first input for db names
+	plan, err := lysmeta.AnalyzeT(inputs[0], false)
 	if err != nil {
-		return 0, fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
-	}
-	if len(meta.DbTags) == 0 {
-		return 0, fmt.Errorf("input type does not have db tags")
+		return 0, fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
 	}
 
 	// get recs from inputs via reflection
-	recs := getRecsFromInputs(inputs)
+	recs, err := getRecsFromInputs(inputs)
+	if err != nil {
+		return 0, fmt.Errorf("getRecsFromInputs failed: %w", err)
+	}
 
 	// COPY to table using pgx
-	rowsAffected, err = db.CopyFrom(ctx, pgx.Identifier{schemaName, tableName}, meta.DbTags, pgx.CopyFromRows(recs))
+	rowsAffected, err = db.CopyFrom(ctx, pgx.Identifier{schemaName, tableName}, plan.DbNames(), pgx.CopyFromRows(recs))
 	if err != nil {
 		return 0, fmt.Errorf("db.CopyFrom failed: %w", err)
 	}
@@ -50,20 +48,16 @@ func bulkInsertWithoutReflection(ctx context.Context, db PoolOrTx, inputs []core
 		return 0, fmt.Errorf("inputs has len 0")
 	}
 
-	// get db tags of first input
-	inputReflVals := reflect.ValueOf(inputs[0])
-	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
+	// analyze first input for db names
+	plan, err := lysmeta.AnalyzeT(inputs[0], false)
 	if err != nil {
-		return 0, fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
-	}
-	if len(meta.DbTags) == 0 {
-		return 0, fmt.Errorf("input type does not have db tags")
+		return 0, fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
 	}
 
 	recs := getRecsFromInputsWithoutReflection(inputs)
 
 	// COPY to table using pgx
-	rowsAffected, err = db.CopyFrom(ctx, pgx.Identifier{"core", "bulk_insert_test"}, meta.DbTags, pgx.CopyFromRows(recs))
+	rowsAffected, err = db.CopyFrom(ctx, pgx.Identifier{"core", "bulk_insert_test"}, plan.DbNames(), pgx.CopyFromRows(recs))
 	if err != nil {
 		return 0, fmt.Errorf("db.CopyFrom failed: %w", err)
 	}
@@ -71,18 +65,25 @@ func bulkInsertWithoutReflection(ctx context.Context, db PoolOrTx, inputs []core
 	return rowsAffected, nil
 }
 
-func getRecsFromInputs[T any](inputs []T) (recs [][]any) {
+func getRecsFromInputs[T any](inputs []T) (recs [][]any, err error) {
 
 	recs = make([][]any, len(inputs))
 
 	for i, input := range inputs {
 
 		// get input values by reflection
-		inputReflVals := reflect.ValueOf(input)
-		recs[i] = getInputValsFromStruct(inputReflVals)
+		plan, err := lysmeta.AnalyzeT(input, true)
+		if err != nil {
+			return nil, fmt.Errorf("lysmeta.AnalyzeT failed on input %d: %w", i, err)
+		}
+		_, inputVals, err := plan.DbValues()
+		if err != nil {
+			return nil, fmt.Errorf("plan.DbValues failed on input %d: %w", i, err)
+		}
+		recs[i] = inputVals
 	}
 
-	return recs
+	return recs, nil
 }
 
 // getRecsFromInputsWithoutReflection creates the COPY records for core.bulk_insert_test without using reflection

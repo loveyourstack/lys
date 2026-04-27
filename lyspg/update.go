@@ -3,7 +3,6 @@ package lyspg
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -33,17 +32,18 @@ func getUpdateStmt(schemaName, tableName, pkColName string, inputFields []string
 // T must be a struct with "db" tags
 func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT) error {
 
-	// get columns to update by reflecting input T
-	inputReflVals := reflect.ValueOf(input)
-	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
+	// get input values by reflecting input T
+	meta, err := lysmeta.AnalyzeT(input, true)
 	if err != nil {
-		return fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
+		return fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
 	}
 
-	// get input values by reflecting input T
-	inputVals := getInputValsFromStruct(inputReflVals)
+	dbNames, inputVals, err := meta.DbValues()
+	if err != nil {
+		return fmt.Errorf("meta.DbValues failed: %w", err)
+	}
 
-	stmt := getUpdateStmt(schemaName, tableName, pkColName, meta.DbTags)
+	stmt := getUpdateStmt(schemaName, tableName, pkColName, dbNames)
 	inputVals = append(inputVals, pkVal)
 
 	cmdTag, err := db.Exec(ctx, stmt, inputVals...)

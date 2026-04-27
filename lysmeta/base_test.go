@@ -7,113 +7,70 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func mustAnalyzeStruct(t *testing.T, reflVal reflect.Value) Result {
-	ret, err := AnalyzeStruct(reflVal)
-	if err != nil {
-		t.Fatalf("AnalyzeStruct failed: %v", err)
-	}
-	return ret
+func TestGetJsonKey(t *testing.T) {
+	assert.Equal(t, "FieldName", getJsonKey("", "FieldName"), "empty tag falls back to field name")
+	assert.Equal(t, "FieldName", getJsonKey(",omitempty", "FieldName"), "empty key with options falls back to field name")
+	assert.Equal(t, "", getJsonKey("-", "FieldName"), "dash omits key")
+	assert.Equal(t, "custom", getJsonKey("custom,omitempty", "FieldName"), "explicit key is used")
 }
 
-func TestAnalyzeStructSuccess(t *testing.T) {
-
-	type inner struct {
-		A string `db:"a1" json:"a2,omitempty"` // omitempty should be removed
-		C string `db:"-" json:"-"`             // should be ignored
-		D string `db:"" json:""`               // should be ignored
+func TestJsonKeyTypeMap(t *testing.T) {
+	plan := Plan{
+		Fields: []Field{
+			{Name: "A", Type: reflect.TypeFor[string](), JsonKey: "name"},
+			{Name: "B", Type: reflect.TypeFor[int64](), JsonKey: "age"},
+			{Name: "C", Type: reflect.TypeFor[bool](), JsonKey: ""},
+		},
 	}
 
-	// regular struct
-	res := mustAnalyzeStruct(t, reflect.ValueOf(&inner{}).Elem())
-	assert.EqualValues(t, []string{"a1"}, res.DbTags, "regular: DbTags")
-	assert.EqualValues(t, []string{"a2"}, res.JsonTags, "regular: JsonTags")
-
-	jttMap := make(map[string]reflect.Type)
-	jttMap["a2"] = reflect.TypeFor[string]()
-	assert.EqualValues(t, jttMap, res.JsonTagTypeMap, "regular: JsonTagTypeMap")
-
-	type outer struct {
-		B int64 `db:"b1" json:"b2"`
-		inner
-	}
-
-	// struct with embedding: embedded is included and tags are combined
-	res = mustAnalyzeStruct(t, reflect.ValueOf(&outer{}).Elem())
-	assert.EqualValues(t, []string{"b1", "a1"}, res.DbTags, "with embedding: DbTags")
-	assert.EqualValues(t, []string{"b2", "a2"}, res.JsonTags, "with embedding: JsonTags")
-
-	jttMap = make(map[string]reflect.Type)
-	jttMap["b2"] = reflect.TypeFor[int64]()
-	jttMap["a2"] = reflect.TypeFor[string]()
-	assert.EqualValues(t, jttMap, res.JsonTagTypeMap, "with embedding: JsonTagTypeMap")
-
-	type noTags struct {
-		A string
-	}
-
-	// no tags
-	res = mustAnalyzeStruct(t, reflect.ValueOf(&noTags{}).Elem())
-	assert.EqualValues(t, 0, len(res.DbTags), "no tags: DbTags")
-	assert.EqualValues(t, 0, len(res.JsonTags), "no tags: JsonTags")
-	assert.EqualValues(t, 0, len(res.JsonTagTypeMap), "no tags: JsonTagTypeMap")
-
-	// embedding with no tags: embedded is skipped and tags are from outer only
-	type outer2 struct {
-		B int64 `db:"b1" json:"b2"`
-		noTags
-	}
-
-	// embedded struct has no db or json tags: it is skipped
-	res = mustAnalyzeStruct(t, reflect.ValueOf(&outer2{}).Elem())
-	assert.EqualValues(t, []string{"b1"}, res.DbTags, "embedding with no tags: DbTags")
-	assert.EqualValues(t, []string{"b2"}, res.JsonTags, "embedding with no tags: JsonTags")
-
-	jttMap = make(map[string]reflect.Type)
-	jttMap["b2"] = reflect.TypeFor[int64]()
-	assert.EqualValues(t, jttMap, res.JsonTagTypeMap, "embedding with no tags: JsonTagTypeMap")
+	m := plan.JsonKeyTypeMap()
+	assert.EqualValues(t, 2, len(m))
+	assert.Equal(t, reflect.TypeFor[string](), m["name"])
+	assert.Equal(t, reflect.TypeFor[int64](), m["age"])
+	_, exists := m[""]
+	assert.False(t, exists)
 }
 
-func TestAnalyzeStructFailure(t *testing.T) {
-
-	// duplicated db tags
-	type dbDup struct {
-		A string `db:"a1" json:"a2,omitempty"`
-		B string `db:"a1" json:"b2"`
+func TestDbValuesSuccess(t *testing.T) {
+	type input struct {
+		Name string `db:"name_db" json:"name"`
+		Age  int64  `db:"age_db" json:"age"`
+		Skip string `json:"skip"`
 	}
 
-	_, err := AnalyzeStruct(reflect.ValueOf(&dbDup{}).Elem())
-	assert.EqualError(t, err, "db tag 'a1' is set on 2 fields", "dup db tags")
+	plan, err := AnalyzeT(input{Name: "james", Age: 42, Skip: "ignored"}, true)
+	assert.NoError(t, err)
 
-	// duplicated db tags via embedding
-	type dbDupInner struct {
-		A string `db:"a1" json:"a2,omitempty"`
-	}
-	type dbDupOuter struct {
-		B string `db:"a1" json:"b2"`
-		dbDupInner
-	}
+	dbNames, values, err := plan.DbValues()
+	assert.NoError(t, err)
+	assert.EqualValues(t, []string{"name_db", "age_db"}, dbNames)
+	assert.EqualValues(t, []any{"james", int64(42)}, values)
+}
 
-	_, err = AnalyzeStruct(reflect.ValueOf(&dbDupOuter{}).Elem())
-	assert.EqualError(t, err, "db tag 'a1' is set on 2 fields", "dup db tags: via embedded")
-
-	// duplicated json tags
-	type jsonDup struct {
-		A string `db:"a1" json:"a2,omitempty"`
-		B string `db:"b1" json:"a2"`
+func TestDbValuesErrorWithoutValues(t *testing.T) {
+	type input struct {
+		Name string `db:"name_db"`
 	}
 
-	_, err = AnalyzeStruct(reflect.ValueOf(&jsonDup{}).Elem())
-	assert.EqualError(t, err, "json tag 'a2' is set on 2 fields", "dup json tags")
+	plan, err := AnalyzeT(input{Name: "james"}, false)
+	assert.NoError(t, err)
 
-	// duplicated json tags via embedding
-	type jsonDupInner struct {
-		A string `db:"a1" json:"a2,omitempty"`
-	}
-	type jsonDupOuter struct {
-		B string `db:"b1" json:"a2"`
-		jsonDupInner
+	dbNames, values, err := plan.DbValues()
+	assert.Nil(t, dbNames)
+	assert.Nil(t, values)
+	assert.EqualError(t, err, "Plan was analyzed without values")
+}
+
+func TestDbValuesErrorNoDbTags(t *testing.T) {
+	type input struct {
+		Name string `json:"name"`
 	}
 
-	_, err = AnalyzeStruct(reflect.ValueOf(&jsonDupOuter{}).Elem())
-	assert.EqualError(t, err, "json tag 'a2' is set on 2 fields", "dup json tags: via embedded")
+	plan, err := AnalyzeT(input{Name: "james"}, true)
+	assert.NoError(t, err)
+
+	dbNames, values, err := plan.DbValues()
+	assert.Nil(t, dbNames)
+	assert.Nil(t, values)
+	assert.EqualError(t, err, "no fields have db tags")
 }

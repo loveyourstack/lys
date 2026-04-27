@@ -3,7 +3,6 @@ package lyspg
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strconv"
 	"strings"
 
@@ -27,21 +26,18 @@ func getInsertStmt(schemaName, tableName, pkColName string, inputFields []string
 // inputT must be a struct with "db" tags
 func Insert[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input inputT) (newPk pkT, err error) {
 
-	// get input db struct tags
-	inputReflVals := reflect.ValueOf(input)
-	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
+	// get input values by reflecting input T
+	meta, err := lysmeta.AnalyzeT(input, true)
 	if err != nil {
-		return newPk, fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
+		return newPk, fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
 	}
 
-	if len(meta.DbTags) == 0 {
-		return newPk, fmt.Errorf("input type does not have db tags")
+	dbNames, inputVals, err := meta.DbValues()
+	if err != nil {
+		return newPk, fmt.Errorf("meta.DbValues failed: %w", err)
 	}
 
-	// get the input values via reflection
-	inputVals := getInputValsFromStruct(inputReflVals)
-
-	stmt := getInsertStmt(schemaName, tableName, pkColName, meta.DbTags)
+	stmt := getInsertStmt(schemaName, tableName, pkColName, dbNames)
 
 	if err = db.QueryRow(ctx, stmt, inputVals...).Scan(&newPk); err != nil {
 		return newPk, lyserr.Db{Err: fmt.Errorf(ErrDescInsertScanFailed+": %w", err), Stmt: stmt}
@@ -54,21 +50,18 @@ func Insert[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sc
 // inputT must be a struct with "db" tags
 func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schemaName, tableName, viewName, pkColName string, input inputT) (newItem itemT, err error) {
 
-	// get input db struct tags
-	inputReflVals := reflect.ValueOf(input)
-	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
+	// get input values by reflecting input T
+	meta, err := lysmeta.AnalyzeT(input, true)
 	if err != nil {
-		return newItem, fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
+		return newItem, fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
 	}
 
-	if len(meta.DbTags) == 0 {
-		return newItem, fmt.Errorf("input type does not have db tags")
+	dbNames, inputVals, err := meta.DbValues()
+	if err != nil {
+		return newItem, fmt.Errorf("meta.DbValues failed: %w", err)
 	}
 
-	// get the input values via reflection
-	inputVals := getInputValsFromStruct(inputReflVals)
-
-	stmt := getInsertStmt(schemaName, tableName, pkColName, meta.DbTags)
+	stmt := getInsertStmt(schemaName, tableName, pkColName, dbNames)
 
 	var newPk any
 	if err = db.QueryRow(ctx, stmt, inputVals...).Scan(&newPk); err != nil {

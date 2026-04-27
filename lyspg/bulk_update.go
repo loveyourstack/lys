@@ -3,7 +3,6 @@ package lyspg
 import (
 	"context"
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -24,17 +23,13 @@ func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sch
 		return fmt.Errorf("len(inputs) is %v but len(pkVals) is %v", len(inputs), len(pkVals))
 	}
 
-	// get columns to update by reflecting the first input T
-	inputReflVals := reflect.ValueOf(inputs[0])
-	meta, err := lysmeta.AnalyzeStruct(inputReflVals)
+	// analyze first input for db names
+	plan, err := lysmeta.AnalyzeT(inputs[0], false)
 	if err != nil {
-		return fmt.Errorf("lysmeta.AnalyzeStruct failed: %w", err)
-	}
-	if len(meta.DbTags) == 0 {
-		return fmt.Errorf("input type does not have db tags")
+		return fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
 	}
 
-	stmt := getUpdateStmt(schemaName, tableName, pkColName, meta.DbTags)
+	stmt := getUpdateStmt(schemaName, tableName, pkColName, plan.DbNames())
 	batch := &pgx.Batch{}
 	invalidPkVals := []pkT{}
 
@@ -42,8 +37,14 @@ func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sch
 	for i := range inputs {
 
 		// get input values by reflecting input
-		inputReflVals := reflect.ValueOf(inputs[i])
-		inputVals := getInputValsFromStruct(inputReflVals)
+		plan, err := lysmeta.AnalyzeT(inputs[i], true)
+		if err != nil {
+			return fmt.Errorf("lysmeta.AnalyzeT failed on input %d: %w", i, err)
+		}
+		_, inputVals, err := plan.DbValues()
+		if err != nil {
+			return fmt.Errorf("plan.DbValues failed on input %d: %w", i, err)
+		}
 
 		// add pk as final input val
 		inputVals = append(inputVals, pkVals[i])

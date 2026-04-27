@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"reflect"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
@@ -23,27 +22,27 @@ const (
 // Input and Model are in a separate package, coretypetestm, so that they can be used for testing in lyspg
 
 var (
-	meta, inputMeta lysmeta.Result
+	plan, inputPlan lysmeta.Plan
 )
 
 func init() {
 	var err error
-	meta, err = lysmeta.AnalyzeStruct(reflect.ValueOf(&coretypetestm.Model{}).Elem())
+	plan, err = lysmeta.AnalyzeAndCheckT(coretypetestm.Model{})
 	if err != nil {
-		log.Fatalf("lysmeta.AnalyzeStruct failed for %s.%s: %s", schemaName, tableName, err.Error())
+		log.Fatalf("lysmeta.AnalyzeAndCheckT failed for %s.%s: %s", schemaName, tableName, err.Error())
 	}
-	inputMeta, _ = lysmeta.AnalyzeStruct(reflect.ValueOf(&coretypetestm.Input{}).Elem())
+	inputPlan, _ = lysmeta.AnalyzeAndCheckT(coretypetestm.Input{})
 }
 
 type Store struct {
 	Db *pgxpool.Pool
 }
 
-func (s Store) GetMeta() lysmeta.Result {
-	return meta
-}
 func (s Store) GetName() string {
 	return name
+}
+func (s Store) GetPlan() lysmeta.Plan {
+	return plan
 }
 
 func (s Store) InsertTx(ctx context.Context, tx pgx.Tx, input coretypetestm.Input) (newId int64, err error) {

@@ -14,8 +14,8 @@ import (
 
 // iGetable is a store that can be used by Get
 type iGetable[T any] interface {
-	GetMeta() lysmeta.Result
 	GetName() string // file output: for setting filename
+	GetPlan() lysmeta.Plan
 	Select(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error)
 }
 
@@ -48,7 +48,7 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 		}
 
 		// get request modifiers from url params
-		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetMeta().JsonTags, setFuncUrlParamNames, additionalFilterParamNames, env.GetOptions)
+		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetPlan().JsonKeys(), setFuncUrlParamNames, additionalFilterParamNames, env.GetOptions)
 		if err != nil {
 			HandleError(r.Context(), fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.ErrorLog, w)
 			return
@@ -115,7 +115,7 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.csv", store.GetName()))
 
 			// stream csv to response writer
-			err = lyscsv.WriteItems(items, store.GetMeta().JsonTagTypeMap, env.GetOptions.CsvDelimiter, w)
+			err = lyscsv.WriteItems(items, store.GetPlan().JsonKeyTypeMap(), env.GetOptions.CsvDelimiter, w)
 			if err != nil {
 				HandleInternalError(r.Context(), fmt.Errorf("Get: lyscsv.WriteItems failed: %w", err), env.ErrorLog, w)
 				return
@@ -138,7 +138,7 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.xlsx", store.GetName()))
 
 			// stream Excel to response writer
-			err = lysexcel.WriteItems(items, store.GetMeta().JsonTagTypeMap, "", w)
+			err = lysexcel.WriteItems(items, store.GetPlan().JsonKeyTypeMap(), "", w)
 			if err != nil {
 				HandleInternalError(r.Context(), fmt.Errorf("Get: lysexcel.WriteItems failed: %w", err), env.ErrorLog, w)
 				return

@@ -125,7 +125,7 @@ func BenchmarkGetRecsFromInputs(b *testing.B) {
 
 		b.StartTimer()
 
-		_ = getRecsFromInputs(inputs)
+		_, _ = getRecsFromInputs(inputs)
 	}
 }
 
@@ -205,7 +205,7 @@ func TestBulkInsertFailure(t *testing.T) {
 
 	// inputs have no db tags
 	_, err := BulkInsert(ctx, db, schemaName, tableName, inputs)
-	assert.EqualError(t, err, "input type does not have db tags")
+	assert.EqualError(t, err, "getRecsFromInputs failed: plan.DbValues failed on input 0: no fields have db tags")
 
 	// empty input slice
 	_, err = BulkInsert(ctx, db, schemaName, tableName, []s{})

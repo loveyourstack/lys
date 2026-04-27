@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/loveyourstack/lys/lyserr"
+	"github.com/loveyourstack/lys/lysmeta"
 )
 
 // UpdatePartial updates only the supplied columns of the record
@@ -21,7 +22,7 @@ func UpdatePartial[pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaN
 	for k, v := range assignmentsMap {
 		//fmt.Printf("%s: %v\n", k, v)
 		keys[i] = k
-		inputVals[i] = getInputValue(v, reflect.TypeOf(v))
+		inputVals[i] = lysmeta.GetInputValue(v, reflect.TypeOf(v))
 		i++
 	}
 

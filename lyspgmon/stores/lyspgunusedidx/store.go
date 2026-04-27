@@ -3,7 +3,6 @@ package lyspgunusedidx
 import (
 	"context"
 	"log"
-	"reflect"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lysmeta"
@@ -30,14 +29,14 @@ type Model struct {
 }
 
 var (
-	meta lysmeta.Result
+	plan lysmeta.Plan
 )
 
 func init() {
 	var err error
-	meta, err = lysmeta.AnalyzeStruct(reflect.ValueOf(&Model{}).Elem())
+	plan, err = lysmeta.AnalyzeAndCheckT(Model{})
 	if err != nil {
-		log.Fatalf("lysmeta.AnalyzeStruct failed for %s.%s: %s", schemaName, tableName, err.Error())
+		log.Fatalf("lysmeta.AnalyzeAndCheckT failed for %s.%s: %s", schemaName, tableName, err.Error())
 	}
 }
 
@@ -45,13 +44,13 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
-func (s Store) GetMeta() lysmeta.Result {
-	return meta
-}
 func (s Store) GetName() string {
 	return name
 }
+func (s Store) GetPlan() lysmeta.Plan {
+	return plan
+}
 
 func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {
-	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, meta.DbTags, params)
+	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, plan.DbNames(), params)
 }
