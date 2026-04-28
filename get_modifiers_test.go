@@ -10,192 +10,215 @@ import (
 
 func TestExtractFieldsSuccess(t *testing.T) {
 
-	validJsonFields := []string{"a", "b", "c"}
+	dbNames := []string{"a_db", "b_db", "c_db"}
+	jsonKeyDbNameMap := map[string]string{
+		"a": "a_db",
+		"b": "b_db",
+		"c": "c_db",
+	}
 	fieldsReqParamName := "xfields"
 
 	// with inclusion fields param
-	r := mustCreateGetReq(t, "/test?xfields=a,b")
-	fields, err := ExtractFields(r, validJsonFields, fieldsReqParamName)
-	if err != nil {
-		t.Errorf("ExtractFields failed: %v", err)
-	}
-	assert.EqualValues(t, []string{"a", "b"}, fields, "inclusion")
+	t.Run("inclusion", func(t *testing.T) {
+		r := mustCreateGetReq(t, "/test?xfields=a,b")
+		fields, err := ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
+		if err != nil {
+			t.Errorf("ExtractFields failed: %v", err)
+		}
+		assert.EqualValues(t, []string{"a_db", "b_db"}, fields)
+	})
 
 	// with exclusion fields param
-	r = mustCreateGetReq(t, "/test?xfields=-a,b")
-	fields, err = ExtractFields(r, validJsonFields, fieldsReqParamName)
-	if err != nil {
-		t.Errorf("ExtractFields failed: %v", err)
-	}
-	assert.EqualValues(t, []string{"c"}, fields, "exclusion")
+	t.Run("exclusion", func(t *testing.T) {
+		r := mustCreateGetReq(t, "/test?xfields=-a,b")
+		fields, err := ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
+		if err != nil {
+			t.Errorf("ExtractFields failed: %v", err)
+		}
+		assert.EqualValues(t, []string{"c_db"}, fields)
+	})
 
 	// without fields param (use default)
-	r = mustCreateGetReq(t, "/test")
-	fields, err = ExtractFields(r, validJsonFields, fieldsReqParamName)
-	if err != nil {
-		t.Errorf("ExtractFields failed: %v", err)
-	}
-	assert.EqualValues(t, validJsonFields, fields, "default")
+	t.Run("default", func(t *testing.T) {
+		r := mustCreateGetReq(t, "/test")
+		fields, err := ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
+		if err != nil {
+			t.Errorf("ExtractFields failed: %v", err)
+		}
+		assert.EqualValues(t, dbNames, fields)
+	})
 }
 
 func TestExtractFieldsFailure(t *testing.T) {
 
-	validJsonFields := []string{"a", "b"}
+	dbNames := []string{"a", "b"}
+	jsonKeyDbNameMap := map[string]string{
+		"a": "a_db",
+		"b": "b_db",
+	}
 	fieldsReqParamName := "xfields"
 
 	// inclusion: invalid param value
 	r := mustCreateGetReq(t, "/test?xfields=c")
-	_, err := ExtractFields(r, validJsonFields, fieldsReqParamName)
+	_, err := ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
 	assert.EqualValues(t, "xfields param value is invalid: c", err.Error(), "inclusion: invalid param value")
 
 	// exclusion: invalid param value
 	r = mustCreateGetReq(t, "/test?xfields=-c")
-	_, err = ExtractFields(r, validJsonFields, fieldsReqParamName)
+	_, err = ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
 	assert.EqualValues(t, "xfields param value is invalid: c", err.Error(), "exclusion: invalid param value")
 
 	// exclusion: wrong usage
 	r = mustCreateGetReq(t, "/test?xfields=-a,-b")
-	_, err = ExtractFields(r, validJsonFields, fieldsReqParamName)
+	_, err = ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
 	assert.EqualValues(t, "xfields param value is invalid: -b", err.Error(), "exclusion: wrong usage")
 }
 
 func TestExtractFiltersOptionsSuccess(t *testing.T) {
 
-	validJsonFields := []string{"a", "b", "c"}
+	jsonKeyDbNameMap := map[string]string{
+		"a": "a_db",
+		"b": "b_db",
+		"c": "c_db",
+	}
 	getOptions := FillGetOptions(GetOptions{})
 
 	// equals
 	urlValues := url.Values{}
 	urlValues.Add("a", "1")
-	conds := mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond := lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "1"}
+	conds := mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond := lyspg.Condition{Field: "a_db", Operator: lyspg.OpEquals, Value: "1"}
 	assert.EqualValues(t, cond, conds[0], "equals")
 
 	// not equals
 	urlValues = url.Values{}
 	urlValues.Add("a", "!1")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpNotEquals, Value: "1"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpNotEquals, Value: "1"}
 	assert.EqualValues(t, cond, conds[0], "not equals")
 
 	// greater than or equals
 	urlValues = url.Values{}
 	urlValues.Add("a", ">eq1")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpGreaterThanEquals, Value: "1"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpGreaterThanEquals, Value: "1"}
 	assert.EqualValues(t, cond, conds[0], "greater than or equals")
 
 	// greater than
 	urlValues = url.Values{}
 	urlValues.Add("a", ">1")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpGreaterThan, Value: "1"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpGreaterThan, Value: "1"}
 	assert.EqualValues(t, cond, conds[0], "greater than")
 
 	// less than or equals
 	urlValues = url.Values{}
 	urlValues.Add("a", "<eq1")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpLessThanEquals, Value: "1"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpLessThanEquals, Value: "1"}
 	assert.EqualValues(t, cond, conds[0], "less than or equals")
 
 	// less than
 	urlValues = url.Values{}
 	urlValues.Add("a", "<1")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpLessThan, Value: "1"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpLessThan, Value: "1"}
 	assert.EqualValues(t, cond, conds[0], "less than")
 
 	// starts with
 	urlValues = url.Values{}
 	urlValues.Add("a", "b~")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpStartsWith, Value: "b"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpStartsWith, Value: "b"}
 	assert.EqualValues(t, cond, conds[0], "starts with")
 
 	// ends with
 	urlValues = url.Values{}
 	urlValues.Add("a", "~b")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpEndsWith, Value: "b"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpEndsWith, Value: "b"}
 	assert.EqualValues(t, cond, conds[0], "ends with")
 
 	// contains
 	urlValues = url.Values{}
 	urlValues.Add("a", "~b~")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpContains, Value: "b"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpContains, Value: "b"}
 	assert.EqualValues(t, cond, conds[0], "contains")
 
 	// not contains
 	urlValues = url.Values{}
 	urlValues.Add("a", "!~b~")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpNotContains, Value: "b"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpNotContains, Value: "b"}
 	assert.EqualValues(t, cond, conds[0], "not contains")
 
 	// empty
 	urlValues = url.Values{}
 	urlValues.Add("a", "{empty}")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpEmpty, Value: "0"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpEmpty, Value: "0"}
 	assert.EqualValues(t, cond, conds[0], "empty")
 
 	// not empty
 	urlValues = url.Values{}
 	urlValues.Add("a", "{!empty}")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpNotEmpty, Value: "0"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpNotEmpty, Value: "0"}
 	assert.EqualValues(t, cond, conds[0], "not empty")
 
 	// null
 	urlValues = url.Values{}
 	urlValues.Add("a", "{null}")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpNull, Value: ""}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpNull, Value: ""}
 	assert.EqualValues(t, cond, conds[0], "null")
 
 	// not null
 	urlValues = url.Values{}
 	urlValues.Add("a", "{!null}")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpNotNull, Value: ""}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpNotNull, Value: ""}
 	assert.EqualValues(t, cond, conds[0], "not null")
 
 	// in
 	urlValues = url.Values{}
 	urlValues.Add("a", "b|c")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpIn, Value: "", InValues: []string{"b", "c"}}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpIn, Value: "", InValues: []string{"b", "c"}}
 	assert.EqualValues(t, cond, conds[0], "in")
 
 	// not in
 	urlValues = url.Values{}
 	urlValues.Add("a", "!b|c")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpNotIn, Value: "", InValues: []string{"b", "c"}}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpNotIn, Value: "", InValues: []string{"b", "c"}}
 	assert.EqualValues(t, cond, conds[0], "not in")
 
 	// contains any
 	urlValues = url.Values{}
 	urlValues.Add("a", "~[b|c]~")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpContainsAny, Value: "", InValues: []string{"b", "c"}}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpContainsAny, Value: "", InValues: []string{"b", "c"}}
 	assert.EqualValues(t, cond, conds[0], "contains any")
 }
 
 func TestExtractFiltersOtherSuccess(t *testing.T) {
 
-	validJsonFields := []string{"a", "b", "c"}
+	jsonKeyDbNameMap := map[string]string{
+		"a": "a_db",
+		"b": "b_db",
+		"c": "c_db",
+	}
 	getOptions := FillGetOptions(GetOptions{})
 
 	// multiple filters, different keys
 	urlValues := url.Values{}
 	urlValues.Add("a", "1")
 	urlValues.Add("b", "c")
-	conds := mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond1 := lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "1"}
-	cond2 := lyspg.Condition{Field: "b", Operator: lyspg.OpEquals, Value: "c"}
+	conds := mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond1 := lyspg.Condition{Field: "a_db", Operator: lyspg.OpEquals, Value: "1"}
+	cond2 := lyspg.Condition{Field: "b_db", Operator: lyspg.OpEquals, Value: "c"}
 
 	// map order not guaranteed: ensure both conds are present in any order
 	var cond1Found, cond2Found bool
@@ -214,9 +237,9 @@ func TestExtractFiltersOtherSuccess(t *testing.T) {
 	urlValues = url.Values{}
 	urlValues.Add("a", "1")
 	urlValues.Add("a", "2")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond1 = lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "1"}
-	cond2 = lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "2"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond1 = lyspg.Condition{Field: "a_db", Operator: lyspg.OpEquals, Value: "1"}
+	cond2 = lyspg.Condition{Field: "a_db", Operator: lyspg.OpEquals, Value: "2"}
 
 	cond1Found = false
 	cond2Found = false
@@ -240,7 +263,7 @@ func TestExtractFiltersOtherSuccess(t *testing.T) {
 	urlValues.Add(getOptions.PageParamName, "1")
 	urlValues.Add(getOptions.PerPageParamName, "1")
 	urlValues.Add(getOptions.SortParamName, "1")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
 	assert.EqualValues(t, 1, len(conds), "ignore special params")
 
 	// ignore params used as setFunc params
@@ -249,7 +272,7 @@ func TestExtractFiltersOtherSuccess(t *testing.T) {
 	urlValues = url.Values{}
 	urlValues.Add("a", "1")
 	urlValues.Add("x", "1")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, setFuncParamNames, getOptions)
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, setFuncParamNames, getOptions)
 	assert.EqualValues(t, 1, len(conds), "ignore setFuncParamNames")
 
 	//------------------
@@ -257,40 +280,44 @@ func TestExtractFiltersOtherSuccess(t *testing.T) {
 	// empty metadata
 	urlValues = url.Values{}
 	urlValues.Add("a", "1^")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond := lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "1", Metadata: ""}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond := lyspg.Condition{Field: "a_db", Operator: lyspg.OpEquals, Value: "1", Metadata: ""}
 	assert.EqualValues(t, cond, conds[0], "empty metadata")
 
 	// metadata
 	urlValues = url.Values{}
 	urlValues.Add("a", "1^b")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "1", Metadata: "b"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpEquals, Value: "1", Metadata: "b"}
 	assert.EqualValues(t, cond, conds[0], "metadata")
 
 	// metadata separator repeated
 	urlValues = url.Values{}
 	urlValues.Add("a", "1^b^c")
-	conds = mustExtractFilters(t, urlValues, validJsonFields, nil, getOptions)
-	cond = lyspg.Condition{Field: "a", Operator: lyspg.OpEquals, Value: "1", Metadata: "bc"}
+	conds = mustExtractFilters(t, urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	cond = lyspg.Condition{Field: "a_db", Operator: lyspg.OpEquals, Value: "1", Metadata: "bc"}
 	assert.EqualValues(t, cond, conds[0], "metadata separator repeated")
 }
 
 func TestExtractFiltersFailure(t *testing.T) {
 
-	validJsonFields := []string{"a", "b", "c"}
+	jsonKeyDbNameMap := map[string]string{
+		"a": "a_db",
+		"b": "b_db",
+		"c": "c_db",
+	}
 	getOptions := FillGetOptions(GetOptions{})
 
 	// invalid param key
 	urlValues := url.Values{}
 	urlValues.Add("d", "1")
-	_, err := ExtractFilters(urlValues, validJsonFields, nil, getOptions)
+	_, err := ExtractFilters(urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
 	assert.EqualValues(t, "invalid filter field: d", err.Error())
 
 	// empty param value
 	urlValues = url.Values{}
 	urlValues.Add("a", "")
-	_, err = ExtractFilters(urlValues, validJsonFields, nil, getOptions)
+	_, err = ExtractFilters(urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
 	assert.EqualValues(t, "empty value in filter field: a", err.Error())
 }
 
@@ -411,36 +438,40 @@ func TestExtractSetFuncParamValuesFailure(t *testing.T) {
 
 func TestExtractSortsSuccess(t *testing.T) {
 
-	validJsonFields := []string{"a", "b", "c"}
+	jsonKeyDbNameMap := map[string]string{
+		"a": "a_db",
+		"b": "b_db",
+		"c": "c_db",
+	}
 	sortReqParamName := "xsort"
 
 	// with single ASC sort param
 	r := mustCreateGetReq(t, "/test?xsort=a")
-	sortCols, err := ExtractSorts(r, validJsonFields, sortReqParamName)
+	sortCols, err := ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
 	if err != nil {
 		t.Errorf("ExtractSorts failed: %v", err)
 	}
-	assert.EqualValues(t, []string{"a"}, sortCols)
+	assert.EqualValues(t, []string{"a_db"}, sortCols)
 
 	// with single DESC sort param
 	r = mustCreateGetReq(t, "/test?xsort=-a")
-	sortCols, err = ExtractSorts(r, validJsonFields, sortReqParamName)
+	sortCols, err = ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
 	if err != nil {
 		t.Errorf("ExtractSorts failed: %v", err)
 	}
-	assert.EqualValues(t, []string{"a DESC"}, sortCols)
+	assert.EqualValues(t, []string{"a_db DESC"}, sortCols)
 
 	// with mixed sort params
 	r = mustCreateGetReq(t, "/test?xsort=a,-b")
-	sortCols, err = ExtractSorts(r, validJsonFields, sortReqParamName)
+	sortCols, err = ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
 	if err != nil {
 		t.Errorf("ExtractSorts failed: %v", err)
 	}
-	assert.EqualValues(t, []string{"a", "b DESC"}, sortCols)
+	assert.EqualValues(t, []string{"a_db", "b_db DESC"}, sortCols)
 
 	// without sort param (no default)
 	r = mustCreateGetReq(t, "/test")
-	sortCols, err = ExtractSorts(r, validJsonFields, sortReqParamName)
+	sortCols, err = ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
 	if err != nil {
 		t.Errorf("ExtractSorts failed: %v", err)
 	}
@@ -449,11 +480,14 @@ func TestExtractSortsSuccess(t *testing.T) {
 
 func TestExtractSortsFailure(t *testing.T) {
 
-	validJsonFields := []string{"a", "b"}
+	jsonKeyDbNameMap := map[string]string{
+		"a": "a_db",
+		"b": "b_db",
+	}
 	sortReqParamName := "xsort"
 
 	// invalid param value
 	r := mustCreateGetReq(t, "/test?xsort=c")
-	_, err := ExtractSorts(r, validJsonFields, sortReqParamName)
+	_, err := ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
 	assert.EqualValues(t, "invalid sort field: c", err.Error())
 }

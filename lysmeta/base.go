@@ -65,6 +65,18 @@ func (p Plan) JsonKeys() (jsonKeys []string) {
 	return jsonKeys
 }
 
+// JsonKeyDbNameMap returns a map of json keys to their corresponding db column names, for fields that have both json and db tags.
+// Fields with json tag "-" or missing db tag are omitted.
+func (p Plan) JsonKeyDbNameMap() (jsonKeyDbNameMap map[string]string) {
+	jsonKeyDbNameMap = make(map[string]string)
+	for _, field := range p.Fields {
+		if field.JsonKey != "" && field.DbName != "" {
+			jsonKeyDbNameMap[field.JsonKey] = field.DbName
+		}
+	}
+	return jsonKeyDbNameMap
+}
+
 // JsonKeyTypeMap returns a map of json keys to their corresponding field types. Fields with json tag "-" are omitted.
 func (p Plan) JsonKeyTypeMap() (jsonKeyTypeMap map[string]reflect.Type) {
 	jsonKeyTypeMap = make(map[string]reflect.Type)

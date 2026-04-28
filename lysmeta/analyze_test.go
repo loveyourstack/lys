@@ -90,6 +90,9 @@ func TestAnalyzeAndCheckTFailure(t *testing.T) {
 		B string `db:"db1" json:"json1"`
 		C string `db:"db2" json:"json1"`
 		D string `db:"db1" json:"json2"`
+		E string `json:"-"`
+		F string `json:"-"`
+		G string
 	}
 
 	_, err = AnalyzeAndCheckT(input{})

@@ -22,12 +22,12 @@ const (
 
 type Input struct {
 	CEditable string `db:"c_editable" json:"c_editable"`
-	CHidden   string `db:"c_hidden" json:"-"` // in db, but hidden to API. Value must be added in app code
+	CHidden   string `db:"c_hidden" json:"-"` // in db, but hidden to API. Insert / update value must be added in app code
 }
 
 type Model struct {
 	Id     int64  `db:"id" json:"id"`
-	CExtra string `json:"c_extra"` // field not in db. Value must be added in app code
+	CExtra string `json:"c_extra"` // no db tag: column not in db. Select value must be added in app code
 	Input
 }
 

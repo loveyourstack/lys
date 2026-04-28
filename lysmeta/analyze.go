@@ -48,7 +48,7 @@ func AnalyzeAndCheckT(t any) (plan Plan, err error) {
 		if field.DbName != "" {
 			dbNameMap[field.DbName]++
 		}
-		if field.JsonKey != "" {
+		if field.JsonKey != "" && field.JsonKey != "-" {
 			jsonKeyMap[field.JsonKey]++
 		}
 	}
