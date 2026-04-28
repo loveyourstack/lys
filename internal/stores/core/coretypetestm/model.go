@@ -17,12 +17,12 @@ type Input struct {
 	CInt       int64              `db:"c_int" json:"c_int"`
 	CIntN      *int64             `db:"c_intn" json:"c_intn"`
 	CIntA      []int64            `db:"c_inta" json:"c_inta"`
-	CDouble    float32            `db:"c_double" json:"c_double"`
-	CDoubleN   *float32           `db:"c_doublen" json:"c_doublen"`
-	CDoubleA   []float32          `db:"c_doublea" json:"c_doublea"`
-	CNumeric   float32            `db:"c_numeric" json:"c_numeric"`
-	CNumericN  *float32           `db:"c_numericn" json:"c_numericn"`
-	CNumericA  []float32          `db:"c_numerica" json:"c_numerica"`
+	CDouble    float64            `db:"c_double" json:"c_double"`
+	CDoubleN   *float64           `db:"c_doublen" json:"c_doublen"`
+	CDoubleA   []float64          `db:"c_doublea" json:"c_doublea"`
+	CNumeric   float64            `db:"c_numeric" json:"c_numeric"`
+	CNumericN  *float64           `db:"c_numericn" json:"c_numericn"`
+	CNumericA  []float64          `db:"c_numerica" json:"c_numerica"`
 	CDate      lystype.Date       `db:"c_date" json:"c_date"`
 	CDateN     *lystype.Date      `db:"c_daten" json:"c_daten"`
 	CDateA     []lystype.Date     `db:"c_datea" json:"c_datea"`
@@ -52,8 +52,8 @@ func GetEmptyInput() (input Input) {
 	return Input{
 		CBoolA:     []bool{},
 		CIntA:      []int64{},
-		CDoubleA:   []float32{},
-		CNumericA:  []float32{},
+		CDoubleA:   []float64{},
+		CNumericA:  []float64{},
 		CDateA:     []lystype.Date{},
 		CTimeA:     []lystype.Time{},
 		CDatetimeA: []lystype.Datetime{},
@@ -105,12 +105,12 @@ func GetFilledInput() (input Input, err error) {
 		CIntA: []int64{1, 2},
 
 		CDouble:  1.1,
-		CDoubleN: lystype.ToPtr(float32(2.1)),
-		CDoubleA: []float32{1.1, 2.1},
+		CDoubleN: lystype.ToPtr(float64(2.1)),
+		CDoubleA: []float64{1.1, 2.1},
 
 		CNumeric:  1.11,
-		CNumericN: lystype.ToPtr(float32(2.11)),
-		CNumericA: []float32{1.11, 2.11},
+		CNumericN: lystype.ToPtr(float64(2.11)),
+		CNumericA: []float64{1.11, 2.11},
 
 		CDate:  lystype.Date(d1),
 		CDateN: lystype.ToPtr(lystype.Date(d2)),
@@ -193,14 +193,14 @@ func TestEmptyInput(t testing.TB, item Input) {
 	assert.EqualValues(t, []int64{}, item.CIntA, "CIntA")
 
 	// double
-	assert.EqualValues(t, float32(0.0), item.CDouble, "CDouble")
-	assert.EqualValues(t, (*float32)(nil), item.CDoubleN, "CDoubleN")
-	assert.EqualValues(t, []float32{}, item.CDoubleA, "CDoubleA")
+	assert.EqualValues(t, float64(0.0), item.CDouble, "CDouble")
+	assert.EqualValues(t, (*float64)(nil), item.CDoubleN, "CDoubleN")
+	assert.EqualValues(t, []float64{}, item.CDoubleA, "CDoubleA")
 
 	// numeric
-	assert.EqualValues(t, float32(0.0), item.CNumeric, "CNumeric")
-	assert.EqualValues(t, (*float32)(nil), item.CNumericN, "CNumericN")
-	assert.EqualValues(t, []float32{}, item.CNumericA, "CNumericA")
+	assert.EqualValues(t, float64(0.0), item.CNumeric, "CNumeric")
+	assert.EqualValues(t, (*float64)(nil), item.CNumericN, "CNumericN")
+	assert.EqualValues(t, []float64{}, item.CNumericA, "CNumericA")
 
 	// date
 	assert.EqualValues(t, lystype.Date{}, item.CDate, "CDate")
@@ -249,17 +249,17 @@ func TestFilledInput(t testing.TB, item Input) {
 	}
 
 	// double
-	assert.EqualValues(t, float32(1.1), item.CDouble, "CDouble")
-	assert.EqualValues(t, float32(2.1), *item.CDoubleN, "CDoubleN")
-	expectedCDoubleA := []float32{1.1, 2.1}
+	assert.EqualValues(t, float64(1.1), item.CDouble, "CDouble")
+	assert.EqualValues(t, float64(2.1), *item.CDoubleN, "CDoubleN")
+	expectedCDoubleA := []float64{1.1, 2.1}
 	for i := range item.CDoubleA {
 		assert.EqualValues(t, expectedCDoubleA[i], item.CDoubleA[i], "CDoubleA", i)
 	}
 
 	// numeric
-	assert.EqualValues(t, float32(1.11), item.CNumeric, "CNumeric")
-	assert.EqualValues(t, float32(2.11), *item.CNumericN, "CNumericN")
-	expectedCNumericA := []float32{1.11, 2.11}
+	assert.EqualValues(t, float64(1.11), item.CNumeric, "CNumeric")
+	assert.EqualValues(t, float64(2.11), *item.CNumericN, "CNumericN")
+	expectedCNumericA := []float64{1.11, 2.11}
 	for i := range item.CNumericA {
 		assert.EqualValues(t, expectedCNumericA[i], item.CNumericA[i], "CNumericA", i)
 	}

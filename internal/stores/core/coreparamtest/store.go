@@ -25,8 +25,8 @@ type Input struct {
 	CBoolN     *bool             `db:"c_booln" json:"c_booln"`
 	CInt       int64             `db:"c_int" json:"c_int,omitempty"`
 	CIntN      *int64            `db:"c_intn" json:"c_intn,omitempty"`
-	CDouble    float32           `db:"c_double" json:"c_double,omitempty"`
-	CDoubleN   *float32          `db:"c_doublen" json:"c_doublen,omitempty"`
+	CDouble    float64           `db:"c_double" json:"c_double,omitempty"`
+	CDoubleN   *float64          `db:"c_doublen" json:"c_doublen,omitempty"`
 	CDate      lystype.Date      `db:"c_date" json:"c_date,omitzero"`
 	CDateN     *lystype.Date     `db:"c_daten" json:"c_daten,omitempty"`
 	CTime      lystype.Time      `db:"c_time" json:"c_time,omitzero"`

@@ -72,7 +72,7 @@ func TestRecsToMapOmitOptions(t *testing.T) {
 	assert.Equal(t, map[string]any{"name": "ann", "dob": d, "city": "y"}, recsMap[1])
 }
 
-func TestRecsToMapAnonymousEmbeddedFlattening(t *testing.T) {
+func TestRecsToMapEmbeddedFlattening(t *testing.T) {
 
 	type innerS struct {
 		Code string `json:"code"`

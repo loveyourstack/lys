@@ -48,7 +48,7 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 		}
 
 		// get request modifiers from url params
-		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetPlan().JsonKeys(), setFuncUrlParamNames, additionalFilterParamNames, env.GetOptions)
+		getReqModifiers, err := ExtractGetRequestModifiers(r, store.GetPlan().DbNames(), setFuncUrlParamNames, additionalFilterParamNames, env.GetOptions)
 		if err != nil {
 			HandleError(r.Context(), fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.ErrorLog, w)
 			return

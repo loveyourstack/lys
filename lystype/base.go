@@ -78,7 +78,7 @@ func structToMapByJSONTags(reflVal reflect.Value, out map[string]any) error {
 			continue
 		}
 
-		// flatten anonymous embedded structs when there is no explicit json tag name
+		// flatten embedded structs when there is no explicit json tag name
 		if fieldType.Anonymous && jsonTagName == "" {
 			embVal := fieldVal
 

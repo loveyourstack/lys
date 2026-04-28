@@ -4,8 +4,11 @@ import (
 	"context"
 	"testing"
 
+	"github.com/loveyourstack/lys/internal/stores/core/coretagtest"
 	"github.com/loveyourstack/lys/lysclient"
+	"github.com/loveyourstack/lys/lyspg"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestGetSuccess(t *testing.T) {
@@ -175,6 +178,10 @@ func TestGetSuccessFormat(t *testing.T) {
 	resp := lysclient.MustGetItemResp(ctx, t, srvApp.getRouter(), targetUrl)
 	assert.EqualValues(t, 1, len(resp.Data), "format json")
 
+	// csv
+	targetUrl = "/param-test?id=1&xformat=csv"
+	lysclient.MustGetFile(ctx, t, srvApp.getRouter(), targetUrl)
+
 	// excel
 	targetUrl = "/param-test?id=1&xformat=excel"
 	lysclient.MustGetFile(ctx, t, srvApp.getRouter(), targetUrl)
@@ -295,4 +302,42 @@ func TestGetVolumeSuccess(t *testing.T) {
 	resp = lysclient.MustGetItemResp(ctx, t, srvApp.getRouter(), targetUrl)
 	assert.EqualValues(t, true, resp.GetMetadata.TotalCountIsEstimated)
 	assert.InDelta(t, 100_000, resp.GetMetadata.TotalCount, 5_000, "filtered total count")
+}
+
+func TestGetIrregularTags(t *testing.T) {
+
+	// one of the columns in the table is hidden to API (no json tag)
+	// has an extra field in the Model which is populated in app code, not in db
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	targetUrl := "/tag-test"
+	resp := lysclient.MustGetItemResp(ctx, t, srvApp.getRouter(), targetUrl)
+
+	cEditable, ok := resp.Data[0]["c_editable"]
+	if !ok {
+		t.Errorf("c_editable: expected in response, but missing")
+	} else {
+		assert.Equal(t, "a", cEditable, "c_editable value")
+	}
+
+	_, ok = resp.Data[0]["c_hidden"]
+	if ok {
+		t.Errorf("c_hidden: not expected in response, but present")
+	}
+
+	cExtra, ok := resp.Data[0]["c_extra"]
+	if !ok {
+		t.Errorf("c_extra: expected in response, but missing")
+	} else {
+		assert.Equal(t, "extra", cExtra, "c_extra value")
+	}
+
+	// check hidden value with a select
+	items, _, err := lyspg.Select[coretagtest.Model](ctx, srvApp.Db, "core", "tag_test", "v_tag_test", "id", []string{"id", "c_editable", "c_hidden"}, lyspg.SelectParams{})
+	require.NoError(t, err, "lyspg.Select failed")
+	assert.Equal(t, "b", items[0].CHidden, "CHidden via DB")
+
 }

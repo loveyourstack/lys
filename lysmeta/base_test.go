@@ -5,33 +5,10 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-func TestGetJsonKey(t *testing.T) {
-	assert.Equal(t, "FieldName", getJsonKey("", "FieldName"), "empty tag falls back to field name")
-	assert.Equal(t, "FieldName", getJsonKey(",omitempty", "FieldName"), "empty key with options falls back to field name")
-	assert.Equal(t, "", getJsonKey("-", "FieldName"), "dash omits key")
-	assert.Equal(t, "custom", getJsonKey("custom,omitempty", "FieldName"), "explicit key is used")
-}
-
-func TestJsonKeyTypeMap(t *testing.T) {
-	plan := Plan{
-		Fields: []Field{
-			{Name: "A", Type: reflect.TypeFor[string](), JsonKey: "name"},
-			{Name: "B", Type: reflect.TypeFor[int64](), JsonKey: "age"},
-			{Name: "C", Type: reflect.TypeFor[bool](), JsonKey: ""},
-		},
-	}
-
-	m := plan.JsonKeyTypeMap()
-	assert.EqualValues(t, 2, len(m))
-	assert.Equal(t, reflect.TypeFor[string](), m["name"])
-	assert.Equal(t, reflect.TypeFor[int64](), m["age"])
-	_, exists := m[""]
-	assert.False(t, exists)
-}
-
-func TestDbValuesSuccess(t *testing.T) {
+func TestDbFuncs(t *testing.T) {
 	type input struct {
 		Name string `db:"name_db" json:"name"`
 		Age  int64  `db:"age_db" json:"age"`
@@ -39,12 +16,19 @@ func TestDbValuesSuccess(t *testing.T) {
 	}
 
 	plan, err := AnalyzeT(input{Name: "james", Age: 42, Skip: "ignored"}, true)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
-	dbNames, values, err := plan.DbValues()
-	assert.NoError(t, err)
-	assert.EqualValues(t, []string{"name_db", "age_db"}, dbNames)
-	assert.EqualValues(t, []any{"james", int64(42)}, values)
+	t.Run("DbNames", func(t *testing.T) {
+		dbNames := plan.DbNames()
+		assert.EqualValues(t, []string{"name_db", "age_db"}, dbNames)
+	})
+
+	t.Run("DbValues", func(t *testing.T) {
+		dbNames, values, err := plan.DbValues()
+		assert.NoError(t, err)
+		assert.EqualValues(t, []string{"name_db", "age_db"}, dbNames)
+		assert.EqualValues(t, []any{"james", int64(42)}, values)
+	})
 }
 
 func TestDbValuesErrorWithoutValues(t *testing.T) {
@@ -58,7 +42,7 @@ func TestDbValuesErrorWithoutValues(t *testing.T) {
 	dbNames, values, err := plan.DbValues()
 	assert.Nil(t, dbNames)
 	assert.Nil(t, values)
-	assert.EqualError(t, err, "Plan was analyzed without values")
+	assert.EqualError(t, err, "Plan was created without values")
 }
 
 func TestDbValuesErrorNoDbTags(t *testing.T) {
@@ -73,4 +57,28 @@ func TestDbValuesErrorNoDbTags(t *testing.T) {
 	assert.Nil(t, dbNames)
 	assert.Nil(t, values)
 	assert.EqualError(t, err, "no fields have db tags")
+}
+
+func TestJsonFuncs(t *testing.T) {
+	plan := Plan{
+		Fields: []Field{
+			{Name: "A", Type: reflect.TypeFor[string](), JsonKey: "name"},
+			{Name: "B", Type: reflect.TypeFor[int64](), JsonKey: "age"},
+			{Name: "C", Type: reflect.TypeFor[bool](), JsonKey: ""},
+		},
+	}
+
+	t.Run("JsonKeys", func(t *testing.T) {
+		k := plan.JsonKeys()
+		assert.Equal(t, []string{"name", "age"}, k)
+	})
+
+	t.Run("JsonKeyTypeMap", func(t *testing.T) {
+		m := plan.JsonKeyTypeMap()
+		assert.EqualValues(t, 2, len(m))
+		assert.Equal(t, reflect.TypeFor[string](), m["name"])
+		assert.Equal(t, reflect.TypeFor[int64](), m["age"])
+		_, exists := m[""]
+		assert.False(t, exists)
+	})
 }

@@ -5,40 +5,25 @@ import (
 	"reflect"
 )
 
+// Field represents a struct field with db and json metadata, and optionally its value.
 type Field struct {
 	Name string
 	Type reflect.Type
 
-	DbName  string // does not use pgx rules: if db tag is missing or "-", the field is ignored in db operations
+	DbName  string // if db tag is missing or "-", the field is ignored in db operations (unlike pgx, where only "-" is ignored)
 	JsonKey string // uses same rules as encoding/json: if json tag is missing or empty, use field name as json key; if json tag is "-", omit field from json
 
 	Value any // only set if getValues is true in AnalyzeT
 }
 
+// Plan represents the metadata of a struct, used for db and json operations. Values are only included if the Plan was created with getValues=true in AnalyzeT.
+// Embedded structs are flattened into the Plan, so the Fields slice includes all fields from the struct and its embedded structs.
 type Plan struct {
 	Fields    []Field
 	HasValues bool
 }
 
-func (p Plan) JsonKeys() (jsonKeys []string) {
-	for _, field := range p.Fields {
-		if field.JsonKey != "" {
-			jsonKeys = append(jsonKeys, field.JsonKey)
-		}
-	}
-	return jsonKeys
-}
-
-func (p Plan) JsonKeyTypeMap() (jsonKeyTypeMap map[string]reflect.Type) {
-	jsonKeyTypeMap = make(map[string]reflect.Type)
-	for _, field := range p.Fields {
-		if field.JsonKey != "" {
-			jsonKeyTypeMap[field.JsonKey] = field.Type
-		}
-	}
-	return jsonKeyTypeMap
-}
-
+// DbNames returns the db column names of the fields in the Plan. Fields missing a db tag or with db tag "-" are omitted.
 func (p Plan) DbNames() (dbNames []string) {
 	for _, field := range p.Fields {
 		if field.DbName != "" {
@@ -53,7 +38,7 @@ func (p Plan) DbNames() (dbNames []string) {
 func (p Plan) DbValues() (dbNames []string, values []any, err error) {
 
 	if !p.HasValues {
-		return nil, nil, fmt.Errorf("Plan was analyzed without values")
+		return nil, nil, fmt.Errorf("Plan was created without values")
 	}
 
 	for _, field := range p.Fields {
@@ -68,4 +53,25 @@ func (p Plan) DbValues() (dbNames []string, values []any, err error) {
 	}
 
 	return dbNames, values, nil
+}
+
+// JsonKeys returns the json keys of the fields in the Plan. Fields with json tag "-" are omitted.
+func (p Plan) JsonKeys() (jsonKeys []string) {
+	for _, field := range p.Fields {
+		if field.JsonKey != "" {
+			jsonKeys = append(jsonKeys, field.JsonKey)
+		}
+	}
+	return jsonKeys
+}
+
+// JsonKeyTypeMap returns a map of json keys to their corresponding field types. Fields with json tag "-" are omitted.
+func (p Plan) JsonKeyTypeMap() (jsonKeyTypeMap map[string]reflect.Type) {
+	jsonKeyTypeMap = make(map[string]reflect.Type)
+	for _, field := range p.Fields {
+		if field.JsonKey != "" {
+			jsonKeyTypeMap[field.JsonKey] = field.Type
+		}
+	}
+	return jsonKeyTypeMap
 }

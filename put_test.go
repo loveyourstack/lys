@@ -5,9 +5,12 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/loveyourstack/lys/internal/stores/core/coretagtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysclient"
+	"github.com/loveyourstack/lys/lyspg"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPutSuccess(t *testing.T) {
@@ -36,6 +39,28 @@ func TestPutSuccess(t *testing.T) {
 
 	// check changed record
 	coretypetestm.TestFilledInput(t, filledItem.Input)
+}
+
+func TestPutWithHiddenField(t *testing.T) {
+
+	// one of the fields in the table is hidden to API (no json tag)
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	input := coretagtest.Input{
+		CEditable: "c1",
+	}
+
+	_ = lysclient.MustPostToValue[coretagtest.Input, string](ctx, t, srvApp.getRouter(), "PUT", "/tag-test/2", input)
+
+	// need to check with a select, not an API get, as the hidden field is not returned by the API
+	item, err := lyspg.SelectUnique[coretagtest.Model](ctx, srvApp.Db, "core", "tag_test", "id", 2)
+	require.NoError(t, err, "lyspg.SelectUnique failed")
+
+	assert.Equal(t, "c1", item.CEditable, "CEditable")
+	assert.Equal(t, "d1", item.CHidden, "CHidden")
 }
 
 func TestPutFailure(t *testing.T) {

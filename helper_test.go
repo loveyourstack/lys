@@ -16,6 +16,7 @@ import (
 	"github.com/loveyourstack/lys/internal/stores/core/coreimporttest"
 	"github.com/loveyourstack/lys/internal/stores/core/coreparamtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coresetfunc"
+	"github.com/loveyourstack/lys/internal/stores/core/coretagtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
 	"github.com/loveyourstack/lys/internal/stores/core/corevolumetest"
 	"github.com/loveyourstack/lys/lyspg"
@@ -79,6 +80,16 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	r.HandleFunc(endpoint, Get(apiEnv, setfuncTestStore, GetOption[coresetfunc.Model]{
 		SetFuncUrlParamNames: setfuncTestStore.GetSetFuncUrlParamNames(),
 	})).Methods("GET")
+
+	endpoint = "/tag-test"
+
+	tagTestStore := coretagtest.Store{Db: srvApp.Db}
+	r.HandleFunc(endpoint, Get(apiEnv, tagTestStore)).Methods("GET")
+	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, tagTestStore)).Methods("GET")
+	r.HandleFunc(endpoint, Post(apiEnv, tagTestStore)).Methods("POST")
+	r.HandleFunc(endpoint+"/{id}", Put(apiEnv, tagTestStore)).Methods("PUT")
+	r.HandleFunc(endpoint+"/{id}", Patch(apiEnv, tagTestStore)).Methods("PATCH")
+	r.HandleFunc(endpoint+"/{id}", Delete(apiEnv, tagTestStore)).Methods("DELETE")
 
 	endpoint = "/type-test"
 

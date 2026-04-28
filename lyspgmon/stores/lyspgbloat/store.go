@@ -18,11 +18,11 @@ const (
 )
 
 type Model struct {
-	IndexBloat       float32 `db:"index_bloat" json:"index_bloat"`
+	IndexBloat       float64 `db:"index_bloat" json:"index_bloat"`
 	IndexName        string  `db:"index_name" json:"index_name"`
 	IndexWaste       int64   `db:"index_waste" json:"index_waste"`
 	IndexWastePretty string  `db:"index_waste_pretty" json:"index_waste_pretty"`
-	TableBloat       float32 `db:"table_bloat" json:"table_bloat"`
+	TableBloat       float64 `db:"table_bloat" json:"table_bloat"`
 	TableName        string  `db:"table_name" json:"table_name"`
 	TableSchema      string  `db:"table_schema" json:"table_schema"`
 	TableWaste       int64   `db:"table_waste" json:"table_waste"`

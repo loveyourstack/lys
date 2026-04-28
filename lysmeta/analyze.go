@@ -7,9 +7,10 @@ import (
 	"strings"
 )
 
-// AnalyzeT returns a Plan for the fields with db or json tags in struct t. It includes embedded structs with a db tag.
+// AnalyzeT returns a Plan for the exported fields in struct t. It includes embedded structs with a db tag.
 // if getValues is true, the Plan Field.Value will be set to the value from the struct, with special handling for lystype date types.
 func AnalyzeT(t any, getValues bool) (plan Plan, err error) {
+
 	reflVal := reflect.ValueOf(t)
 
 	if reflVal.Kind() != reflect.Struct {
@@ -19,7 +20,7 @@ func AnalyzeT(t any, getValues bool) (plan Plan, err error) {
 	fields := getStructFields(reflVal, getValues)
 
 	if len(fields) == 0 {
-		return Plan{}, fmt.Errorf("no fields have db or json tags")
+		return Plan{}, fmt.Errorf("struct has no exported fields")
 	}
 
 	plan = Plan{
@@ -33,12 +34,13 @@ func AnalyzeT(t any, getValues bool) (plan Plan, err error) {
 // AnalyzeAndCheckT is a wrapper around AnalyzeT that also checks for duplicate db and json tags across the struct hierarchy.
 // It should be called by each Store on startup.
 func AnalyzeAndCheckT(t any) (plan Plan, err error) {
+
 	plan, err = AnalyzeT(t, false)
 	if err != nil {
 		return Plan{}, fmt.Errorf("AnalyzeT failed: %w", err)
 	}
 
-	// use maps to help with duplication checks
+	// use name/count maps to help with duplication checks
 	dbNameMap := make(map[string]int)
 	jsonKeyMap := make(map[string]int)
 
@@ -51,7 +53,7 @@ func AnalyzeAndCheckT(t any) (plan Plan, err error) {
 		}
 	}
 
-	// get slices of dups from maps, for sorting
+	// get slices of dups from maps for sorting
 	type dup struct {
 		name string
 		n    int
@@ -70,7 +72,7 @@ func AnalyzeAndCheckT(t any) (plan Plan, err error) {
 		}
 	}
 
-	// sort dups by name for deterministic error messages
+	// sort dups slices by name for deterministic error messages
 	sort.Slice(dbDups, func(i, j int) bool {
 		return dbDups[i].name < dbDups[j].name
 	})
@@ -96,6 +98,43 @@ func AnalyzeAndCheckT(t any) (plan Plan, err error) {
 	return plan, nil
 }
 
+// getDbName returns the db name from the struct tag, or empty string if the field should be ignored in db operations.
+// Unlike pgx, missing tags also result in empty db name, not just "-" tags.
+func getDbName(dbTag string) string {
+
+	// if db tag is missing or "-", return empty key
+	if dbTag == "" || dbTag == "-" {
+		return ""
+	}
+
+	return dbTag
+}
+
+// getJsonKey implements the same rules as encoding/json for determining the json key from the struct tag.
+func getJsonKey(jsonTag, fieldName string) string {
+
+	// if json tag is missing, use the field name as the json key
+	if jsonTag == "" {
+		return fieldName
+	}
+
+	// split json tag by comma
+	parts := strings.Split(jsonTag, ",")
+
+	// if json name is empty (e.g. ",omitempty"), return field name
+	if parts[0] == "" {
+		return fieldName
+	}
+
+	// if field is omitted in json, return empty key
+	if parts[0] == "-" {
+		return ""
+	}
+
+	return parts[0]
+}
+
+// getStructFields recursively gets the fields of a struct, including embedded structs. It skips unexported fields.
 func getStructFields(reflVal reflect.Value, getValues bool) (fields []Field) {
 
 	reflType := reflVal.Type()
@@ -136,37 +175,4 @@ func getStructFields(reflVal reflect.Value, getValues bool) (fields []Field) {
 	}
 
 	return fields
-}
-
-func getJsonKey(jsonTag, fieldName string) string {
-
-	// if json tag is missing, use the field name as the json key
-	if jsonTag == "" {
-		return fieldName
-	}
-
-	// split json tag by comma
-	parts := strings.Split(jsonTag, ",")
-
-	// if json name is empty, return field name
-	if parts[0] == "" {
-		return fieldName
-	}
-
-	// if field is omitted in json, return empty key
-	if parts[0] == "-" {
-		return ""
-	}
-
-	return parts[0]
-}
-
-func getDbName(dbTag string) string {
-
-	// if db tag is missing or "-", return empty key
-	if dbTag == "" || dbTag == "-" {
-		return ""
-	}
-
-	return dbTag
 }

@@ -6,10 +6,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/loveyourstack/lys/internal/stores/core/coretagtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysclient"
+	"github.com/loveyourstack/lys/lyspg"
 	"github.com/loveyourstack/lys/lystype"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestPostEmptySuccess(t *testing.T) {
@@ -65,6 +68,28 @@ func TestPostFilledSuccess(t *testing.T) {
 	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](ctx, t, srvApp.getRouter(), "POST", "/type-test", input)
 	item := lysclient.MustDoToValue[coretypetestm.Model](ctx, t, srvApp.getRouter(), "GET", fmt.Sprintf("/type-test/%v", newId))
 	coretypetestm.TestFilledInput(t, item.Input)
+}
+
+func TestPostWithHiddenField(t *testing.T) {
+
+	// one of the fields in the table is hidden to API (no json tag)
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	input := coretagtest.Input{
+		CEditable: "x",
+	}
+
+	newId := lysclient.MustPostToValue[coretagtest.Input, int64](ctx, t, srvApp.getRouter(), "POST", "/tag-test", input)
+
+	// need to check with a select, not an API get, as the hidden field is not returned by the API
+	item, err := lyspg.SelectUnique[coretagtest.Model](ctx, srvApp.Db, "core", "tag_test", "id", newId)
+	require.NoError(t, err, "lyspg.SelectUnique failed")
+
+	assert.Equal(t, "x", item.CEditable, "CEditable")
+	assert.Equal(t, "y", item.CHidden, "CHidden")
 }
 
 func TestPostFailure(t *testing.T) {

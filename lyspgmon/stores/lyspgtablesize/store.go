@@ -29,7 +29,7 @@ type Model struct {
 	ToastPretty    string  `db:"toast_pretty" json:"toast_pretty"`
 	TotalBytes     int64   `db:"total_bytes" json:"total_bytes"`
 	TotalPretty    string  `db:"total_pretty" json:"total_pretty"`
-	TotalSizeShare float32 `db:"total_size_share" json:"total_size_share"`
+	TotalSizeShare float64 `db:"total_size_share" json:"total_size_share"`
 }
 
 var (
