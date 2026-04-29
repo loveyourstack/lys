@@ -2,6 +2,7 @@ package lys
 
 import (
 	"context"
+	"encoding/json"
 	"strconv"
 	"testing"
 
@@ -41,16 +42,21 @@ func TestPutSuccess(t *testing.T) {
 	coretypetestm.TestFilledInput(t, filledItem.Input)
 }
 
-func TestPutWithHiddenField(t *testing.T) {
+func TestPutIrregularTags(t *testing.T) {
 
-	// one of the fields in the table is hidden to API (no json tag)
+	// CHidden column is hidden to API (no json tag)
+	// CObscured column is obscured in API (different json tag)
 
 	ctx := context.Background()
 	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
-	input := coretagtest.Input{
-		CEditable: "c1",
+	// note use of different json tag for c_obscured: this is the name used in the API, not the db column name
+	rawJson := `{"c_editable": "e22", "c_obscured_json": "o22"}`
+	var input coretagtest.Input
+	err := json.Unmarshal([]byte(rawJson), &input)
+	if err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
 	}
 
 	_ = lysclient.MustPostToValue[coretagtest.Input, string](ctx, t, srvApp.getRouter(), "PUT", "/tag-test/2", input)
@@ -59,8 +65,9 @@ func TestPutWithHiddenField(t *testing.T) {
 	item, err := lyspg.SelectUnique[coretagtest.Model](ctx, srvApp.Db, "core", "tag_test", "id", 2)
 	require.NoError(t, err, "lyspg.SelectUnique failed")
 
-	assert.Equal(t, "c1", item.CEditable, "CEditable")
-	assert.Equal(t, "d1", item.CHidden, "CHidden")
+	assert.Equal(t, "e22", item.CEditable, "CEditable")
+	assert.Equal(t, "h22", item.CHidden, "CHidden")
+	assert.Equal(t, "o22", item.CObscured, "CObscured")
 }
 
 func TestPutFailure(t *testing.T) {

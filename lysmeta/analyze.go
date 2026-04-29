@@ -8,8 +8,8 @@ import (
 )
 
 // AnalyzeT returns a Plan for the exported fields in struct t. It includes embedded structs with a db tag.
-// if getValues is true, the Plan Field.Value will be set to the value from the struct, with special handling for lystype date types.
-func AnalyzeT(t any, getValues bool) (plan Plan, err error) {
+// if setValues is true, the Plan Field.Value will be set to the value from the struct, with special handling for lystype date types.
+func AnalyzeT(t any, setValues bool) (plan Plan, err error) {
 
 	reflVal := reflect.ValueOf(t)
 
@@ -17,15 +17,43 @@ func AnalyzeT(t any, getValues bool) (plan Plan, err error) {
 		return Plan{}, fmt.Errorf("AnalyzeT only accepts struct types, but got %s", reflVal.Kind())
 	}
 
-	fields := getStructFields(reflVal, getValues)
+	fields := getStructFields(reflVal, setValues)
 
 	if len(fields) == 0 {
 		return Plan{}, fmt.Errorf("struct has no exported fields")
 	}
 
 	plan = Plan{
-		Fields:    fields,
-		HasValues: getValues,
+		fields:    fields,
+		hasValues: setValues,
+	}
+
+	// set cached values for getters
+
+	for _, field := range plan.fields {
+		if field.DbName != "" {
+			plan.dbNames = append(plan.dbNames, field.DbName)
+		}
+	}
+
+	for _, field := range plan.fields {
+		if field.JsonKey != "" {
+			plan.jsonKeys = append(plan.jsonKeys, field.JsonKey)
+		}
+	}
+
+	plan.jsonKeyDbNameMap = make(map[string]string)
+	for _, field := range plan.fields {
+		if field.JsonKey != "" && field.DbName != "" {
+			plan.jsonKeyDbNameMap[field.JsonKey] = field.DbName
+		}
+	}
+
+	plan.jsonKeyTypeMap = make(map[string]reflect.Type)
+	for _, field := range plan.fields {
+		if field.JsonKey != "" {
+			plan.jsonKeyTypeMap[field.JsonKey] = field.Type
+		}
 	}
 
 	return plan, nil
@@ -44,7 +72,7 @@ func AnalyzeAndCheckT(t any) (plan Plan, err error) {
 	dbNameMap := make(map[string]int)
 	jsonKeyMap := make(map[string]int)
 
-	for _, field := range plan.Fields {
+	for _, field := range plan.Fields() {
 		if field.DbName != "" {
 			dbNameMap[field.DbName]++
 		}
@@ -135,7 +163,7 @@ func getJsonKey(jsonTag, fieldName string) string {
 }
 
 // getStructFields recursively gets the fields of a struct, including embedded structs. It skips unexported fields.
-func getStructFields(reflVal reflect.Value, getValues bool) (fields []Field) {
+func getStructFields(reflVal reflect.Value, setValues bool) (fields []Field) {
 
 	reflType := reflVal.Type()
 
@@ -153,7 +181,7 @@ func getStructFields(reflVal reflect.Value, getValues bool) (fields []Field) {
 		if field.Type.Kind() == reflect.Struct && field.Anonymous {
 
 			// recurse into it
-			innerFields := getStructFields(reflVal.Field(i), getValues)
+			innerFields := getStructFields(reflVal.Field(i), setValues)
 			fields = append(fields, innerFields...)
 			continue
 
@@ -167,7 +195,7 @@ func getStructFields(reflVal reflect.Value, getValues bool) (fields []Field) {
 			DbName:  getDbName(field.Tag.Get("db")),
 			JsonKey: getJsonKey(field.Tag.Get("json"), field.Name),
 		}
-		if getValues {
+		if setValues {
 			f.Value = GetInputValue(reflVal.Field(i).Interface(), field.Type)
 		}
 

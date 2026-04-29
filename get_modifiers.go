@@ -398,8 +398,7 @@ func ExtractSorts(r *http.Request, jsonKeyDbNameMap map[string]string, sortReqPa
 			// get corresponding db name for this field
 			dbName, ok := jsonKeyDbNameMap[fieldName]
 			if !ok {
-				return nil, lyserr.User{
-					Message: "invalid sort field: " + fieldName}
+				return nil, lyserr.User{Message: "invalid sort field: " + fieldName}
 			}
 
 			// add sortCol

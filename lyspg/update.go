@@ -33,14 +33,14 @@ func getUpdateStmt(schemaName, tableName, pkColName string, inputFields []string
 func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT) error {
 
 	// get input values by reflecting input T
-	meta, err := lysmeta.AnalyzeT(input, true)
+	plan, err := lysmeta.AnalyzeT(input, true)
 	if err != nil {
 		return fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
 	}
 
-	dbNames, inputVals, err := meta.DbValues()
+	dbNames, inputVals, err := plan.DbValues()
 	if err != nil {
-		return fmt.Errorf("meta.DbValues failed: %w", err)
+		return fmt.Errorf("plan.DbValues failed: %w", err)
 	}
 
 	stmt := getUpdateStmt(schemaName, tableName, pkColName, dbNames)

@@ -2,6 +2,7 @@ package lys
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 	"time"
@@ -70,16 +71,21 @@ func TestPostFilledSuccess(t *testing.T) {
 	coretypetestm.TestFilledInput(t, item.Input)
 }
 
-func TestPostWithHiddenField(t *testing.T) {
+func TestPostIrregularTags(t *testing.T) {
 
-	// one of the fields in the table is hidden to API (no json tag)
+	// CHidden column is hidden to API (no json tag)
+	// CObscured column is obscured in API (different json tag)
 
 	ctx := context.Background()
 	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
-	input := coretagtest.Input{
-		CEditable: "x",
+	// note use of different json tag for c_obscured: this is the name used in the API, not the db column name
+	rawJson := `{"c_editable": "x", "c_obscured_json": "z"}`
+	var input coretagtest.Input
+	err := json.Unmarshal([]byte(rawJson), &input)
+	if err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
 	}
 
 	newId := lysclient.MustPostToValue[coretagtest.Input, int64](ctx, t, srvApp.getRouter(), "POST", "/tag-test", input)
@@ -90,6 +96,7 @@ func TestPostWithHiddenField(t *testing.T) {
 
 	assert.Equal(t, "x", item.CEditable, "CEditable")
 	assert.Equal(t, "y", item.CHidden, "CHidden")
+	assert.Equal(t, "z", item.CObscured, "CObscured")
 }
 
 func TestPostFailure(t *testing.T) {

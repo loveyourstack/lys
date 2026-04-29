@@ -22,7 +22,8 @@ const (
 
 type Input struct {
 	CEditable string `db:"c_editable" json:"c_editable"`
-	CHidden   string `db:"c_hidden" json:"-"` // in db, but hidden to API. Insert / update value must be added in app code
+	CHidden   string `db:"c_hidden" json:"-"`                 // in db, but hidden to API. Insert / update value must be added in app code
+	CObscured string `db:"c_obscured" json:"c_obscured_json"` // in db, but obscured in API via a different json tag
 }
 
 type Model struct {
@@ -92,13 +93,13 @@ func (s Store) SelectById(ctx context.Context, id int64) (item Model, err error)
 
 func (s Store) Update(ctx context.Context, input Input, id int64) error {
 
-	input.CHidden = "d1" // required field in db, but no value incoming from API, so must be set here
+	input.CHidden = "h22" // required field in db, but no value incoming from API, so must be set here
 
 	return lyspg.Update(ctx, s.Db, schemaName, tableName, pkColName, input, id)
 }
 
 func (s Store) UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id int64) error {
-	return lyspg.UpdatePartial(ctx, s.Db, schemaName, tableName, pkColName, inputPlan.DbNames(), assignmentsMap, id)
+	return lyspg.UpdatePartial(ctx, s.Db, schemaName, tableName, pkColName, inputPlan.JsonKeyDbNameMap(), assignmentsMap, id)
 }
 
 func (s Store) Validate(validate *validator.Validate, input Input) error {

@@ -23,23 +23,23 @@ func TestAnalyzeTSuccess(t *testing.T) {
 
 	plan, err := AnalyzeT(input{Name: "james", Embedded: Embedded{Enabled: true}, Age: 42}, false)
 	require.NoError(t, err)
-	assert.False(t, plan.HasValues)
-	assert.EqualValues(t, 3, len(plan.Fields))
+	assert.False(t, plan.HasValues())
+	assert.EqualValues(t, 3, len(plan.Fields()))
 
-	assert.Equal(t, "Name", plan.Fields[0].Name)
-	assert.Equal(t, "name_db", plan.Fields[0].DbName)
-	assert.Equal(t, "name_json", plan.Fields[0].JsonKey)
-	assert.Nil(t, plan.Fields[0].Value)
+	assert.Equal(t, "Name", plan.Fields()[0].Name)
+	assert.Equal(t, "name_db", plan.Fields()[0].DbName)
+	assert.Equal(t, "name_json", plan.Fields()[0].JsonKey)
+	assert.Nil(t, plan.Fields()[0].Value)
 
-	assert.Equal(t, "Enabled", plan.Fields[1].Name)
-	assert.Equal(t, "enabled_db", plan.Fields[1].DbName)
-	assert.Equal(t, "enabled_json", plan.Fields[1].JsonKey)
-	assert.Nil(t, plan.Fields[1].Value)
+	assert.Equal(t, "Enabled", plan.Fields()[1].Name)
+	assert.Equal(t, "enabled_db", plan.Fields()[1].DbName)
+	assert.Equal(t, "enabled_json", plan.Fields()[1].JsonKey)
+	assert.Nil(t, plan.Fields()[1].Value)
 
-	assert.Equal(t, "Age", plan.Fields[2].Name)
-	assert.Equal(t, "", plan.Fields[2].DbName)
-	assert.Equal(t, "Age", plan.Fields[2].JsonKey)
-	assert.Nil(t, plan.Fields[2].Value)
+	assert.Equal(t, "Age", plan.Fields()[2].Name)
+	assert.Equal(t, "", plan.Fields()[2].DbName)
+	assert.Equal(t, "Age", plan.Fields()[2].JsonKey)
+	assert.Nil(t, plan.Fields()[2].Value)
 }
 
 func TestAnalyzeTFailure(t *testing.T) {
@@ -67,15 +67,15 @@ func TestAnalyzeAndCheckTSuccess(t *testing.T) {
 
 	plan, err := AnalyzeAndCheckT(input{})
 	require.NoError(t, err)
-	assert.EqualValues(t, 2, len(plan.Fields))
+	assert.EqualValues(t, 2, len(plan.Fields()))
 
-	assert.Equal(t, "Top", plan.Fields[0].Name)
-	assert.Equal(t, "top_db", plan.Fields[0].DbName)
-	assert.Equal(t, "top_json", plan.Fields[0].JsonKey)
+	assert.Equal(t, "Top", plan.Fields()[0].Name)
+	assert.Equal(t, "top_db", plan.Fields()[0].DbName)
+	assert.Equal(t, "top_json", plan.Fields()[0].JsonKey)
 
-	assert.Equal(t, "Inner", plan.Fields[1].Name)
-	assert.Equal(t, "inner_db", plan.Fields[1].DbName)
-	assert.Equal(t, "inner_json", plan.Fields[1].JsonKey)
+	assert.Equal(t, "Inner", plan.Fields()[1].Name)
+	assert.Equal(t, "inner_db", plan.Fields()[1].DbName)
+	assert.Equal(t, "inner_json", plan.Fields()[1].JsonKey)
 
 	assert.EqualValues(t, []string{"top_json", "inner_json"}, plan.JsonKeys())
 }

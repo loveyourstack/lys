@@ -60,14 +60,15 @@ func TestDbValuesErrorNoDbTags(t *testing.T) {
 }
 
 func TestJsonFuncs(t *testing.T) {
-	plan := Plan{
-		Fields: []Field{
-			{Name: "Name", Type: reflect.TypeFor[string](), JsonKey: "name", DbName: "name_db"},
-			{Name: "Age", Type: reflect.TypeFor[int64](), JsonKey: "age", DbName: "age_db"},
-			{Name: "Hidden", Type: reflect.TypeFor[bool](), JsonKey: "", DbName: "hidden_db"},
-			{Name: "Score", Type: reflect.TypeFor[float64](), JsonKey: "score", DbName: ""},
-		},
+	type input struct {
+		Name   string  `db:"name_db" json:"name"`
+		Age    int64   `db:"age_db" json:"age"`
+		Hidden bool    `db:"hidden_db" json:"-"`
+		Score  float64 `json:"score"`
 	}
+
+	plan, err := AnalyzeT(input{Name: "james", Age: 42, Hidden: true, Score: 99.5}, false)
+	require.NoError(t, err)
 
 	t.Run("JsonKeys", func(t *testing.T) {
 		k := plan.JsonKeys()

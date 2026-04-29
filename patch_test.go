@@ -30,13 +30,49 @@ func TestPatchSuccess(t *testing.T) {
 
 	// PATCH the filled input to the minimal record
 	_ = lysclient.MustPostToValue[coretypetestm.Input, string](ctx, t, srvApp.getRouter(), "PATCH", targetUrl, filledInput)
-	//fmt.Printf("%+v", item)
 
 	// get changed record
 	filledItem := lysclient.MustDoToValue[coretypetestm.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
 
 	// check changed record
 	coretypetestm.TestFilledInput(t, filledItem.Input)
+}
+
+func TestPatchIrregularTags(t *testing.T) {
+
+	// CHidden column is hidden to API (no json tag)
+	// CObscured column is obscured in API (different json tag)
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	targetUrl := "/tag-test/3"
+
+	t.Run("field with no json tag", func(t *testing.T) {
+
+		hiddenMap := make(map[string]any)
+		hiddenMap["c_hidden"] = "h33"
+
+		_, err := lysclient.PostToValueTester[map[string]any, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, hiddenMap)
+		assert.EqualValues(t, "invalid field: c_hidden", err.Error())
+	})
+
+	t.Run("trying to use db name when json tag should be used", func(t *testing.T) {
+		obscuredMap := make(map[string]any)
+		obscuredMap["c_obscured"] = "o33"
+
+		_, err := lysclient.PostToValueTester[map[string]any, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, obscuredMap)
+		assert.EqualValues(t, "invalid field: c_obscured", err.Error())
+	})
+
+	t.Run("using correct json tag for obscured field", func(t *testing.T) {
+		obscuredJsonMap := make(map[string]any)
+		obscuredJsonMap["c_obscured_json"] = "o33"
+
+		_, err := lysclient.PostToValueTester[map[string]any, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, obscuredJsonMap)
+		assert.NoError(t, err)
+	})
 }
 
 func TestPatchFailure(t *testing.T) {

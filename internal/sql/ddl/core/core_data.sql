@@ -16,9 +16,10 @@ INSERT INTO core.param_test (c_bool, c_booln, c_int, c_intn, c_double, c_doublen
   (true, true, 2, 2, 2.1, 2.1, '2002-01-01', '2002-01-01', '12:02', '12:02', '2002-01-01 12:01:00+01', '2002-01-01 12:01:00+01', 'Tuesday', 'Tuesday', 'b', 'abc')
 ;
 
-INSERT INTO core.tag_test (c_editable, c_hidden) VALUES
-  ('a', 'b'), -- for get tests
-  ('c', 'd') -- for put tests: will be overwritten
+INSERT INTO core.tag_test (c_editable, c_hidden, c_obscured) VALUES
+  ('e1', 'h1', 'o1'), -- for get tests
+  ('e2', 'h2', 'o2'), -- for put tests: will be overwritten
+  ('e3', 'h3', 'o3') -- for patch tests: will be overwritten
 ;
 
 INSERT INTO core.type_test (c_bool, c_boola, c_int, c_inta, c_double, c_doublea, c_numeric, c_numerica, c_date, c_datea, c_time, c_timea, c_datetime, c_datetimea, c_enum, c_enuma, c_text, c_texta) VALUES (

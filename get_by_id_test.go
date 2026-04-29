@@ -26,8 +26,9 @@ func TestGetByIdSuccess(t *testing.T) {
 
 func TestGetByIdIrregularTags(t *testing.T) {
 
-	// one of the columns in the table is hidden to API (no json tag)
-	// has an extra field in the Model which is populated in app code, not in db
+	// CExtra is a field in the Model which is populated in app code, not in db
+	// CHidden column is hidden to API (no json tag)
+	// CObscured column is obscured in API (different json tag)
 
 	ctx := context.Background()
 	srvApp := mustGetSrvApp(ctx, t)
@@ -35,14 +36,15 @@ func TestGetByIdIrregularTags(t *testing.T) {
 
 	targetUrl := "/tag-test/1"
 	item := lysclient.MustDoToValue[coretagtest.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
-	assert.Equal(t, "a", item.CEditable, "CEditable")
-	assert.Equal(t, "", item.CHidden, "CHidden via API") // hidden field should be empty in API result
+	assert.Equal(t, "e1", item.CEditable, "CEditable")
 	assert.Equal(t, "extra", item.CExtra, "CExtra")
+	assert.Equal(t, "", item.CHidden, "CHidden via API") // hidden field should be empty in API result
+	assert.Equal(t, "o1", item.CObscured, "CObscured")
 
 	// check hidden value with a select
 	item, err := lyspg.SelectUnique[coretagtest.Model](ctx, srvApp.Db, "core", "tag_test", "id", 1)
 	require.NoError(t, err, "lyspg.SelectUnique failed")
-	assert.Equal(t, "b", item.CHidden, "CHidden via DB")
+	assert.Equal(t, "h1", item.CHidden, "CHidden via DB")
 }
 
 func TestGetByIdFailure(t *testing.T) {

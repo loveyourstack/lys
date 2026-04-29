@@ -306,8 +306,9 @@ func TestGetVolumeSuccess(t *testing.T) {
 
 func TestGetIrregularTags(t *testing.T) {
 
-	// one of the columns in the table is hidden to API (no json tag)
-	// has an extra field in the Model which is populated in app code, not in db
+	// CExtra is a field in the Model which is populated in app code, not in db
+	// CHidden column is hidden to API (no json tag)
+	// CObscured column is obscured in API (different json tag)
 
 	ctx := context.Background()
 	srvApp := mustGetSrvApp(ctx, t)
@@ -320,12 +321,7 @@ func TestGetIrregularTags(t *testing.T) {
 	if !ok {
 		t.Errorf("c_editable: expected in response, but missing")
 	} else {
-		assert.Equal(t, "a", cEditable, "c_editable value")
-	}
-
-	_, ok = resp.Data[0]["c_hidden"]
-	if ok {
-		t.Errorf("c_hidden: not expected in response, but present")
+		assert.Equal(t, "e1", cEditable, "c_editable value")
 	}
 
 	cExtra, ok := resp.Data[0]["c_extra"]
@@ -335,9 +331,25 @@ func TestGetIrregularTags(t *testing.T) {
 		assert.Equal(t, "extra", cExtra, "c_extra value")
 	}
 
-	// check hidden value with a select
-	items, _, err := lyspg.Select[coretagtest.Model](ctx, srvApp.Db, "core", "tag_test", "v_tag_test", "id", []string{"id", "c_editable", "c_hidden"}, lyspg.SelectParams{})
-	require.NoError(t, err, "lyspg.Select failed")
-	assert.Equal(t, "b", items[0].CHidden, "CHidden via DB")
+	_, ok = resp.Data[0]["c_hidden"]
+	if ok {
+		t.Errorf("c_hidden: not expected in response, but present")
+	}
 
+	// note that json name is used for output, not db name
+	cObscured, ok := resp.Data[0]["c_obscured_json"]
+	if !ok {
+		t.Errorf("c_obscured_json: expected in response, but missing")
+	} else {
+		assert.Equal(t, "o1", cObscured, "c_obscured_json value")
+	}
+	_, ok = resp.Data[0]["c_obscured"]
+	if ok {
+		t.Errorf("c_obscured: not expected in response, but present")
+	}
+
+	// check hidden value with a select
+	items, _, err := lyspg.Select[coretagtest.Model](ctx, srvApp.Db, "core", "tag_test", "v_tag_test", "id", []string{"id", "c_hidden"}, lyspg.SelectParams{})
+	require.NoError(t, err, "lyspg.Select failed")
+	assert.Equal(t, "h1", items[0].CHidden, "CHidden via DB")
 }

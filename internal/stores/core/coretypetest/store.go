@@ -72,7 +72,7 @@ func (s Store) Update(ctx context.Context, input coretypetestm.Input, id int64) 
 }
 
 func (s Store) UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id int64) error {
-	return lyspg.UpdatePartial(ctx, s.Db, schemaName, tableName, pkColName, inputPlan.DbNames(), assignmentsMap, id)
+	return lyspg.UpdatePartial(ctx, s.Db, schemaName, tableName, pkColName, inputPlan.JsonKeyDbNameMap(), assignmentsMap, id)
 }
 
 func (s Store) Validate(validate *validator.Validate, input coretypetestm.Input) error {
