@@ -51,7 +51,7 @@ func (s Store) Insert(ctx context.Context, input Input) (newId int64, err error)
 }
 
 func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {
-	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, gDbTags, params)
+	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, plan.DbNames(), params)
 }
 
 // etc
@@ -109,6 +109,7 @@ curl --header "Content-Type: application/json" --request POST --data '{"name":"F
 * Provides useful bulk insert (COPY) wrapper, and bulk update/delete (batch) wrappers
 * Support for getting and filtering enum values
 * Support for selection from database set-returning functions
+* Supports API obfuscation of database columns via differing JSON tags
 * Database creation function from embedded SQL files
 * Archive (soft delete) + restore functions
 * and more. See the [wiki](https://github.com/loveyourstack/lys/wiki)
@@ -116,7 +117,6 @@ curl --header "Content-Type: application/json" --request POST --data '{"name":"F
 ## Current limitations
 
 * Only supports PostgreSQL
-* No database obfuscation. Struct "db" tags must be added and must be identical to the "json" tag, unless the latter is "-"
 
 ## Testing
 
