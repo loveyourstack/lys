@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/loveyourstack/lys/internal/stores/core/coretrackingtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/stretchr/testify/assert"
@@ -73,6 +74,25 @@ func TestPatchIrregularTags(t *testing.T) {
 		_, err := lysclient.PostToValueTester[map[string]any, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, obscuredJsonMap)
 		assert.NoError(t, err)
 	})
+}
+
+func TestPatchWithExtras(t *testing.T) {
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	targetUrl := "/tracking-test/2"
+
+	assignmentsMap := make(map[string]any)
+	assignmentsMap["c_editable"] = "e22"
+
+	_ = lysclient.MustPostToValue[map[string]any, string](ctx, t, srvApp.getRouter(), "PATCH", targetUrl, assignmentsMap)
+	item := lysclient.MustDoToValue[coretrackingtest.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
+
+	assert.Equal(t, "e22", item.CEditable, "CEditable")
+	assert.Equal(t, "insert", item.CreatedBy, "CreatedBy")
+	assert.Equal(t, "update partial", item.LastUserUpdateBy, "LastUserUpdateBy")
 }
 
 func TestPatchFailure(t *testing.T) {

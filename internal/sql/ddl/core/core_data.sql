@@ -18,8 +18,13 @@ INSERT INTO core.param_test (c_bool, c_booln, c_int, c_intn, c_double, c_doublen
 
 INSERT INTO core.tag_test (c_editable, c_hidden, c_obscured) VALUES
   ('e1', 'h1', 'o1'), -- for get tests
-  ('e2', 'h2', 'o2'), -- for put tests: will be overwritten
-  ('e3', 'h3', 'o3') -- for patch tests: will be overwritten
+  ('e2', 'h2', 'o2'), -- for put tests
+  ('e3', 'h3', 'o3') -- for patch tests
+;
+
+INSERT INTO core.tracking_test (c_editable, created_by, last_user_update_by) VALUES
+  ('e1', 'insert', ''), -- for put tests
+  ('e2', 'insert', '') -- for patch tests
 ;
 
 INSERT INTO core.type_test (c_bool, c_boola, c_int, c_inta, c_double, c_doublea, c_numeric, c_numerica, c_date, c_datea, c_time, c_timea, c_datetime, c_datetimea, c_enum, c_enuma, c_text, c_texta) VALUES (

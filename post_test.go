@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/loveyourstack/lys/internal/stores/core/coretagtest"
+	"github.com/loveyourstack/lys/internal/stores/core/coretrackingtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/loveyourstack/lys/lyspg"
@@ -97,6 +98,22 @@ func TestPostIrregularTags(t *testing.T) {
 	assert.Equal(t, "x", item.CEditable, "CEditable")
 	assert.Equal(t, "y", item.CHidden, "CHidden")
 	assert.Equal(t, "z", item.CObscured, "CObscured")
+}
+
+func TestPostWithExtras(t *testing.T) {
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	input := coretrackingtest.Input{
+		CEditable: "e",
+	}
+	newId := lysclient.MustPostToValue[coretrackingtest.Input, int64](ctx, t, srvApp.getRouter(), "POST", "/tracking-test", input)
+	item := lysclient.MustDoToValue[coretrackingtest.Model](ctx, t, srvApp.getRouter(), "GET", fmt.Sprintf("/tracking-test/%v", newId))
+	assert.Equal(t, "e", item.CEditable, "CEditable")
+	assert.Equal(t, "insert", item.CreatedBy, "CreatedBy")
+	assert.Equal(t, "", item.LastUserUpdateBy, "LastUserUpdateBy")
 }
 
 func TestPostFailure(t *testing.T) {
