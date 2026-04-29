@@ -8,22 +8,25 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDbFuncs(t *testing.T) {
+func TestDbMethods(t *testing.T) {
 	type input struct {
 		Name string `db:"name_db" json:"name"`
 		Age  int64  `db:"age_db" json:"age"`
 		Skip string `json:"skip"`
 	}
 
-	plan, err := AnalyzeT(input{Name: "james", Age: 42, Skip: "ignored"}, true)
-	require.NoError(t, err)
-
 	t.Run("DbNames", func(t *testing.T) {
+		plan, err := Analyze(input{})
+		require.NoError(t, err)
+
 		dbNames := plan.DbNames()
 		assert.EqualValues(t, []string{"name_db", "age_db"}, dbNames)
 	})
 
 	t.Run("DbValues", func(t *testing.T) {
+		plan, err := AnalyzeValues(input{Name: "james", Age: 42, Skip: "ignored"})
+		require.NoError(t, err)
+
 		dbNames, values, err := plan.DbValues()
 		assert.NoError(t, err)
 		assert.EqualValues(t, []string{"name_db", "age_db"}, dbNames)
@@ -36,7 +39,7 @@ func TestDbValuesErrorWithoutValues(t *testing.T) {
 		Name string `db:"name_db"`
 	}
 
-	plan, err := AnalyzeT(input{Name: "james"}, false)
+	plan, err := Analyze(input{Name: "james"})
 	assert.NoError(t, err)
 
 	dbNames, values, err := plan.DbValues()
@@ -50,7 +53,7 @@ func TestDbValuesErrorNoDbTags(t *testing.T) {
 		Name string `json:"name"`
 	}
 
-	plan, err := AnalyzeT(input{Name: "james"}, true)
+	plan, err := AnalyzeValues(input{Name: "james"})
 	assert.NoError(t, err)
 
 	dbNames, values, err := plan.DbValues()
@@ -59,7 +62,7 @@ func TestDbValuesErrorNoDbTags(t *testing.T) {
 	assert.EqualError(t, err, "no fields have db tags")
 }
 
-func TestJsonFuncs(t *testing.T) {
+func TestJsonMethods(t *testing.T) {
 	type input struct {
 		Name   string  `db:"name_db" json:"name"`
 		Age    int64   `db:"age_db" json:"age"`
@@ -67,7 +70,7 @@ func TestJsonFuncs(t *testing.T) {
 		Score  float64 `json:"score"`
 	}
 
-	plan, err := AnalyzeT(input{Name: "james", Age: 42, Hidden: true, Score: 99.5}, false)
+	plan, err := Analyze(input{})
 	require.NoError(t, err)
 
 	t.Run("JsonKeys", func(t *testing.T) {

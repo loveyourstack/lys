@@ -38,11 +38,11 @@ var (
 
 func init() {
 	var err error
-	plan, err = lysmeta.AnalyzeAndCheckT(Model{})
+	plan, err = lysmeta.Analyze(Model{})
 	if err != nil {
-		log.Fatalf("lysmeta.AnalyzeAndCheckT failed for %s.%s: %s", schemaName, tableName, err.Error())
+		log.Fatalf("lysmeta.Analyze failed for %s.%s: %s", schemaName, tableName, err.Error())
 	}
-	inputPlan, _ = lysmeta.AnalyzeAndCheckT(Input{})
+	inputPlan, _ = lysmeta.Analyze(Input{})
 }
 
 type Store struct {

@@ -24,9 +24,9 @@ func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sch
 	}
 
 	// analyze first input for db names
-	plan, err := lysmeta.AnalyzeT(inputs[0], false)
+	plan, err := lysmeta.Analyze(inputs[0])
 	if err != nil {
-		return fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
+		return fmt.Errorf("lysmeta.Analyze failed: %w", err)
 	}
 
 	stmt := getUpdateStmt(schemaName, tableName, pkColName, plan.DbNames())
@@ -37,9 +37,9 @@ func BulkUpdate[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sch
 	for i := range inputs {
 
 		// get input values by reflecting input
-		plan, err := lysmeta.AnalyzeT(inputs[i], true)
+		plan, err := lysmeta.AnalyzeValues(inputs[i])
 		if err != nil {
-			return fmt.Errorf("lysmeta.AnalyzeT failed on input %d: %w", i, err)
+			return fmt.Errorf("lysmeta.AnalyzeValues failed on input %d: %w", i, err)
 		}
 		_, inputVals, err := plan.DbValues()
 		if err != nil {

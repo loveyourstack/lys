@@ -10,52 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestAnalyzeTSuccess(t *testing.T) {
-	type Embedded struct {
-		Enabled bool `db:"enabled_db" json:"enabled_json"`
-	}
-
-	type input struct {
-		Name string `db:"name_db" json:"name_json"`
-		Embedded
-		Age int
-	}
-
-	plan, err := AnalyzeT(input{Name: "james", Embedded: Embedded{Enabled: true}, Age: 42}, false)
-	require.NoError(t, err)
-	assert.False(t, plan.HasValues())
-	assert.EqualValues(t, 3, len(plan.Fields()))
-
-	assert.Equal(t, "Name", plan.Fields()[0].Name)
-	assert.Equal(t, "name_db", plan.Fields()[0].DbName)
-	assert.Equal(t, "name_json", plan.Fields()[0].JsonKey)
-	assert.Nil(t, plan.Fields()[0].Value)
-
-	assert.Equal(t, "Enabled", plan.Fields()[1].Name)
-	assert.Equal(t, "enabled_db", plan.Fields()[1].DbName)
-	assert.Equal(t, "enabled_json", plan.Fields()[1].JsonKey)
-	assert.Nil(t, plan.Fields()[1].Value)
-
-	assert.Equal(t, "Age", plan.Fields()[2].Name)
-	assert.Equal(t, "", plan.Fields()[2].DbName)
-	assert.Equal(t, "Age", plan.Fields()[2].JsonKey)
-	assert.Nil(t, plan.Fields()[2].Value)
-}
-
-func TestAnalyzeTFailure(t *testing.T) {
-
-	_, err := AnalyzeT(123, false)
-	assert.EqualError(t, err, "AnalyzeT only accepts struct types, but got int", "non-struct")
-
-	type input struct {
-		age int
-	}
-
-	_, err = AnalyzeT(input{age: 18}, false)
-	assert.EqualError(t, err, "struct has no exported fields", "no exported fields")
-}
-
-func TestAnalyzeAndCheckTSuccess(t *testing.T) {
+func TestAnalyzeSuccess(t *testing.T) {
 	type Inner struct {
 		Inner string `db:"inner_db" json:"inner_json"`
 	}
@@ -65,7 +20,7 @@ func TestAnalyzeAndCheckTSuccess(t *testing.T) {
 		Inner
 	}
 
-	plan, err := AnalyzeAndCheckT(input{})
+	plan, err := Analyze(input{})
 	require.NoError(t, err)
 	assert.EqualValues(t, 2, len(plan.Fields()))
 
@@ -80,10 +35,10 @@ func TestAnalyzeAndCheckTSuccess(t *testing.T) {
 	assert.EqualValues(t, []string{"top_json", "inner_json"}, plan.JsonKeys())
 }
 
-func TestAnalyzeAndCheckTFailure(t *testing.T) {
+func TestAnalyzeFailure(t *testing.T) {
 
-	_, err := AnalyzeAndCheckT(123)
-	assert.EqualError(t, err, "AnalyzeT failed: AnalyzeT only accepts struct types, but got int", "non-struct")
+	_, err := Analyze(123)
+	assert.EqualError(t, err, "only struct types are accepted, but got int", "non-struct")
 
 	type input struct {
 		A string `db:"db2" json:"json2"`
@@ -95,13 +50,47 @@ func TestAnalyzeAndCheckTFailure(t *testing.T) {
 		G string
 	}
 
-	_, err = AnalyzeAndCheckT(input{})
+	_, err = Analyze(input{})
 	assert.EqualError(
 		t,
 		err,
 		"db name 'db1' is set on 2 fields, db name 'db2' is set on 2 fields, json key 'json1' is set on 2 fields, json key 'json2' is set on 2 fields",
 		"duplicate tags",
 	)
+}
+
+func TestAnalyzeValuesSuccess(t *testing.T) {
+	type Embedded struct {
+		Enabled bool `db:"enabled_db" json:"enabled_json"`
+	}
+
+	type input struct {
+		Name string `db:"name_db" json:"name_json"`
+		Embedded
+		Age int
+	}
+
+	plan, err := AnalyzeValues(input{Name: "james", Embedded: Embedded{Enabled: true}, Age: 42})
+	require.NoError(t, err)
+	assert.True(t, plan.HasValues())
+	assert.EqualValues(t, 3, len(plan.Fields()))
+
+	assert.Equal(t, "james", plan.Fields()[0].Value)
+	assert.Equal(t, true, plan.Fields()[1].Value)
+	assert.Equal(t, 42, plan.Fields()[2].Value)
+}
+
+func TestAnalyzeValuesFailure(t *testing.T) {
+
+	_, err := AnalyzeValues(123)
+	assert.EqualError(t, err, "only struct types are accepted, but got int", "non-struct")
+
+	type input struct {
+		age int
+	}
+
+	_, err = AnalyzeValues(input{age: 18})
+	assert.EqualError(t, err, "struct has no exported fields", "no exported fields")
 }
 
 func TestGetDbName(t *testing.T) {

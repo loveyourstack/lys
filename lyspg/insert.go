@@ -27,9 +27,9 @@ func getInsertStmt(schemaName, tableName, pkColName string, inputFields []string
 func Insert[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input inputT) (newPk pkT, err error) {
 
 	// get input values by reflecting input T
-	plan, err := lysmeta.AnalyzeT(input, true)
+	plan, err := lysmeta.AnalyzeValues(input)
 	if err != nil {
-		return newPk, fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
+		return newPk, fmt.Errorf("lysmeta.AnalyzeValues failed: %w", err)
 	}
 
 	dbNames, inputVals, err := plan.DbValues()
@@ -51,9 +51,9 @@ func Insert[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, sc
 func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schemaName, tableName, viewName, pkColName string, input inputT) (newItem itemT, err error) {
 
 	// get input values by reflecting input T
-	plan, err := lysmeta.AnalyzeT(input, true)
+	plan, err := lysmeta.AnalyzeValues(input)
 	if err != nil {
-		return newItem, fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
+		return newItem, fmt.Errorf("lysmeta.AnalyzeValues failed: %w", err)
 	}
 
 	dbNames, inputVals, err := plan.DbValues()

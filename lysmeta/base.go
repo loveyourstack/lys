@@ -7,12 +7,13 @@ import (
 
 // Plan represents the metadata of a struct, used for db and json operations.
 // Embedded structs are flattened into the Plan, so the fields slice includes all fields from the struct and its embedded structs.
-// Values are only included if the Plan was created with setValues=true in AnalyzeT.
-// The Plan is created by AnalyzeT and is immutable thereafter.
+// Values are only included if the Plan was created with AnalyzeValues.
+// The Plan is created by Analyze or AnalyzeValues and is immutable thereafter.
 type Plan struct {
 	fields []Field
 
-	// see Getters for comments
+	// these cached values are only set by Analyze, not AnalyzeValues. See their Getters for comments.
+
 	dbNames          []string
 	hasValues        bool
 	jsonKeys         []string
@@ -28,12 +29,7 @@ type Field struct {
 	DbName  string // if db tag is missing or "-", the field is ignored in db operations (unlike pgx, where only "-" is ignored)
 	JsonKey string // uses same rules as encoding/json: if json tag is missing or empty, use field name as json key; if json tag is "-", omit field from json
 
-	Value any // only set if setValues is true in AnalyzeT
-}
-
-// AllDbNamesSet returns true if all fields in the Plan have a db tag (i.e. no fields are missing a db tag or have db tag "-").
-func (p Plan) AllDbNamesSet() bool {
-	return len(p.dbNames) == len(p.fields)
+	Value any // only set if the Plan was created with AnalyzeValues
 }
 
 // DbNames returns the db column names of the fields in the Plan. Fields missing a db tag or with db tag "-" are omitted.

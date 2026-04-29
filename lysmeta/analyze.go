@@ -7,14 +7,15 @@ import (
 	"strings"
 )
 
-// AnalyzeT returns a Plan for the exported fields in struct t. It includes embedded structs with a db tag.
+// analyzeStruct returns a Plan for the exported fields in struct t. It includes embedded structs with a db tag.
 // if setValues is true, the Plan Field.Value will be set to the value from the struct, with special handling for lystype date types.
-func AnalyzeT(t any, setValues bool) (plan Plan, err error) {
+// if setValues is false, the Plan Field.Value will be nil and the Plan cached values will be populated.
+func analyzeStruct(t any, setValues bool) (plan Plan, err error) {
 
 	reflVal := reflect.ValueOf(t)
 
 	if reflVal.Kind() != reflect.Struct {
-		return Plan{}, fmt.Errorf("AnalyzeT only accepts struct types, but got %s", reflVal.Kind())
+		return Plan{}, fmt.Errorf("only struct types are accepted, but got %s", reflVal.Kind())
 	}
 
 	fields := getStructFields(reflVal, setValues)
@@ -26,6 +27,11 @@ func AnalyzeT(t any, setValues bool) (plan Plan, err error) {
 	plan = Plan{
 		fields:    fields,
 		hasValues: setValues,
+	}
+
+	// exit if only setting values (Analyze is generally called once per struct, but AnalyzeValues is called in loops)
+	if setValues {
+		return plan, nil
 	}
 
 	// set cached values for getters
@@ -59,13 +65,20 @@ func AnalyzeT(t any, setValues bool) (plan Plan, err error) {
 	return plan, nil
 }
 
-// AnalyzeAndCheckT is a wrapper around AnalyzeT that also checks for duplicate db and json tags across the struct hierarchy.
-// It should be called by each Store on startup.
-func AnalyzeAndCheckT(t any) (plan Plan, err error) {
+// AnalyzeValues returns a Plan for the exported fields in struct t, including embedded structs with a db tag.
+// The Plan Field.Value will be set to the value from the struct, with special handling for lystype date types.
+func AnalyzeValues(t any) (plan Plan, err error) {
+	return analyzeStruct(t, true)
+}
 
-	plan, err = AnalyzeT(t, false)
+// Analyze returns a Plan for the exported fields in struct t, including embedded structs with a db tag.
+// The Plan Field.Value will be nil, and the Plan cached values will be populated for use in getters.
+// It checks for duplicate db names and json keys, and returns an error if any are found.
+func Analyze(t any) (plan Plan, err error) {
+
+	plan, err = analyzeStruct(t, false)
 	if err != nil {
-		return Plan{}, fmt.Errorf("AnalyzeT failed: %w", err)
+		return Plan{}, err
 	}
 
 	// use name/count maps to help with duplication checks

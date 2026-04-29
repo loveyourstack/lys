@@ -19,9 +19,9 @@ func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName s
 	}
 
 	// analyze first input for db names
-	plan, err := lysmeta.AnalyzeT(inputs[0], false)
+	plan, err := lysmeta.Analyze(inputs[0])
 	if err != nil {
-		return 0, fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
+		return 0, fmt.Errorf("lysmeta.Analyze failed: %w", err)
 	}
 
 	// get recs from inputs via reflection
@@ -49,9 +49,9 @@ func bulkInsertWithoutReflection(ctx context.Context, db PoolOrTx, inputs []core
 	}
 
 	// analyze first input for db names
-	plan, err := lysmeta.AnalyzeT(inputs[0], false)
+	plan, err := lysmeta.Analyze(inputs[0])
 	if err != nil {
-		return 0, fmt.Errorf("lysmeta.AnalyzeT failed: %w", err)
+		return 0, fmt.Errorf("lysmeta.Analyze failed: %w", err)
 	}
 
 	recs := getRecsFromInputsWithoutReflection(inputs)
@@ -72,9 +72,9 @@ func getRecsFromInputs[T any](inputs []T) (recs [][]any, err error) {
 	for i, input := range inputs {
 
 		// get input values by reflection
-		plan, err := lysmeta.AnalyzeT(input, true)
+		plan, err := lysmeta.AnalyzeValues(input)
 		if err != nil {
-			return nil, fmt.Errorf("lysmeta.AnalyzeT failed on input %d: %w", i, err)
+			return nil, fmt.Errorf("lysmeta.AnalyzeValues failed on input %d: %w", i, err)
 		}
 		_, inputVals, err := plan.DbValues()
 		if err != nil {
