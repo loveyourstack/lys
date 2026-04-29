@@ -71,14 +71,29 @@ func InsertSelect[inputT any, itemT any](ctx context.Context, db PoolOrTx, schem
 	return SelectUnique[itemT](ctx, db, schemaName, viewName, pkColName, newPk)
 }
 
-// InsertWithCreatedBy is a wrapper for Insert that adds a created_by field to the input struct and sets it to the supplied createdBy value
+// InsertWithCreatedBy works like Insert, but adds a created_by field to the input struct and sets it to the supplied createdBy value
 func InsertWithCreatedBy[inputT any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input inputT, createdBy string) (newPk pkT, err error) {
-	type inputWithCreatedBy struct {
-		Input     inputT
-		CreatedBy string `db:"created_by"`
+
+	// get input values by reflecting input T
+	plan, err := lysmeta.AnalyzeValues(input)
+	if err != nil {
+		return newPk, fmt.Errorf("lysmeta.AnalyzeValues failed: %w", err)
 	}
-	var inputCb inputWithCreatedBy
-	inputCb.Input = input
-	inputCb.CreatedBy = createdBy
-	return Insert[inputWithCreatedBy, pkT](ctx, db, schemaName, tableName, pkColName, inputCb)
+
+	dbNames, inputVals, err := plan.DbValues()
+	if err != nil {
+		return newPk, fmt.Errorf("plan.DbValues failed: %w", err)
+	}
+
+	// add created_by
+	dbNames = append(dbNames, "created_by")
+	inputVals = append(inputVals, createdBy)
+
+	stmt := getInsertStmt(schemaName, tableName, pkColName, dbNames)
+
+	if err = db.QueryRow(ctx, stmt, inputVals...).Scan(&newPk); err != nil {
+		return newPk, lyserr.Db{Err: fmt.Errorf(ErrDescInsertScanFailed+": %w", err), Stmt: stmt}
+	}
+
+	return newPk, nil
 }

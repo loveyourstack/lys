@@ -59,15 +59,36 @@ func Update[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaN
 	return nil
 }
 
-// UpdateWithLastUserBy is a wrapper for Update that adds a last_user_update_by field to the input struct and sets it to the supplied lastUserUpdateBy value
+// UpdateWithLastUserBy works like Update, but adds a last_user_update_by field to the input struct and sets it to the supplied lastUserUpdateBy value
 func UpdateWithLastUserBy[T any, pkT PrimaryKeyType](ctx context.Context, db PoolOrTx, schemaName, tableName, pkColName string, input T, pkVal pkT, lastUserUpdateBy string) error {
 
-	type inputWithLastUserBy struct {
-		Input            T
-		LastUserUpdateBy string `db:"last_user_update_by"`
+	// get input values by reflecting input T
+	plan, err := lysmeta.AnalyzeValues(input)
+	if err != nil {
+		return fmt.Errorf("lysmeta.AnalyzeValues failed: %w", err)
 	}
-	var inputLub inputWithLastUserBy
-	inputLub.Input = input
-	inputLub.LastUserUpdateBy = lastUserUpdateBy
-	return Update(ctx, db, schemaName, tableName, pkColName, inputLub, pkVal)
+
+	dbNames, inputVals, err := plan.DbValues()
+	if err != nil {
+		return fmt.Errorf("plan.DbValues failed: %w", err)
+	}
+
+	// add last_user_update_by
+	dbNames = append(dbNames, "last_user_update_by")
+	inputVals = append(inputVals, lastUserUpdateBy)
+
+	stmt := getUpdateStmt(schemaName, tableName, pkColName, dbNames)
+	inputVals = append(inputVals, pkVal)
+
+	cmdTag, err := db.Exec(ctx, stmt, inputVals...)
+	if err != nil {
+		return lyserr.Db{Err: fmt.Errorf(ErrDescUpdateExecFailed+": %w", err), Stmt: stmt}
+	}
+
+	if cmdTag.RowsAffected() == 0 {
+		return pgx.ErrNoRows
+	}
+
+	// success
+	return nil
 }
