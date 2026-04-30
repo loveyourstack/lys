@@ -49,7 +49,6 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 	// using RowToStructByNameLax below because the fields param might restrict the number of columns selected
 	// causing a mismatch between # of columns returned and the # of fields in the dest struct
 
-	//fmt.Println(stmt)
 	rows, _ := db.Query(ctx, stmt, paramValues...)
 	items, err = pgx.CollectRows(rows, pgx.RowToStructByNameLax[T])
 	if err != nil {
