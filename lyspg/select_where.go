@@ -5,7 +5,10 @@ import (
 	"strings"
 )
 
-// GetWhereClause returns an SQL WHERE clause using placeholders such as $1, $2 etc from the supplied conds
+// GetWhereClause returns an SQL WHERE clause using placeholders such as $1, $2 etc from the supplied conds.
+// existingParamCount is the number of placeholders already used by other parts of the query, e.g. a set-returning function in the FROM clause.
+// orCondSets is a slice of slices of Conditions, where the inner slices represent sets of OR conditions which should be grouped together in the resulting clause.
+// The outer slice allows for multiple sets of OR conditions which will be ANDed together in the resulting clause.
 func GetWhereClause(existingParamCount int, conds []Condition, orCondSets [][]Condition) (res string, numPlaceholders int) {
 
 	i := existingParamCount
@@ -36,51 +39,62 @@ func GetWhereClause(existingParamCount int, conds []Condition, orCondSets [][]Co
 	return clause.String(), i
 }
 
+// getWherePart returns the SQL clause part and updated placeholder index for a single Condition
 func getWherePart(cond Condition, i int) (string, int) {
 
 	switch cond.Operator {
 
 	case OpIn:
-		return fmt.Sprintf(" (%s = ANY($%d))", cond.Field, i), i
+		return fmt.Sprintf("%s = ANY($%d)", cond.Field, i), i
 	case OpNotIn:
-		return fmt.Sprintf(" NOT (%s = ANY($%d))", cond.Field, i), i
+		return fmt.Sprintf("NOT %s = ANY($%d)", cond.Field, i), i
 
 	case OpContainsAny:
-		clauses := []string{}
-		for valNum := range cond.InValues {
+		switch len(cond.InValues) {
+		case 0:
+			// no values means the condition can never be true, so return a clause that is always false
+			return "1=0", i
+		case 1:
+			// if only one value, use the simpler single-placeholder syntax
+			return fmt.Sprintf("%s::text ILIKE '%%' || $%d || '%%'", cond.Field, i), i
+		default:
+			// if multiple values, generate a clause with multiple placeholders joined by OR
+			clauses := []string{}
+			for valNum := range cond.InValues {
 
-			if valNum > 0 {
-				i++
+				if valNum > 0 {
+					i++
+				}
+				clause := fmt.Sprintf("%s::text ILIKE '%%' || $%d || '%%'", cond.Field, i)
+				clauses = append(clauses, clause)
 			}
-			clause := fmt.Sprintf("%s::text ILIKE '%%' || $%d || '%%'", cond.Field, i)
-			clauses = append(clauses, clause)
+			return "(" + strings.Join(clauses, " OR ") + ")", i
 		}
-		return " (" + strings.Join(clauses, " OR ") + ")", i
 
 	// cast field to text so that a LIKE search also works for dates/times
 	// use ILIKE for case insensitivity
 	case OpStartsWith:
-		return fmt.Sprintf(" (%s::text ILIKE $%d || '%%')", cond.Field, i), i
+		return fmt.Sprintf("%s::text ILIKE $%d || '%%'", cond.Field, i), i
 	case OpEndsWith:
-		return fmt.Sprintf(" (%s::text ILIKE '%%' || $%d)", cond.Field, i), i
+		return fmt.Sprintf("%s::text ILIKE '%%' || $%d", cond.Field, i), i
 	case OpContains:
-		return fmt.Sprintf(" (%s::text ILIKE '%%' || $%d || '%%')", cond.Field, i), i
+		return fmt.Sprintf("%s::text ILIKE '%%' || $%d || '%%'", cond.Field, i), i
 	case OpNotContains:
-		return fmt.Sprintf(" (%s::text NOT ILIKE '%%' || $%d || '%%')", cond.Field, i), i
+		return fmt.Sprintf("%s::text NOT ILIKE '%%' || $%d || '%%'", cond.Field, i), i
 
 	// empty / notempty: using = '' doesn't work when param '' is a placeholder $, using LENGTH() as workaround
 	case OpEmpty:
-		return fmt.Sprintf(" (LENGTH(%s) = $%d)", cond.Field, i), i
+		return fmt.Sprintf("LENGTH(%s) = $%d", cond.Field, i), i
 	case OpNotEmpty:
-		return fmt.Sprintf(" (LENGTH(%s) > $%d)", cond.Field, i), i
+		return fmt.Sprintf("LENGTH(%s) > $%d", cond.Field, i), i
 
 	// NULL: use special syntax which allows NULL param to be treated as a value
 	case OpNull:
-		return fmt.Sprintf(" (%s IS NOT DISTINCT FROM $%d)", cond.Field, i), i
+		return fmt.Sprintf("%s IS NOT DISTINCT FROM $%d", cond.Field, i), i
 	case OpNotNull:
-		return fmt.Sprintf(" (%s IS DISTINCT FROM $%d)", cond.Field, i), i
+		return fmt.Sprintf("%s IS DISTINCT FROM $%d", cond.Field, i), i
 
 	default:
-		return fmt.Sprintf(" (%s %s $%d)", cond.Field, cond.Operator, i), i
+		return fmt.Sprintf("%s %s $%d", cond.Field, cond.Operator, i), i
 	}
 }
