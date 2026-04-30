@@ -6,13 +6,13 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/loveyourstack/lys/internal/lyscmd"
+	"github.com/loveyourstack/lys/internal/myapp"
 	"github.com/loveyourstack/lys/lyspgdb"
 )
 
 func mustGetDb(ctx context.Context, t testing.TB) *pgxpool.Pool {
 
-	conf := lyscmd.MustGetConfig(t)
+	conf := myapp.MustGetConfig(t)
 
 	var err error
 	// register core.weekday type in any conn added to the pool so that Patch of type_test core.weekday[] works. If don't do this: "encode plan not found"

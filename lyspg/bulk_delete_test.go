@@ -92,9 +92,9 @@ func TestBulkDeleteFailure(t *testing.T) {
 
 	// invalid table
 	err = BulkDelete(ctx, db, schemaName, tableName+"2", pkColName, []int64{1})
-	assert.EqualError(t, err, `db.SendBatch.Close failed: ERROR: relation "core.bulk_delete_test2" does not exist (SQLSTATE 42P01)`)
+	assert.EqualError(t, err, `db.SendBatch.Close failed: error preprocessing batch (prepare): ERROR: relation "core.bulk_delete_test2" does not exist (SQLSTATE 42P01)`)
 
 	// invalid column
 	err = BulkDelete(ctx, db, schemaName, tableName, pkColName+"2", []int64{1})
-	assert.EqualError(t, err, `db.SendBatch.Close failed: ERROR: column "id2" does not exist (SQLSTATE 42703)`)
+	assert.EqualError(t, err, `db.SendBatch.Close failed: error preprocessing batch (prepare): ERROR: column "id2" does not exist (SQLSTATE 42703)`)
 }

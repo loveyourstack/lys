@@ -11,7 +11,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/loveyourstack/lys/internal/cmd"
-	"github.com/loveyourstack/lys/internal/lyscmd"
+	"github.com/loveyourstack/lys/internal/myapp"
 	"github.com/loveyourstack/lys/internal/stores/core/corearchivetest"
 	"github.com/loveyourstack/lys/internal/stores/core/coreimporttest"
 	"github.com/loveyourstack/lys/internal/stores/core/coreparamtest"
@@ -136,7 +136,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 func mustGetSrvApp(ctx context.Context, t testing.TB) *httpServerApplication {
 
-	conf := lyscmd.MustGetConfig(t)
+	conf := myapp.MustGetConfig(t)
 
 	app := &cmd.Application{
 		Config:   &conf,
