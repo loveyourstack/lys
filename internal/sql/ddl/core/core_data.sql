@@ -47,6 +47,13 @@ INSERT INTO core.type_test (c_bool, c_boola, c_int, c_inta, c_double, c_doublea,
 );
 
 
+INSERT INTO core.value_map_test (c_text, c_int) VALUES
+  ('alpha', 1),
+  ('beta', 2),
+  ('gamma', 3)
+;
+
+
 INSERT INTO core.volume_test (c_rnd, c_int) 
   -- 1 mil rows (100,000 * 10)
   SELECT (random()*100)::int, b FROM generate_series(1,100000) a, generate_series(1,10) b;

@@ -9,16 +9,19 @@ import (
 )
 
 // ValueMap returns of map of k = keyCol, v = valCol from the supplied table. KeyCol must be unique.
-// whereClause is optional. If passed, it must start with " AND ..."
-func ValueMap[keyT comparable, valT any](ctx context.Context, db PoolOrTx, schemaName, tableName, keyCol, valCol, whereClause string) (m map[keyT]valT, err error) {
+// Conds may be supplied to filter the rows that are included in the map. If conds is nil or empty, all rows will be included.
+func ValueMap[keyT comparable, valT any](ctx context.Context, db PoolOrTx, schemaName, tableName, keyCol, valCol string, conds []Condition) (m map[keyT]valT, err error) {
 
 	type s struct {
 		K keyT
 		V valT
 	}
 
+	whereClause, _ := GetWhereClause(0, conds, nil)
+	paramVals := GetSelectParamValues(nil, conds, nil, false, 0, 0)
+
 	stmt := fmt.Sprintf("SELECT %s, %s FROM %s.%s WHERE 1=1%s;", keyCol, valCol, schemaName, tableName, whereClause)
-	rows, _ := db.Query(ctx, stmt)
+	rows, _ := db.Query(ctx, stmt, paramVals...)
 	items, err := pgx.CollectRows(rows, pgx.RowToStructByPos[s])
 	if err != nil {
 		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
