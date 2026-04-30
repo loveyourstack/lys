@@ -15,13 +15,15 @@ type TotalCount struct {
 	IsEstimated bool  `db:"estimated"`
 }
 
-// fastRowCount returns a fast rowcount of the specified db table
-// the result may be exact or inexact, depending on the size of the table and whether or not any query conditions are present
-// query must be select stmt with placeholders, without order by, limit, or offset
+// largeTableThreshold is the stats row count above which we consider a table large and return estimated counts from stats rather than exact counts.
+// This is used to avoid expensive count(*) queries on large tables.
+var largeTableThreshold int64 = 10_000
+
+// fastRowCount returns a fast rowcount of the specified db table.
+// The result may be exact or inexact, depending on the size of the table and whether or not any query conditions are present.
+// Query must be select stmt with placeholders, without order by, limit or offset.
 func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string, setFuncParamValues []any, conds []Condition,
 	orCondSets [][]Condition, query string) (totalCount TotalCount, err error) {
-
-	var threshold int64 = 10000
 
 	// get rowcount from info schema stats
 	statsRowCount, err := GetStatsRowCount(ctx, db, schemaName, tableName)
@@ -30,7 +32,7 @@ func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string
 	}
 
 	// if table is relatively small (rowcount below threshold), get the exact count
-	if statsRowCount < threshold {
+	if statsRowCount < largeTableThreshold {
 
 		// if no conds, straight rowcount
 		if len(conds) == 0 && len(orCondSets) == 0 {
@@ -68,7 +70,7 @@ func fastRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string
 	return TotalCount{Value: rowCount, IsEstimated: true}, nil
 }
 
-// GetRowCount returns a straight rowcount of the supplied table
+// GetRowCount returns a straight rowcount of the supplied table.
 func GetRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string) (rowCount int64, err error) {
 
 	stmt := fmt.Sprintf("SELECT count(*) FROM %s.%s;", schemaName, tableName)
@@ -81,11 +83,11 @@ func GetRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string)
 	return rowCount, nil
 }
 
-// GetRowCountPlaceholderQry returns the exact rowcount of the supplied qry
-// qry must use placeholders for params, and paramValues must be supplied
-func GetRowCountPlaceholderQry(ctx context.Context, db PoolOrTx, qry string, paramValues []any) (rowCount int64, err error) {
+// GetRowCountPlaceholderQry returns the exact rowcount of the supplied query.
+// Query must use placeholders for params, and paramValues must be supplied.
+func GetRowCountPlaceholderQry(ctx context.Context, db PoolOrTx, query string, paramValues []any) (rowCount int64, err error) {
 
-	stmt := fmt.Sprintf("SELECT count(*) FROM (%s) res;", qry)
+	stmt := fmt.Sprintf("SELECT count(*) FROM (%s) res;", query)
 	rows, _ := db.Query(ctx, stmt, paramValues...)
 	rowCount, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[int64])
 	if err != nil {
@@ -109,12 +111,12 @@ type explainResp []struct {
 	} `json:"Plan"`
 }
 
-// GetRowCountExplain returns the estimated rowcount of the supplied qry using the query planner EXPLAIN output
-// qry must use placeholders for params, and paramValues must be supplied
-func GetRowCountExplain(ctx context.Context, db PoolOrTx, qry string, paramValues []any) (rowCount int64, err error) {
+// GetRowCountExplain returns the estimated rowcount of the supplied query using the query planner EXPLAIN output.
+// Query must use placeholders for params, and paramValues must be supplied.
+func GetRowCountExplain(ctx context.Context, db PoolOrTx, query string, paramValues []any) (rowCount int64, err error) {
 
 	// get plan in json format
-	stmt := fmt.Sprintf("EXPLAIN (FORMAT JSON) %s;", qry)
+	stmt := fmt.Sprintf("EXPLAIN (FORMAT JSON) %s;", query)
 	rows, _ := db.Query(ctx, stmt, paramValues...)
 	plan, err := pgx.CollectExactlyOneRow(rows, pgx.RowTo[string])
 	if err != nil {
