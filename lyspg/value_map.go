@@ -27,7 +27,7 @@ func ValueMap[keyT comparable, valT any](ctx context.Context, db PoolOrTx, schem
 		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
 	}
 
-	m = make(map[keyT]valT)
+	m = make(map[keyT]valT, len(items))
 	for _, item := range items {
 		m[item.K] = item.V
 	}
