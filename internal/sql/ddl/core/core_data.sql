@@ -16,6 +16,13 @@ INSERT INTO core.param_test (c_bool, c_booln, c_int, c_intn, c_double, c_doublen
   (true, true, 2, 2, 2.1, 2.1, '2002-01-01', '2002-01-01', '12:02', '12:02', '2002-01-01 12:01:00+01', '2002-01-01 12:01:00+01', 'Tuesday', 'Tuesday', 'b', 'abc')
 ;
 
+INSERT INTO core.info_schema_parent_test (c_text) VALUES ('a');
+INSERT INTO core.info_schema_child_test (c_parent_fk, c_text) VALUES 
+  (1, 'a'),
+  (1, 'b'),
+  (1, 'c');
+
+
 INSERT INTO core.tag_test (c_editable, c_hidden, c_obscured) VALUES
   ('e1', 'h1', 'o1'), -- for get tests
   ('e2', 'h2', 'o2'), -- for put tests
@@ -43,4 +50,6 @@ INSERT INTO core.type_test (c_bool, c_boola, c_int, c_inta, c_double, c_doublea,
 INSERT INTO core.volume_test (c_rnd, c_int) 
   -- 1 mil rows (100,000 * 10)
   SELECT (random()*100)::int, b FROM generate_series(1,100000) a, generate_series(1,10) b;
-ANALYZE core.volume_test;
+
+
+ANALYZE;

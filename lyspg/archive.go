@@ -16,11 +16,11 @@ var (
 	ArchivedTableCols   = []string{"archived_at", "archived_by_cascade"}
 )
 
-// Archive moves record(s) to a table's corresponding archived table using the supplied tx
-// the archived table name must be the source table name plus ArchivedTableSuffix
-// the archived table must have the same columns as the source table and also the ArchivedTableCols defined above
-// the column order does not need to be the same in the source and archived tables
-// if this func returns an error, rollback the tx
+// Archive moves record(s) to a table's corresponding archived table using the supplied tx.
+// The archived table name must be the source table name plus ArchivedTableSuffix.
+// The archived table must have the same columns as the source table and also the ArchivedTableCols defined above.
+// The column order does not need to be the same in the source and archived tables.
+// If this func returns an error, rollback the tx.
 func Archive[pkT PrimaryKeyType](ctx context.Context, tx pgx.Tx, schemaName, tableName, pKColName string, pkVal pkT, isCascaded bool) error {
 
 	// get main table cols from info schema
@@ -61,8 +61,8 @@ func Archive[pkT PrimaryKeyType](ctx context.Context, tx pgx.Tx, schemaName, tab
 	return nil
 }
 
-// Restore moves a previously archived record to the corresponding table using the supplied tx
-// if this func returns an error, rollback the tx
+// Restore moves a previously archived record to the corresponding table using the supplied tx.
+// If this func returns an error, rollback the tx.
 func Restore[pkT PrimaryKeyType](ctx context.Context, tx pgx.Tx, schemaName, tableName, pkColName string, pkVal pkT, isCascaded bool) error {
 
 	// get main table cols from info schema

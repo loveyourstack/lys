@@ -82,6 +82,23 @@ func GetForeignKeys(ctx context.Context, db PoolOrTx, schemaName, tableName stri
 	return fks, nil
 }
 
+func GetStatsRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string) (rowCount int64, err error) {
+
+	stmt := fmt.Sprintf("SELECT reltuples::bigint FROM pg_class WHERE oid = ('%s.%s')::regclass;", schemaName, tableName)
+
+	rows, _ := db.Query(ctx, stmt)
+	rowCount, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[int64])
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UndefinedTable {
+			return 0, lyserr.User{Message: "table does not exist"}
+		}
+		return 0, lyserr.Db{Err: fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err), Stmt: stmt}
+	}
+
+	return rowCount, nil
+}
+
 func GetTableColumns(ctx context.Context, db PoolOrTx, schemaName, tableName string) (cols []Column, err error) {
 
 	stmt := `SELECT column_name, data_type, 
@@ -115,23 +132,6 @@ func GetTableColumns(ctx context.Context, db PoolOrTx, schemaName, tableName str
 	return cols, nil
 }
 
-func GetStatsRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName string) (rowCount int64, err error) {
-
-	stmt := fmt.Sprintf("SELECT reltuples::bigint FROM pg_class WHERE oid = ('%s.%s')::regclass;", schemaName, tableName)
-
-	rows, _ := db.Query(ctx, stmt)
-	rowCount, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[int64])
-	if err != nil {
-		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UndefinedTable {
-			return 0, lyserr.User{Message: "table does not exist"}
-		}
-		return 0, lyserr.Db{Err: fmt.Errorf("pgx.CollectExactlyOneRow failed: %w", err), Stmt: stmt}
-	}
-
-	return rowCount, nil
-}
-
 func GetTableColumnNames(ctx context.Context, db PoolOrTx, schemaName, tableName string) (colNames []string, err error) {
 
 	stmt := `SELECT column_name FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2;`
@@ -151,7 +151,7 @@ func GetTableColumnNames(ctx context.Context, db PoolOrTx, schemaName, tableName
 
 func GetTableComment(ctx context.Context, db PoolOrTx, schemaName, tableName string) (comment string, err error) {
 
-	stmt := fmt.Sprintf("SELECT obj_description('%s.%s'::regclass);", schemaName, tableName)
+	stmt := fmt.Sprintf("SELECT COALESCE(obj_description('%s.%s'::regclass), '')", schemaName, tableName)
 
 	rows, _ := db.Query(ctx, stmt)
 	comment, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[string])

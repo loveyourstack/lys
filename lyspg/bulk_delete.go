@@ -10,8 +10,8 @@ import (
 	"github.com/loveyourstack/lys/lyserr"
 )
 
-// BulkDelete deletes multiple records in the same table based on a column value
-// partial success possible: if some vals are not found, an error will be returned containing the failed vals, but the other rows will be deleted
+// BulkDelete deletes multiple records in the same table based on a column value.
+// Partial success is possible: if some vals are not found, an error will be returned containing the failed vals, but the other rows will be deleted.
 func BulkDelete[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, columnName string, vals []T) error {
 
 	if len(vals) == 0 {
