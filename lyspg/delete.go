@@ -37,6 +37,24 @@ func DeleteUnique(ctx context.Context, db *pgxpool.Pool, schemaName, tableName, 
 	}
 	defer tx.Rollback(ctx)
 
+	err = DeleteUniqueTx(ctx, tx, schemaName, tableName, columnName, uniqueVal)
+	if err != nil {
+		return err
+	}
+
+	// success: commit tx
+	err = tx.Commit(ctx)
+	if err != nil {
+		return fmt.Errorf("tx.Commit failed: %w", err)
+	}
+
+	return nil
+}
+
+// DeleteUniqueTx is guaranteed to delete a single row from the supplied database table using the unique value supplied.
+// If this func returns an error, rollback the tx.
+func DeleteUniqueTx(ctx context.Context, tx pgx.Tx, schemaName, tableName, columnName string, uniqueVal any) error {
+
 	stmt := fmt.Sprintf("DELETE FROM %s.%s WHERE %s = $1;", schemaName, tableName, columnName)
 
 	res, err := tx.Exec(ctx, stmt, uniqueVal)
@@ -50,12 +68,6 @@ func DeleteUnique(ctx context.Context, db *pgxpool.Pool, schemaName, tableName, 
 	}
 	if res.RowsAffected() > 1 {
 		return pgx.ErrTooManyRows
-	}
-
-	// success: commit tx
-	err = tx.Commit(ctx)
-	if err != nil {
-		return fmt.Errorf("tx.Commit failed: %w", err)
 	}
 
 	return nil
