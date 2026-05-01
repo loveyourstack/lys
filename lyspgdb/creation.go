@@ -3,15 +3,19 @@ package lyspgdb
 import (
 	"context"
 	"embed"
+	"errors"
 	"fmt"
+	"io/fs"
 	"log/slog"
+	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // CreateLocalDb creates or recreates a test or dev db
 func CreateLocalDb(ctx context.Context, sqlAssets embed.FS, dbConf Database, dbSuperUser, dbOwnerConf User,
-	dropExisting, addSecurityPermissions bool, replacementsMap map[string]string, infoLog *slog.Logger) (err error) {
+	dropExisting, addSecurityPermissions bool, replacements []FileReplacement, infoLog *slog.Logger) (err error) {
 
 	pgDbConf := Database{
 		Host:     dbConf.Host,
@@ -19,52 +23,59 @@ func CreateLocalDb(ctx context.Context, sqlAssets embed.FS, dbConf Database, dbS
 		Database: "postgres",
 	}
 
-	pgUserConf := User{
+	pgSuperUserConf := User{
 		Name:     dbSuperUser.Name,
 		Password: dbSuperUser.Password,
 	}
 
 	// connect with superuser to postgres db
-	pgUserPgDb, err := GetPool(ctx, pgDbConf, pgUserConf, "test")
+	pgSuperUserPgDb, err := GetPool(ctx, pgDbConf, pgSuperUserConf, "test")
 	if err != nil {
 		return fmt.Errorf("GetPool failed (postgres db with %v user): %w", dbSuperUser.Name, err)
 	}
+	defer pgSuperUserPgDb.Close()
 
 	// (re-)create database
 	if dropExisting {
 		infoLog.Info("Dropping database " + dbConf.Database + " if exists")
-		if err = DropDb(ctx, pgUserPgDb, dbConf.Database); err != nil {
+		if err = DropDb(ctx, pgSuperUserPgDb, dbConf.Database); err != nil {
 			return fmt.Errorf("DropDb failed for database: %v: %w", dbConf.Database, err)
 		}
 	}
 
 	infoLog.Info("Creating database " + dbConf.Database)
-	if err = CreateDb(ctx, pgUserPgDb, dbConf.Database); err != nil {
+	if err = CreateDb(ctx, pgSuperUserPgDb, dbConf.Database); err != nil {
 		return fmt.Errorf("CreateDb failed for database: %v: %w", dbConf.Database, err)
 	}
-	pgUserPgDb.Close()
 
 	// ----------------
 
 	// connect with superuser user to target db
-	pgUserDb, err := GetPool(ctx, dbConf, pgUserConf, "CreateLocalDb func")
+	pgSuperUserDb, err := GetPool(ctx, dbConf, pgSuperUserConf, "CreateLocalDb func")
 	if err != nil {
 		return fmt.Errorf("GetPool failed (database %v with %v user): %w", dbConf.Database, dbSuperUser.Name, err)
 	}
+	defer pgSuperUserDb.Close()
 
 	// add database extensions
 	infoLog.Info("Adding extensions, if any")
-	if err = ExecuteFile(ctx, pgUserDb, "extensions.sql", sqlAssets, replacementsMap, infoLog); err != nil {
+	if err = ExecuteFile(ctx, pgSuperUserDb, "extensions.sql", sqlAssets, replacements, infoLog); err != nil {
 		return fmt.Errorf("ExecuteFile failed (extensions): %w", err)
 	}
 
 	// grant all rights on the db to the db owner user
 	infoLog.Info("Granting all rights to " + dbOwnerConf.Name)
-	if err = GrantAll(ctx, pgUserDb, dbOwnerConf, dbConf.Database); err != nil {
+	if err = GrantAll(ctx, pgSuperUserDb, dbOwnerConf, dbConf.Database); err != nil {
 		return fmt.Errorf("GrantAll failed for all rights for user: %v: %w", dbOwnerConf.Name, err)
 	}
 
-	pgUserDb.Close()
+	// add other security permissions from file
+	if addSecurityPermissions {
+		infoLog.Info("Adding security permissions")
+		if err = ExecuteFile(ctx, pgSuperUserDb, "security_permissions.sql", sqlAssets, replacements, infoLog); err != nil {
+			return fmt.Errorf("ExecuteFile failed (security_permissions): %w", err)
+		}
+	}
 
 	// ----------------
 
@@ -75,22 +86,10 @@ func CreateLocalDb(ctx context.Context, sqlAssets embed.FS, dbConf Database, dbS
 	}
 	defer dbOwnerUserDb.Close()
 
-	// ----------------
-
-	// add other security permissions from file
-	if addSecurityPermissions {
-		infoLog.Info("Adding security permissions")
-		if err = ExecuteFile(ctx, pgUserDb, "security_permissions.sql", sqlAssets, replacementsMap, infoLog); err != nil {
-			return fmt.Errorf("ExecuteFile failed (security_permissions): %w", err)
-		}
-	}
-
-	// ----------------
-
 	// populate and analyze db
 
 	infoLog.Info("Populating database")
-	if err = PopulateDb(ctx, dbOwnerUserDb, sqlAssets, dbConf.SchemaCreationOrder, replacementsMap, infoLog); err != nil {
+	if err = PopulateDb(ctx, dbOwnerUserDb, sqlAssets, dbConf.SchemaCreationOrder, replacements, infoLog); err != nil {
 		return fmt.Errorf("PopulateDb failed: %w", err)
 	}
 
@@ -107,8 +106,8 @@ func CreateLocalDb(ctx context.Context, sqlAssets embed.FS, dbConf Database, dbS
 func DropDb(ctx context.Context, pgUserPgDb *pgxpool.Pool, dbName string) (err error) {
 
 	// drop the database if needed
-	qry := "DROP DATABASE IF EXISTS " + dbName + " WITH (FORCE);"
-	if _, err = pgUserPgDb.Exec(ctx, qry); err != nil {
+	stmt := fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE);", pgx.Identifier{dbName}.Sanitize())
+	if _, err = pgUserPgDb.Exec(ctx, stmt); err != nil {
 		return fmt.Errorf("pgUserPgDb.Exec failed: %w", err)
 	}
 
@@ -120,8 +119,8 @@ func DropDb(ctx context.Context, pgUserPgDb *pgxpool.Pool, dbName string) (err e
 func CreateDb(ctx context.Context, pgUserPgDb *pgxpool.Pool, dbName string) (err error) {
 
 	// create the database
-	qry := "CREATE DATABASE " + dbName + ";"
-	if _, err = pgUserPgDb.Exec(ctx, qry); err != nil {
+	stmt := fmt.Sprintf("CREATE DATABASE %s;", pgx.Identifier{dbName}.Sanitize())
+	if _, err = pgUserPgDb.Exec(ctx, stmt); err != nil {
 		return fmt.Errorf("pgUserPgDb.Exec failed: %w", err)
 	}
 
@@ -133,14 +132,14 @@ func CreateDb(ctx context.Context, pgUserPgDb *pgxpool.Pool, dbName string) (err
 func GrantAll(ctx context.Context, pgUserDb *pgxpool.Pool, userConf User, dbName string) (err error) {
 
 	// grant all rights on this database
-	qry := "GRANT ALL ON DATABASE " + dbName + " TO " + userConf.Name + ";"
-	if _, err = pgUserDb.Exec(ctx, qry); err != nil {
+	stmt := fmt.Sprintf("GRANT ALL ON DATABASE %s TO %s;", pgx.Identifier{dbName}.Sanitize(), pgx.Identifier{userConf.Name}.Sanitize())
+	if _, err = pgUserDb.Exec(ctx, stmt); err != nil {
 		return fmt.Errorf("pgUserDb.Exec (grant all on database) failed: %w", err)
 	}
 
 	// grant access to public schema
-	qry = "GRANT ALL ON SCHEMA public TO " + userConf.Name + ";"
-	if _, err = pgUserDb.Exec(ctx, qry); err != nil {
+	stmt = fmt.Sprintf("GRANT ALL ON SCHEMA public TO %s;", pgx.Identifier{userConf.Name}.Sanitize())
+	if _, err = pgUserDb.Exec(ctx, stmt); err != nil {
 		return fmt.Errorf("pgUserDb.Exec (grant all on schema public) failed: %w", err)
 	}
 
@@ -148,26 +147,26 @@ func GrantAll(ctx context.Context, pgUserDb *pgxpool.Pool, userConf User, dbName
 }
 
 // PopulateDb writes schema, tables, functions and views
-func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schemaCreationOrder []string, replacementsMap map[string]string,
+func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schemaCreationOrder []string, replacements []FileReplacement,
 	infoLog *slog.Logger) (err error) {
 
-	// make sure db is empty (no non-system tables)
-	qry := `SELECT count(*) FROM pg_class c
+	// make sure db is empty (no user objects)
+	stmt := `SELECT count(*) FROM pg_class c
 	  JOIN pg_namespace s ON s.oid = c.relnamespace
 	  WHERE s.nspname NOT IN ('pg_catalog', 'information_schema')
 	  AND s.nspname NOT LIKE 'pg_temp%' AND c.relname NOT LIKE 'pg_%'`
 
 	var count int
-	row := db.QueryRow(ctx, qry)
+	row := db.QueryRow(ctx, stmt)
 	if err = row.Scan(&count); err != nil {
 		return fmt.Errorf("row.Scan failed: %w", err)
 	}
 	if count != 0 {
-		return fmt.Errorf("target database is not empty, it contains %d tables", count)
+		return fmt.Errorf("target database is not empty, it contains %d user objects", count)
 	}
 
-	// create schemas and assign default rights
-	if err = ExecuteFile(ctx, db, "schemas.sql", sqlAssets, replacementsMap, infoLog); err != nil {
+	// create schemas and assign default permissions
+	if err = ExecuteFile(ctx, db, "schemas.sql", sqlAssets, replacements, infoLog); err != nil {
 		return fmt.Errorf("ExecuteFile failed (schemas): %w", err)
 	}
 
@@ -175,12 +174,11 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 	assetTypes := []string{"types", "domains", "sequences", "tables"}
 	for _, assetType := range assetTypes {
 		for _, schema := range schemaCreationOrder {
-			_, err := sqlAssets.ReadFile("" + schema + "/" + schema + "_" + assetType + ".sql")
-			if err != nil {
-				// file not found, skip
-				continue
-			}
-			if err = ExecuteFile(ctx, db, schema+"/"+schema+"_"+assetType+".sql", sqlAssets, replacementsMap, infoLog); err != nil {
+			assetPath := fmt.Sprintf("%s/%s_%s.sql", schema, schema, assetType)
+			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, infoLog); err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					continue
+				}
 				return fmt.Errorf("ExecuteFile failed for schema: %v, asset type: %v: %w", schema, assetType, err)
 			}
 		}
@@ -195,8 +193,8 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 				return fmt.Errorf("sqlAssets.ReadDir failed for schema: %v: %w", schema, err)
 			}
 			for _, dirEntry := range dirEntries {
-				if dirEntry.Name()[:len(funcType)] == funcType {
-					if err = ExecuteFile(ctx, db, schema+"/"+dirEntry.Name(), sqlAssets, replacementsMap, infoLog); err != nil {
+				if strings.HasPrefix(dirEntry.Name(), funcType) {
+					if err = ExecuteFile(ctx, db, schema+"/"+dirEntry.Name(), sqlAssets, replacements, infoLog); err != nil {
 						return fmt.Errorf("ExecuteFile failed for schema: %v, func type: %v: %w", schema, funcType, err)
 					}
 				}
@@ -208,11 +206,12 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 	assetTypes = []string{"views", "materialized_views", "views_post_mv"}
 	for _, assetType := range assetTypes {
 		for _, schema := range schemaCreationOrder {
-			_, err := sqlAssets.ReadFile("" + schema + "/" + schema + "_" + assetType + ".sql")
-			if err != nil {
-				continue
-			}
-			if err = ExecuteFile(ctx, db, schema+"/"+schema+"_"+assetType+".sql", sqlAssets, replacementsMap, infoLog); err != nil {
+
+			assetPath := fmt.Sprintf("%s/%s_%s.sql", schema, schema, assetType)
+			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, infoLog); err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					continue
+				}
 				return fmt.Errorf("ExecuteFile failed for schema: %v, asset type: %v: %w", schema, assetType, err)
 			}
 		}
@@ -222,11 +221,11 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 	assetTypes = []string{"data", "test_data"}
 	for _, assetType := range assetTypes {
 		for _, schema := range schemaCreationOrder {
-			_, err := sqlAssets.ReadFile("" + schema + "/" + schema + "_" + assetType + ".sql")
-			if err != nil {
-				continue
-			}
-			if err = ExecuteFile(ctx, db, schema+"/"+schema+"_"+assetType+".sql", sqlAssets, replacementsMap, infoLog); err != nil {
+			assetPath := fmt.Sprintf("%s/%s_%s.sql", schema, schema, assetType)
+			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, infoLog); err != nil {
+				if errors.Is(err, fs.ErrNotExist) {
+					continue
+				}
 				return fmt.Errorf("ExecuteFile failed for schema: %v, asset type: %v: %w", schema, assetType, err)
 			}
 		}
@@ -241,8 +240,8 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 				return fmt.Errorf("sqlAssets.ReadDir failed for schema: %v: %w", schema, err)
 			}
 			for _, dirEntry := range dirEntries {
-				if dirEntry.Name()[:len(assetType)] == assetType {
-					if err = ExecuteFile(ctx, db, schema+"/"+dirEntry.Name(), sqlAssets, replacementsMap, infoLog); err != nil {
+				if strings.HasPrefix(dirEntry.Name(), assetType) {
+					if err = ExecuteFile(ctx, db, schema+"/"+dirEntry.Name(), sqlAssets, replacements, infoLog); err != nil {
 						return fmt.Errorf("ExecuteFile failed for schema: %v, asset type: %v: %w", schema, assetType, err)
 					}
 				}

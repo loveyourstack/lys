@@ -30,10 +30,15 @@ type User struct {
 	Password string
 }
 
-// ExecuteFile extracts the supplied file from the supplied filesystem and executes it into supplied database
-func ExecuteFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlAssets embed.FS, replacementsMap map[string]string, infoLog *slog.Logger) (err error) {
+// FileReplacement holds text replacement details for ExecuteFile.
+// Use when placeholders such as usernames or passwords need to be injected at runtime.
+type FileReplacement struct {
+	From string
+	To   string
+}
 
-	infoLog.Info("Executing " + sqlFileName)
+// ExecuteFile extracts the supplied file from the supplied filesystem and executes it into supplied database
+func ExecuteFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlAssets embed.FS, replacements []FileReplacement, infoLog *slog.Logger) (err error) {
 
 	// get file content from packaged sql
 	rawQry, err := fs.ReadFile(sqlAssets, sqlFileName)
@@ -41,9 +46,11 @@ func ExecuteFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlA
 		return fmt.Errorf("fs.ReadFile failed for file: %v: %w", sqlFileName, err)
 	}
 
+	infoLog.Info("Executing " + sqlFileName)
+
 	// make text replacements, if any
-	for from, to := range replacementsMap {
-		rawQry = bytes.ReplaceAll(rawQry, []byte(from), []byte(to))
+	for _, r := range replacements {
+		rawQry = bytes.ReplaceAll(rawQry, []byte(r.From), []byte(r.To))
 	}
 
 	// execute file content in the db

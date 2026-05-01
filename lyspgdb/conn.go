@@ -4,13 +4,21 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/url"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func getConnStr(dbConfig Database, userConfig User, appName string) string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?application_name=%s", userConfig.Name, userConfig.Password, dbConfig.Host, dbConfig.Port, dbConfig.Database, appName)
+	u := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(userConfig.Name, userConfig.Password),
+		Host:     dbConfig.Host + ":" + dbConfig.Port,
+		Path:     dbConfig.Database,
+		RawQuery: url.Values{"application_name": {appName}}.Encode(),
+	}
+	return u.String()
 }
 
 // GetConfig returns a Config struct matching the supplied params
@@ -90,13 +98,15 @@ func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database
 
 		ctxVal, ok := ctx.Value(ctxKey).(ctxValueT)
 		if !ok {
-			return false, fmt.Errorf("ctxVal not found in ctx")
+			// fail, but return connection to pool
+			return true, fmt.Errorf("ctxVal not found in ctx")
 		}
 
 		// set ctx value into this connection's setting
 		_, err := conn.Exec(ctx, fmt.Sprintf("SET %s TO %v;", pgx.Identifier{settingName}.Sanitize(), ctxVal))
 		if err != nil {
-			return false, fmt.Errorf("conn.Exec (set ctx value) failed: %w", err)
+			// fail, but return connection to pool
+			return true, fmt.Errorf("conn.Exec (write setting) failed: %w", err)
 		}
 
 		return true, nil
@@ -104,10 +114,10 @@ func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database
 
 	cfg.AfterRelease = func(conn *pgx.Conn) bool {
 
-		// unset the setting before this connection is released to pool
-		_, err := conn.Exec(context.Background(), fmt.Sprintf("SET %s TO '';", pgx.Identifier{settingName}.Sanitize()))
+		// reset the setting before this connection is released to pool
+		_, err := conn.Exec(context.Background(), fmt.Sprintf("RESET %s;", pgx.Identifier{settingName}.Sanitize()))
 		if err != nil {
-			errorLog.Error("conn.Exec (unset ctx value) failed: " + err.Error())
+			errorLog.Error("conn.Exec (reset setting) failed: " + err.Error())
 			return false
 		}
 

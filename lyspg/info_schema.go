@@ -13,17 +13,6 @@ import (
 	"github.com/loveyourstack/lys/lyserr"
 )
 
-type Column struct {
-	SchemaName  string
-	TableName   string
-	Name        string `db:"column_name"`
-	DataType    string `db:"data_type"`
-	IsNullable  bool   `db:"is_nullable"`
-	IsIdentity  bool   `db:"is_identity"`
-	IsGenerated bool   `db:"is_generated"`
-	IsTracking  bool
-}
-
 type ForeignKey struct {
 	ConstraintName string `db:"constraint_name"`
 	ChildSchema    string `db:"child_schema"`
@@ -97,6 +86,17 @@ func GetStatsRowCount(ctx context.Context, db PoolOrTx, schemaName, tableName st
 	}
 
 	return rowCount, nil
+}
+
+type Column struct {
+	SchemaName  string
+	TableName   string
+	Name        string `db:"column_name"`
+	DataType    string `db:"data_type"`
+	IsNullable  bool   `db:"is_nullable"`
+	IsIdentity  bool   `db:"is_identity"`
+	IsGenerated bool   `db:"is_generated"`
+	IsTracking  bool
 }
 
 func GetTableColumns(ctx context.Context, db PoolOrTx, schemaName, tableName string) (cols []Column, err error) {
@@ -180,4 +180,41 @@ func GetTableShortName(ctx context.Context, db PoolOrTx, schemaName, tableName s
 	}
 
 	return strings.Replace(comment, snPrefix, "", 1), nil
+}
+
+type UserObject struct {
+	Schema string
+	Name   string
+	Type   string
+}
+
+// GetUserObjects returns all user-created objects in the database and excludes system schemas and objects.
+func GetUserObjects(ctx context.Context, db PoolOrTx) (userObjects []UserObject, err error) {
+
+	stmt := `SELECT 
+	s.nspname::text AS "schema",
+	c.relname::text AS "name", 
+	CASE
+		WHEN c.relkind = 'i' THEN 'index'
+		WHEN c.relkind = 'S' THEN 'sequence'
+		WHEN c.relkind = 'r' THEN 'table'
+		WHEN c.relkind = 'v' THEN 'view'
+		ELSE c.relkind::text
+	END AS "type"
+	FROM pg_class c
+	JOIN pg_namespace s ON s.oid = c.relnamespace
+	WHERE s.nspname NOT IN ('pg_catalog', 'information_schema')
+	AND s.nspname NOT LIKE 'pg_temp%' AND c.relname NOT LIKE 'pg_%';`
+
+	rows, _ := db.Query(ctx, stmt)
+	userObjects, err = pgx.CollectRows(rows, pgx.RowTo[UserObject])
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == pgerrcode.UndefinedTable {
+			return nil, lyserr.User{Message: "table does not exist"}
+		}
+		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
+	}
+
+	return userObjects, nil
 }
