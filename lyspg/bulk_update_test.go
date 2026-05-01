@@ -40,9 +40,9 @@ func TestBulkUpdateSuccess(t *testing.T) {
 	}
 
 	// select ids
-	ids, err := SelectArray[int64](ctx, db, fmt.Sprintf("SELECT id FROM %s.%s ORDER BY %s;", schemaName, tableName, pkColName))
+	ids, err := SelectSlice[int64](ctx, db, fmt.Sprintf("SELECT id FROM %s.%s ORDER BY %s;", schemaName, tableName, pkColName))
 	if err != nil {
-		t.Fatalf("SelectArray failed: %v", err)
+		t.Fatalf("SelectSlice failed: %v", err)
 	}
 	fmt.Println("ids", ids)
 

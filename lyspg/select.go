@@ -59,9 +59,9 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 	return items, unpagedCount, nil
 }
 
-// SelectArray is a wrapper for selecting into a non-struct type T (db.Query / pgx.CollectRows with RowTo)
-// T must be a primitive type such as int64 or string
-func SelectArray[T any](ctx context.Context, db PoolOrTx, selectStmt string, params ...any) (ar []T, err error) {
+// SelectSlice is a wrapper for selecting into a non-struct type T (db.Query / pgx.CollectRows with RowTo).
+// T must be a primitive type such as int64 or string.
+func SelectSlice[T any](ctx context.Context, db PoolOrTx, selectStmt string, params ...any) (ar []T, err error) {
 
 	rows, _ := db.Query(ctx, selectStmt, params...)
 	ar, err = pgx.CollectRows(rows, pgx.RowTo[T])
@@ -72,9 +72,9 @@ func SelectArray[T any](ctx context.Context, db PoolOrTx, selectStmt string, par
 	return ar, nil
 }
 
-// SelectByArray returns multiple rows from the db depending on the array supplied
-// inputT must be a primitive type such as int64 or string
-func SelectByArray[inputT, itemT any](ctx context.Context, db PoolOrTx, schema, view, column string, ar []inputT) (items []itemT, err error) {
+// SelectBySlice returns multiple rows from the db depending on the slice supplied.
+// inputT must be a primitive type such as int64 or string.
+func SelectBySlice[inputT, itemT any](ctx context.Context, db PoolOrTx, schema, view, column string, ar []inputT) (items []itemT, err error) {
 
 	stmt := fmt.Sprintf("SELECT * FROM %s.%s WHERE %s = ANY($1);", schema, view, column)
 

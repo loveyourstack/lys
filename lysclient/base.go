@@ -4,26 +4,26 @@ import "net/http"
 
 // structs and funcs for testing lys endpoints which return StdResponse
 
-// ArrayResp is expected when StdResponse returns an array of T
-type ArrayResp[T any] struct {
-	Status         string `json:"status"`
-	Data           []T    `json:"data"`
-	ErrDescription string `json:"err_description"`
-}
-
-// GetMetadata contains the metadata for a GET request which returns an array of items (db records)
+// GetMetadata contains the metadata for a GET request which returns a slice of items (db records)
 type GetMetadata struct {
 	Count                 int   `json:"count"`
 	TotalCount            int64 `json:"total_count"`
 	TotalCountIsEstimated bool  `json:"total_count_is_estimated"`
 }
 
-// ItemAResp is expected when StdResponse returns an array of items (db records)
-type ItemAResp struct {
+// ItemSResp is expected when StdResponse returns a slice of map[string]any
+type ItemSResp struct {
 	Status         string           `json:"status"`
 	Data           []map[string]any `json:"data"`
 	GetMetadata    *GetMetadata     `json:"metadata,omitempty"` // only used for GET many
 	ErrDescription string           `json:"err_description"`
+}
+
+// SliceResp is expected when StdResponse returns a slice of T
+type SliceResp[T any] struct {
+	Status         string `json:"status"`
+	Data           []T    `json:"data"`
+	ErrDescription string `json:"err_description"`
 }
 
 // ValueResp is expected when StdResponse returns a T

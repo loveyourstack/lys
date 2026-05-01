@@ -11,8 +11,80 @@ import (
 	"testing"
 )
 
-// GetArray GETs the target Url. It expects an array of T in response
-func GetArray[T any](client http.Client, targetUrl string) (arr []T, err error) {
+// GetItemResp GETs the target Url. It expects an array of items in response
+func GetItemResp(client http.Client, targetUrl string) (itemResp ItemSResp, err error) {
+
+	resp, err := client.Get(targetUrl)
+	if err != nil {
+		return ItemSResp{}, fmt.Errorf("client.Get failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// check status code
+	if resp.StatusCode != http.StatusOK {
+		return ItemSResp{}, fmt.Errorf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, resp.StatusCode, targetUrl)
+	}
+
+	// read body
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ItemSResp{}, fmt.Errorf("io.ReadAll failed: %w", err)
+	}
+
+	// unmarshal
+	err = json.Unmarshal(body, &itemResp)
+	if err != nil {
+		return ItemSResp{}, fmt.Errorf("json.Unmarshal failed: %w", err)
+	}
+
+	// check status
+	if itemResp.Status != successStatus {
+		return ItemSResp{}, fmt.Errorf("%s", itemResp.ErrDescription)
+	}
+
+	// success
+	return itemResp, nil
+}
+
+// GetItemRespTester GETs the target Url using a test handler. It expects an array of items in response
+func GetItemRespTester(ctx context.Context, h http.Handler, targetUrl string) (itemResp ItemSResp, err error) {
+
+	// create req
+	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
+	if err != nil {
+		return ItemSResp{}, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// do req
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// don't check status code: let code progress so that err_description is returned
+
+	// read body
+	body, err := io.ReadAll(rr.Body)
+	if err != nil {
+		return ItemSResp{}, fmt.Errorf("io.ReadAll failed: %w", err)
+	}
+
+	// unmarshal
+	err = json.Unmarshal(body, &itemResp)
+	if err != nil {
+		return ItemSResp{}, fmt.Errorf("json.Unmarshal failed: %w", err)
+	}
+
+	// check status
+	if itemResp.Status != successStatus {
+		return ItemSResp{}, fmt.Errorf("%s", itemResp.ErrDescription)
+	}
+
+	// success
+	return itemResp, nil
+}
+
+// GetSlice GETs the target Url. It expects a slice of T in response
+func GetSlice[T any](client http.Client, targetUrl string) (s []T, err error) {
 
 	resp, err := client.Get(targetUrl)
 	if err != nil {
@@ -32,7 +104,7 @@ func GetArray[T any](client http.Client, targetUrl string) (arr []T, err error) 
 	}
 
 	// unmarshal
-	var res ArrayResp[T]
+	var res SliceResp[T]
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
@@ -47,8 +119,8 @@ func GetArray[T any](client http.Client, targetUrl string) (arr []T, err error) 
 	return res.Data, nil
 }
 
-// GetArrayTester GETs the target Url using a test handler. It expects an array of T in response
-func GetArrayTester[T any](ctx context.Context, h http.Handler, targetUrl string) (arr []T, err error) {
+// GetSliceTester GETs the target Url using a test handler. It expects a slice of T in response
+func GetSliceTester[T any](ctx context.Context, h http.Handler, targetUrl string) (s []T, err error) {
 
 	// create req
 	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
@@ -70,7 +142,7 @@ func GetArrayTester[T any](ctx context.Context, h http.Handler, targetUrl string
 	}
 
 	// unmarshal
-	var res ArrayResp[T]
+	var res SliceResp[T]
 	err = json.Unmarshal(body, &res)
 	if err != nil {
 		return nil, fmt.Errorf("json.Unmarshal failed: %w", err)
@@ -83,119 +155,6 @@ func GetArrayTester[T any](ctx context.Context, h http.Handler, targetUrl string
 
 	// success
 	return res.Data, nil
-}
-
-// GetItemResp GETs the target Url. It expects an array of items in response
-func GetItemResp(client http.Client, targetUrl string) (itemResp ItemAResp, err error) {
-
-	resp, err := client.Get(targetUrl)
-	if err != nil {
-		return ItemAResp{}, fmt.Errorf("client.Get failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	// check status code
-	if resp.StatusCode != http.StatusOK {
-		return ItemAResp{}, fmt.Errorf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, resp.StatusCode, targetUrl)
-	}
-
-	// read body
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return ItemAResp{}, fmt.Errorf("io.ReadAll failed: %w", err)
-	}
-
-	// unmarshal
-	err = json.Unmarshal(body, &itemResp)
-	if err != nil {
-		return ItemAResp{}, fmt.Errorf("json.Unmarshal failed: %w", err)
-	}
-
-	// check status
-	if itemResp.Status != successStatus {
-		return ItemAResp{}, fmt.Errorf("%s", itemResp.ErrDescription)
-	}
-
-	// success
-	return itemResp, nil
-}
-
-// GetItemRespTester GETs the target Url using a test handler. It expects an array of items in response
-func GetItemRespTester(ctx context.Context, h http.Handler, targetUrl string) (itemResp ItemAResp, err error) {
-
-	// create req
-	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
-	if err != nil {
-		return ItemAResp{}, fmt.Errorf("http.NewRequestWithContext failed: %w", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	// do req
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-
-	// don't check status code: let code progress so that err_description is returned
-
-	// read body
-	body, err := io.ReadAll(rr.Body)
-	if err != nil {
-		return ItemAResp{}, fmt.Errorf("io.ReadAll failed: %w", err)
-	}
-
-	// unmarshal
-	err = json.Unmarshal(body, &itemResp)
-	if err != nil {
-		return ItemAResp{}, fmt.Errorf("json.Unmarshal failed: %w", err)
-	}
-
-	// check status
-	if itemResp.Status != successStatus {
-		return ItemAResp{}, fmt.Errorf("%s", itemResp.ErrDescription)
-	}
-
-	// success
-	return itemResp, nil
-}
-
-// MustGetArray GETs the target Url using a test handler. It expects an array of T in response and will fail on any error
-func MustGetArray[T any](ctx context.Context, t testing.TB, h http.Handler, targetUrl string) (arr []T) {
-
-	// create req
-	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
-	if err != nil {
-		t.Fatalf("http.NewRequestWithContext failed: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	// do req
-	rr := httptest.NewRecorder()
-	h.ServeHTTP(rr, req)
-
-	// check status code
-	if rr.Code != http.StatusOK {
-		t.Fatalf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, rr.Code, targetUrl)
-	}
-
-	// read body
-	respBody, err := io.ReadAll(rr.Body)
-	if err != nil {
-		t.Fatalf("io.ReadAll failed: %v", err)
-	}
-
-	// unmarshal
-	var res ArrayResp[T]
-	err = json.Unmarshal(respBody, &res)
-	if err != nil {
-		t.Fatalf("json.Unmarshal failed: %v", err)
-	}
-
-	// check status
-	if res.Status != successStatus {
-		t.Fatalf("%s", res.ErrDescription)
-	}
-
-	// success
-	return res.Data
 }
 
 // MustGetFile GETs the target Url using a test handler. It expects a response with file output headers and will fail on any error
@@ -236,7 +195,7 @@ func MustGetFile(ctx context.Context, t testing.TB, h http.Handler, targetUrl st
 }
 
 // MustGetItemResp GETs the target Url using a test handler. It expects an array of items in response and will fail on any error
-func MustGetItemResp(ctx context.Context, t testing.TB, h http.Handler, targetUrl string) (itemResp ItemAResp) {
+func MustGetItemResp(ctx context.Context, t testing.TB, h http.Handler, targetUrl string) (itemResp ItemSResp) {
 
 	// create req
 	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
@@ -273,6 +232,47 @@ func MustGetItemResp(ctx context.Context, t testing.TB, h http.Handler, targetUr
 
 	// success
 	return itemResp
+}
+
+// MustGetSlice GETs the target Url using a test handler. It expects a slice of T in response and will fail on any error
+func MustGetSlice[T any](ctx context.Context, t testing.TB, h http.Handler, targetUrl string) (s []T) {
+
+	// create req
+	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequestWithContext failed: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	// do req
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// check status code
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, rr.Code, targetUrl)
+	}
+
+	// read body
+	respBody, err := io.ReadAll(rr.Body)
+	if err != nil {
+		t.Fatalf("io.ReadAll failed: %v", err)
+	}
+
+	// unmarshal
+	var res SliceResp[T]
+	err = json.Unmarshal(respBody, &res)
+	if err != nil {
+		t.Fatalf("json.Unmarshal failed: %v", err)
+	}
+
+	// check status
+	if res.Status != successStatus {
+		t.Fatalf("%s", res.ErrDescription)
+	}
+
+	// success
+	return res.Data
 }
 
 // MustGetValue GETs the target Url using a test handler. It expects a single T in response and will fail on any error

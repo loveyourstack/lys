@@ -16,6 +16,6 @@ func TestGetSimple(t *testing.T) {
 
 	// call route handled by GetSimple
 	targetUrl := "/volume-test/any-10"
-	vals := lysclient.MustGetArray[int](ctx, t, srvApp.getRouter(), targetUrl)
+	vals := lysclient.MustGetSlice[int](ctx, t, srvApp.getRouter(), targetUrl)
 	assert.EqualValues(t, 10, len(vals))
 }

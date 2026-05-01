@@ -38,9 +38,9 @@ func TestBulkDeleteSuccess(t *testing.T) {
 	}
 
 	// select ids
-	ids, err := SelectArray[int64](ctx, db, fmt.Sprintf("SELECT %s FROM %s.%s", pkColName, schemaName, tableName))
+	ids, err := SelectSlice[int64](ctx, db, fmt.Sprintf("SELECT %s FROM %s.%s", pkColName, schemaName, tableName))
 	if err != nil {
-		t.Fatalf("SelectArray failed: %v", err)
+		t.Fatalf("SelectSlice failed: %v", err)
 	}
 
 	// bulk delete 6 records
@@ -50,9 +50,9 @@ func TestBulkDeleteSuccess(t *testing.T) {
 	}
 
 	// re-select ids
-	ids, err = SelectArray[int64](ctx, db, fmt.Sprintf("SELECT %s FROM %s.%s", pkColName, schemaName, tableName))
+	ids, err = SelectSlice[int64](ctx, db, fmt.Sprintf("SELECT %s FROM %s.%s", pkColName, schemaName, tableName))
 	if err != nil {
-		t.Fatalf("SelectArray failed: %v", err)
+		t.Fatalf("SelectSlice failed: %v", err)
 	}
 
 	// should be 4 left
@@ -67,9 +67,9 @@ func TestBulkDeleteSuccess(t *testing.T) {
 	assert.EqualError(t, err, fmt.Sprintf("partial success: invalid vals: %d", nonExistentId))
 
 	// re-select ids
-	ids, err = SelectArray[int64](ctx, db, fmt.Sprintf("SELECT %s FROM %s.%s", pkColName, schemaName, tableName))
+	ids, err = SelectSlice[int64](ctx, db, fmt.Sprintf("SELECT %s FROM %s.%s", pkColName, schemaName, tableName))
 	if err != nil {
-		t.Fatalf("SelectArray failed: %v", err)
+		t.Fatalf("SelectSlice failed: %v", err)
 	}
 
 	// should be none left

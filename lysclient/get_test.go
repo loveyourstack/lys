@@ -11,47 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestGetArray(t *testing.T) {
-	t.Run("success", func(t *testing.T) {
-		h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"status":"succeeded","data":[1,2,3],"err_description":""}`))
-		})
-
-		srv := httptest.NewServer(h)
-		defer srv.Close()
-
-		vals, err := GetArray[int](*srv.Client(), srv.URL+"/items")
-		require.NoError(t, err)
-		assert.EqualValues(t, []int{1, 2, 3}, vals)
-	})
-
-	t.Run("status-code-error", func(t *testing.T) {
-		h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.WriteHeader(http.StatusBadRequest)
-			_, _ = w.Write([]byte(`{"status":"failed","data":[],"err_description":"bad request"}`))
-		})
-
-		srv := httptest.NewServer(h)
-		defer srv.Close()
-
-		_, err := GetArray[int](*srv.Client(), srv.URL+"/items")
-		require.Error(t, err)
-		assert.Equal(t, fmt.Sprintf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, http.StatusBadRequest, srv.URL+"/items"), err.Error())
-	})
-}
-
-func TestGetArrayTester(t *testing.T) {
-	h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"status":"succeeded","data":["a","b"],"err_description":""}`))
-	})
-
-	vals, err := GetArrayTester[string](context.Background(), h, "/items")
-	require.NoError(t, err)
-	assert.EqualValues(t, []string{"a", "b"}, vals)
-}
-
 func TestGetItemResp(t *testing.T) {
 	t.Run("client", func(t *testing.T) {
 		h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -81,14 +40,55 @@ func TestGetItemResp(t *testing.T) {
 	})
 }
 
+func TestGetSlice(t *testing.T) {
+	t.Run("success", func(t *testing.T) {
+		h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"status":"succeeded","data":[1,2,3],"err_description":""}`))
+		})
+
+		srv := httptest.NewServer(h)
+		defer srv.Close()
+
+		vals, err := GetSlice[int](*srv.Client(), srv.URL+"/items")
+		require.NoError(t, err)
+		assert.EqualValues(t, []int{1, 2, 3}, vals)
+	})
+
+	t.Run("status-code-error", func(t *testing.T) {
+		h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadRequest)
+			_, _ = w.Write([]byte(`{"status":"failed","data":[],"err_description":"bad request"}`))
+		})
+
+		srv := httptest.NewServer(h)
+		defer srv.Close()
+
+		_, err := GetSlice[int](*srv.Client(), srv.URL+"/items")
+		require.Error(t, err)
+		assert.Equal(t, fmt.Sprintf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, http.StatusBadRequest, srv.URL+"/items"), err.Error())
+	})
+}
+
+func TestGetSliceTester(t *testing.T) {
+	h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`{"status":"succeeded","data":["a","b"],"err_description":""}`))
+	})
+
+	vals, err := GetSliceTester[string](context.Background(), h, "/items")
+	require.NoError(t, err)
+	assert.EqualValues(t, []string{"a", "b"}, vals)
+}
+
 func TestMustGetHelpers(t *testing.T) {
-	t.Run("MustGetArray", func(t *testing.T) {
+	t.Run("MustGetSlice", func(t *testing.T) {
 		h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{"status":"succeeded","data":[10,20],"err_description":""}`))
 		})
 
-		vals := MustGetArray[int](context.Background(), t, h, "/arr")
+		vals := MustGetSlice[int](context.Background(), t, h, "/arr")
 		assert.EqualValues(t, []int{10, 20}, vals)
 	})
 

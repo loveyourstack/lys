@@ -80,16 +80,16 @@ func TestImportParamsFailure(t *testing.T) {
 	testSA = append(testSA, inputTestS)
 	testSA = append(testSA, inputTestS)
 
-	_, err := lysclient.PostArrayToValueTester[testS, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", testSA)
+	_, err := lysclient.PostSliceToValueTester[testS, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", testSA)
 	assert.EqualValues(t, "unknown field: Val", err.Error(), "unknown field")
 
 	// no inputs (nil)
-	_, err = lysclient.PostArrayToValueTester[any, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", nil)
+	_, err = lysclient.PostSliceToValueTester[any, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", nil)
 	assert.EqualValues(t, "no inputs found", err.Error(), "nil")
 
 	// no inputs (empty slice)
 	inputTTA := []coretypetestm.Input{}
-	_, err = lysclient.PostArrayToValueTester[coretypetestm.Input, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", inputTTA)
+	_, err = lysclient.PostSliceToValueTester[coretypetestm.Input, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", inputTTA)
 	assert.EqualValues(t, "no inputs found", err.Error(), "empty slice")
 }
 
@@ -106,6 +106,6 @@ func TestImportValidationFailure(t *testing.T) {
 	input.CText = "fail" // see coreimporttest store Validate()
 	inputs = append(inputs, input)
 
-	_, err := lysclient.PostArrayToValueTester[coretypetestm.Input, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", inputs)
+	_, err := lysclient.PostSliceToValueTester[coretypetestm.Input, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", inputs)
 	assert.EqualValues(t, "line 2: CText is invalid", err.Error(), "")
 }
