@@ -75,7 +75,7 @@ func TestGetWhereClause_mixedAndAndOr(t *testing.T) {
 }
 
 func TestGetWhereClause_operatorShapes(t *testing.T) {
-	tests := []struct {
+	testsWithPlaceholder := []struct {
 		name   string
 		cond   Condition
 		clause string
@@ -88,18 +88,12 @@ func TestGetWhereClause_operatorShapes(t *testing.T) {
 		{name: "contains", cond: Condition{Field: "f", Operator: OpContains, Value: "a"}, clause: " AND f::text ILIKE '%' || $1 || '%'"},
 		{name: "not contains", cond: Condition{Field: "f", Operator: OpNotContains, Value: "a"}, clause: " AND f::text NOT ILIKE '%' || $1 || '%'"},
 
-		{name: "empty", cond: Condition{Field: "f", Operator: OpEmpty, Value: "0"}, clause: " AND LENGTH(f) = $1"},
-		{name: "not empty", cond: Condition{Field: "f", Operator: OpNotEmpty, Value: "0"}, clause: " AND LENGTH(f) > $1"},
-
-		{name: "null", cond: Condition{Field: "f", Operator: OpNull}, clause: " AND f IS NOT DISTINCT FROM $1"},
-		{name: "not null", cond: Condition{Field: "f", Operator: OpNotNull}, clause: " AND f IS DISTINCT FROM $1"},
-
 		{name: "default (equals)", cond: Condition{Field: "f", Operator: OpEquals, Value: "a"}, clause: " AND f = $1"},
 		{name: "default (gt)", cond: Condition{Field: "f", Operator: OpGreaterThan, Value: "1"}, clause: " AND f > $1"},
 		{name: "default (lt)", cond: Condition{Field: "f", Operator: OpLessThan, Value: "1"}, clause: " AND f < $1"},
 	}
 
-	for _, tc := range tests {
+	for _, tc := range testsWithPlaceholder {
 		t.Run(tc.name, func(t *testing.T) {
 			clause, n := GetWhereClause(0, []Condition{tc.cond}, nil)
 			if clause != tc.clause {
@@ -107,6 +101,30 @@ func TestGetWhereClause_operatorShapes(t *testing.T) {
 			}
 			if n != 1 {
 				t.Fatalf("unexpected placeholder count: got %d, want 1", n)
+			}
+		})
+	}
+
+	testsWithoutPlaceholder := []struct {
+		name   string
+		cond   Condition
+		clause string
+	}{
+		{name: "empty", cond: Condition{Field: "f", Operator: OpEmpty, Value: ""}, clause: " AND LENGTH(f) = 0"},
+		{name: "not empty", cond: Condition{Field: "f", Operator: OpNotEmpty, Value: ""}, clause: " AND LENGTH(f) > 0"},
+
+		{name: "null", cond: Condition{Field: "f", Operator: OpNull}, clause: " AND f IS NULL"},
+		{name: "not null", cond: Condition{Field: "f", Operator: OpNotNull}, clause: " AND f IS NOT NULL"},
+	}
+
+	for _, tc := range testsWithoutPlaceholder {
+		t.Run(tc.name, func(t *testing.T) {
+			clause, n := GetWhereClause(0, []Condition{tc.cond}, nil)
+			if clause != tc.clause {
+				t.Fatalf("unexpected clause: got %q, want %q", clause, tc.clause)
+			}
+			if n != 0 {
+				t.Fatalf("unexpected placeholder count: got %d, want 0", n)
 			}
 		})
 	}

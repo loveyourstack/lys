@@ -95,13 +95,13 @@ func getSelectParamValue(cond Condition) []any {
 		}
 		return paramValues
 
+	// operators that don't use placeholders
+	case OpEmpty, OpNotEmpty, OpNull, OpNotNull:
+		return nil
+
 	// In/NotIn uses InValues. Pgx uses the pq.Array wrapper to handle array params, so we can pass the InValues slice directly
 	case OpIn, OpNotIn:
 		return []any{cond.InValues}
-
-	// Null/NotNull uses special syntax to allow nil to be passed
-	case OpNull, OpNotNull:
-		return []any{nil}
 
 	// otherwise just allow pgx to handle the value
 	default:

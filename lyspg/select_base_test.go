@@ -101,10 +101,12 @@ func TestGetSelectParamValues_operatorEncodings(t *testing.T) {
 		{Field: "d", Operator: OpNull},
 		{Field: "e", Operator: OpNotNull},
 		{Field: "f", Operator: OpContainsAny, InValues: []string{"c1", "c2"}},
+		{Field: "g", Operator: OpEmpty},
+		{Field: "h", Operator: OpNotEmpty},
 	}
 
 	got := GetSelectParamValues(nil, conds, nil, false, 0, 0)
-	want := []any{"eq", []string{"i1", "i2"}, []string{"n1", "n2"}, nil, nil, "c1", "c2"}
+	want := []any{"eq", []string{"i1", "i2"}, []string{"n1", "n2"}, "c1", "c2"}
 
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("unexpected params: got %#v, want %#v", got, want)
