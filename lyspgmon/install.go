@@ -7,12 +7,13 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lyspgdb"
 	"github.com/loveyourstack/lys/lyspgmon/lyspgmonddl"
 )
 
-const schemaName string = "lyspgmon"
+const gSchemaName string = "lyspgmon"
 
 // Install creates the lyspgmon schema in the database if it is not already present, and (re)-adds functions and monitoring views in the lyspgmonddl folder
 // note that local permissions need to be granted to lyspgmon schema and objects after installation
@@ -36,9 +37,9 @@ func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, infoLog
 		}
 
 		// exec file into db
-		err = lyspgdb.ExecuteFile(ctx, ownerDb, d.Name(), lyspgmonddl.SQLAssets, nil, infoLog)
+		err = lyspgdb.ExecuteFile(ctx, ownerDb, path, lyspgmonddl.SQLAssets, nil, infoLog)
 		if err != nil {
-			return fmt.Errorf("lyspgdb.ExecuteFile failed for file '%s': %w", d.Name(), err)
+			return fmt.Errorf("lyspgdb.ExecuteFile failed for path '%s': %w", path, err)
 		}
 
 		return nil
@@ -52,7 +53,8 @@ func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, infoLog
 
 func createSchema(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string) (err error) {
 
-	stmt := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s AUTHORIZATION %s;", schemaName, dbOwner)
+	stmt := fmt.Sprintf("CREATE SCHEMA IF NOT EXISTS %s AUTHORIZATION %s;",
+		pgx.Identifier{gSchemaName}.Sanitize(), pgx.Identifier{dbOwner}.Sanitize())
 	_, err = ownerDb.Exec(ctx, stmt)
 	if err != nil {
 		return fmt.Errorf("ownerDb.Exec failed: %w", err)

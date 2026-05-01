@@ -46,16 +46,15 @@ func CheckDb(ctx context.Context, ownerDb *pgxpool.Pool, infoLog, errorLog *slog
 	return nil
 }
 
-// AddMissingAuditUpdateTriggers adds missing audit update triggers for all tables returned by v_missing_audit_update_trigger
-func AddMissingAuditUpdateTriggers(ctx context.Context, ownerDb *pgxpool.Pool, infoLog *slog.Logger) (err error) {
+func addMissingTriggers(ctx context.Context, ownerDb *pgxpool.Pool, viewName, triggerName, when, triggerFunc string, infoLog *slog.Logger) (err error) {
 
 	type missingTrigger struct {
 		TableSchema string `db:"table_schema"`
 		TableName   string `db:"table_name"`
 	}
 
-	// select tables with a "last_user_update_by" column that are missing the trigger
-	stmt := "SELECT table_schema, table_name FROM lyspgmon.v_missing_audit_update_trigger;"
+	// select tables that are missing the trigger
+	stmt := fmt.Sprintf("SELECT table_schema, table_name FROM %s.%s;", pgx.Identifier{gSchemaName}.Sanitize(), pgx.Identifier{viewName}.Sanitize())
 	rows, _ := ownerDb.Query(ctx, stmt)
 	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[missingTrigger])
 	if err != nil {
@@ -71,55 +70,29 @@ func AddMissingAuditUpdateTriggers(ctx context.Context, ownerDb *pgxpool.Pool, i
 	for _, item := range items {
 
 		// create the trigger
-		stmt = fmt.Sprintf("CREATE TRIGGER t_audit_update AFTER UPDATE ON %s.%s FOR EACH ROW EXECUTE PROCEDURE lyspgmon.audit_update_trigger();",
-			item.TableSchema, item.TableName)
+		stmt = fmt.Sprintf("CREATE TRIGGER %s %s ON %s.%s FOR EACH ROW EXECUTE PROCEDURE %s.%s();",
+			pgx.Identifier{triggerName}.Sanitize(), when,
+			pgx.Identifier{item.TableSchema}.Sanitize(), pgx.Identifier{item.TableName}.Sanitize(),
+			pgx.Identifier{gSchemaName}.Sanitize(), pgx.Identifier{triggerFunc}.Sanitize())
 		_, err = ownerDb.Exec(ctx, stmt)
 		if err != nil {
 			return lyserr.Db{Err: fmt.Errorf("ownerDb.Exec failed on %s.%s: %w", item.TableSchema, item.TableName, err), Stmt: stmt}
 		}
 
-		infoLog.Info("created audit_update trigger", slog.String("schema", item.TableSchema), slog.String("table", item.TableName))
+		infoLog.Info("created trigger", slog.String("name", triggerName), slog.String("schema", item.TableSchema), slog.String("table", item.TableName))
 	}
 
 	return nil
 }
 
+// AddMissingAuditUpdateTriggers adds missing audit update triggers for all tables returned by v_missing_audit_update_trigger
+func AddMissingAuditUpdateTriggers(ctx context.Context, ownerDb *pgxpool.Pool, infoLog *slog.Logger) (err error) {
+	return addMissingTriggers(ctx, ownerDb, "v_missing_audit_update_trigger", "t_audit_update", "AFTER UPDATE", "audit_update_trigger", infoLog)
+}
+
 // AddMissingUpdatedAtTriggers adds missing updated_at triggers for all tables returned by v_missing_updated_at_trigger
 func AddMissingUpdatedAtTriggers(ctx context.Context, ownerDb *pgxpool.Pool, infoLog *slog.Logger) (err error) {
-
-	type missingTrigger struct {
-		TableSchema string `db:"table_schema"`
-		TableName   string `db:"table_name"`
-	}
-
-	// select tables with an updated_at column that are missing the trigger
-	stmt := "SELECT table_schema, table_name FROM lyspgmon.v_missing_updated_at_trigger;"
-	rows, _ := ownerDb.Query(ctx, stmt)
-	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[missingTrigger])
-	if err != nil {
-		return lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
-	}
-
-	// exit if none found
-	if len(items) == 0 {
-		return nil
-	}
-
-	// for each table
-	for _, item := range items {
-
-		// create the trigger
-		stmt = fmt.Sprintf("CREATE TRIGGER t_set_updated_at BEFORE UPDATE ON %s.%s FOR EACH ROW EXECUTE PROCEDURE lyspgmon.set_updated_at();",
-			item.TableSchema, item.TableName)
-		_, err = ownerDb.Exec(ctx, stmt)
-		if err != nil {
-			return lyserr.Db{Err: fmt.Errorf("ownerDb.Exec failed on %s.%s: %w", item.TableSchema, item.TableName, err), Stmt: stmt}
-		}
-
-		infoLog.Info("created set_updated_at trigger", slog.String("schema", item.TableSchema), slog.String("table", item.TableName))
-	}
-
-	return nil
+	return addMissingTriggers(ctx, ownerDb, "v_missing_updated_at_trigger", "t_set_updated_at", "BEFORE UPDATE", "set_updated_at", infoLog)
 }
 
 // CheckDuplicateShortnames checks for tables with the same shortname comment
@@ -132,7 +105,7 @@ func CheckDuplicateShortnames(ctx context.Context, ownerDb *pgxpool.Pool, errorL
 	}
 
 	// select tables with duplicate shortname comments
-	stmt := "SELECT com, table_schema, table_name FROM lyspgmon.v_duplicate_shortnames;"
+	stmt := fmt.Sprintf("SELECT com, table_schema, table_name FROM %s.v_duplicate_shortnames;", pgx.Identifier{gSchemaName}.Sanitize())
 	rows, _ := ownerDb.Query(ctx, stmt)
 	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[dupShortname])
 	if err != nil {
@@ -156,7 +129,7 @@ func CheckDuplicateShortnames(ctx context.Context, ownerDb *pgxpool.Pool, errorL
 // CheckInconsistentArchivedCols checks for archived tables that do not have the same cols as their base tables
 func CheckInconsistentArchivedCols(ctx context.Context, ownerDb *pgxpool.Pool, errorLog *slog.Logger) (err error) {
 
-	type dupShortname struct {
+	type inconsistentCol struct {
 		Info        string `db:"info"`
 		TableSchema string `db:"table_schema"`
 		TableName   string `db:"table_name"`
@@ -164,9 +137,9 @@ func CheckInconsistentArchivedCols(ctx context.Context, ownerDb *pgxpool.Pool, e
 	}
 
 	// select tables with inconsistent archived cols
-	stmt := "SELECT info, table_schema, table_name, column_name FROM lyspgmon.v_inconsistent_archived_cols;"
+	stmt := fmt.Sprintf("SELECT info, table_schema, table_name, column_name FROM %s.v_inconsistent_archived_cols;", pgx.Identifier{gSchemaName}.Sanitize())
 	rows, _ := ownerDb.Query(ctx, stmt)
-	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[dupShortname])
+	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[inconsistentCol])
 	if err != nil {
 		return lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
 	}
@@ -195,7 +168,7 @@ func CheckMissingLastUserUpdateByCols(ctx context.Context, ownerDb *pgxpool.Pool
 	}
 
 	// select tables missing the col
-	stmt := "SELECT event_object_schema, event_object_table FROM lyspgmon.v_missing_last_user_update_by_col;"
+	stmt := fmt.Sprintf("SELECT event_object_schema, event_object_table FROM %s.v_missing_last_user_update_by_col;", pgx.Identifier{gSchemaName}.Sanitize())
 	rows, _ := ownerDb.Query(ctx, stmt)
 	items, err := pgx.CollectRows(rows, pgx.RowToStructByNameLax[missingCol])
 	if err != nil {
