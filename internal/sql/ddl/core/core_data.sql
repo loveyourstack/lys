@@ -4,11 +4,11 @@ INSERT INTO core.archive_test (c_int, c_text) VALUES
   (NULL, 'a')
 ;
 
-INSERT INTO core.exists_test (c_int, c_text) VALUES
-  (1, 'a'),
-  (1, 'a'),
-  (2, 'b'),
-  (3, NULL)
+INSERT INTO core.exists_test (c_date, c_int, c_text) VALUES
+  ('2001-01-01', 1, 'a'),
+  (NULL, 1, 'a'),
+  ('2002-01-01', 2, 'b'),
+  ('2003-01-01', 3, NULL)
 ;
 
 INSERT INTO core.param_test (c_bool, c_booln, c_int, c_intn, c_double, c_doublen, c_date, c_daten, c_time, c_timen, c_datetime, c_datetimen, c_enum, c_enumn, c_text, c_textn) VALUES

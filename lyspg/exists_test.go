@@ -3,8 +3,10 @@ package lyspg
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/loveyourstack/lys/lystype"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,8 +32,16 @@ func TestExistsSuccess(t *testing.T) {
 	db := mustGetDb(ctx, t)
 	defer db.Close()
 
+	// date, true
+	ret := mustExists(t, db, "core", "exists_test", "c_date", lystype.Date(time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC)))
+	assert.EqualValues(t, true, ret, "c_date, true")
+
+	// date, false
+	ret = mustExists(t, db, "core", "exists_test", "c_date", lystype.Date(time.Date(2001, 1, 2, 0, 0, 0, 0, time.UTC)))
+	assert.EqualValues(t, false, ret, "c_date, false")
+
 	// int, true
-	ret := mustExists(t, db, "core", "exists_test", "c_int", 1)
+	ret = mustExists(t, db, "core", "exists_test", "c_int", 1)
 	assert.EqualValues(t, true, ret, "c_int, true")
 
 	// int, false
@@ -63,6 +73,7 @@ func TestExistsConditionsSuccess(t *testing.T) {
 
 	// AND, true
 	colValMap := make(map[string]any)
+	colValMap["c_date"] = lystype.Date(time.Date(2001, 1, 1, 0, 0, 0, 0, time.UTC))
 	colValMap["c_int"] = 1
 	colValMap["c_text"] = "a"
 	ret := mustExistsConditions(t, db, "core", "exists_test", "AND", colValMap)

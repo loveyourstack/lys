@@ -3,12 +3,15 @@ package lyspg
 import (
 	"context"
 	"fmt"
+	"maps"
+	"reflect"
 	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/loveyourstack/lys/lyserr"
+	"github.com/loveyourstack/lys/lysmeta"
 )
 
 // Exists returns true if 1+ records exist given the supplied criterion (columnName + val)
@@ -23,7 +26,7 @@ func Exists(ctx context.Context, db PoolOrTx, schemaName, tableName, columnName 
 		rows, _ = db.Query(ctx, stmt)
 	} else {
 		stmt += fmt.Sprintf("WHERE %s = $1);", columnName)
-		rows, _ = db.Query(ctx, stmt, val)
+		rows, _ = db.Query(ctx, stmt, lysmeta.GetInputValue(val, reflect.TypeOf(val))) // uses lysmeta.GetInputValue to ensure correct handling of custom types like lystype.Date
 	}
 
 	ret, err = pgx.CollectExactlyOneRow(rows, pgx.RowTo[bool])
@@ -49,14 +52,19 @@ func ExistsConditions(ctx context.Context, db PoolOrTx, schemaName, tableName, m
 	vals := []any{}
 	i := 0
 
-	for col, val := range colValMap {
+	// sort map keys to ensure fixed order of conditions in generated SQL
+	sortedMapKeys := slices.Collect(maps.Keys(colValMap))
+	slices.Sort(sortedMapKeys)
+
+	for _, col := range sortedMapKeys {
+		val := colValMap[col]
 		var cond string
 		if val == nil {
 			cond = col + " IS NULL"
 		} else {
 			i++
 			cond = col + " = $" + strconv.Itoa(i)
-			vals = append(vals, val)
+			vals = append(vals, lysmeta.GetInputValue(val, reflect.TypeOf(val))) // uses lysmeta.GetInputValue to ensure correct handling of custom types like lystype.Date
 		}
 		conds = append(conds, cond)
 	}
