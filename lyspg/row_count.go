@@ -134,3 +134,19 @@ func GetRowCountExplain(ctx context.Context, db PoolOrTx, query string, paramVal
 
 	return rowCount, nil
 }
+
+// SelectCount returns a count of records matching the supplied query conditions, without performing an expensive count(*) query if possible.
+// If the table is small, an exact count is returned, otherwise an estimated count is returned.
+func SelectCount(ctx context.Context, db PoolOrTx, schemaName, tableName, viewName string, params SelectParams) (totalCount TotalCount, err error) {
+
+	whereClause, _ := GetWhereClause(len(params.SetFuncParamValues), params.Conditions, params.OrConditionSets)
+	sourceName := GetSourceName(viewName, len(params.SetFuncParamValues))
+	stmt := GetSelectStem("1", schemaName, sourceName, whereClause)
+
+	totalCount, err = fastRowCount(ctx, db, schemaName, tableName, params.SetFuncParamValues, params.Conditions, params.OrConditionSets, stmt)
+	if err != nil {
+		return TotalCount{}, fmt.Errorf("fastRowCount failed: %w", err)
+	}
+
+	return totalCount, nil
+}

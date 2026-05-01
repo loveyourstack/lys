@@ -197,3 +197,119 @@ func TestFastRowCount_largeTableWithConds(t *testing.T) {
 		t.Fatalf("unexpected estimated row count: got %d", totalCount.Value)
 	}
 }
+
+func TestSelectCount_noConds(t *testing.T) {
+
+	ctx := context.Background()
+	db := mustGetDb(ctx, t)
+	defer db.Close()
+
+	totalCount, err := SelectCount(ctx, db, "core", "exists_test", "exists_test", SelectParams{})
+	if err != nil {
+		t.Fatalf("SelectCount failed: %v", err)
+	}
+
+	if totalCount.IsEstimated {
+		t.Fatalf("expected exact count for small table, got estimated")
+	}
+	if totalCount.Value != 4 {
+		t.Fatalf("unexpected count: got %d, want 4", totalCount.Value)
+	}
+}
+
+func TestSelectCount_withCond(t *testing.T) {
+
+	ctx := context.Background()
+	db := mustGetDb(ctx, t)
+	defer db.Close()
+
+	params := SelectParams{
+		Conditions: []Condition{{
+			Field:    "c_text",
+			Operator: OpEquals,
+			Value:    "a",
+		}},
+	}
+
+	totalCount, err := SelectCount(ctx, db, "core", "exists_test", "exists_test", params)
+	if err != nil {
+		t.Fatalf("SelectCount failed: %v", err)
+	}
+
+	if totalCount.IsEstimated {
+		t.Fatalf("expected exact count for small table, got estimated")
+	}
+	if totalCount.Value != 2 {
+		t.Fatalf("unexpected count: got %d, want 2", totalCount.Value)
+	}
+}
+
+func TestSelectCount_withCondMatchesNone(t *testing.T) {
+
+	ctx := context.Background()
+	db := mustGetDb(ctx, t)
+	defer db.Close()
+
+	params := SelectParams{
+		Conditions: []Condition{{
+			Field:    "c_text",
+			Operator: OpEquals,
+			Value:    "zzz",
+		}},
+	}
+
+	totalCount, err := SelectCount(ctx, db, "core", "exists_test", "exists_test", params)
+	if err != nil {
+		t.Fatalf("SelectCount failed: %v", err)
+	}
+
+	if totalCount.Value != 0 {
+		t.Fatalf("unexpected count: got %d, want 0", totalCount.Value)
+	}
+}
+
+func TestSelectCount_largeTableNoConds(t *testing.T) {
+
+	ctx := context.Background()
+	db := mustGetDb(ctx, t)
+	defer db.Close()
+
+	totalCount, err := SelectCount(ctx, db, "core", "volume_test", "volume_test", SelectParams{})
+	if err != nil {
+		t.Fatalf("SelectCount failed: %v", err)
+	}
+
+	if !totalCount.IsEstimated {
+		t.Fatalf("expected estimated count for large table, got exact")
+	}
+	if totalCount.Value <= 100_000 {
+		t.Fatalf("unexpected count: got %d", totalCount.Value)
+	}
+}
+
+func TestSelectCount_largeTableWithCond(t *testing.T) {
+
+	ctx := context.Background()
+	db := mustGetDb(ctx, t)
+	defer db.Close()
+
+	params := SelectParams{
+		Conditions: []Condition{{
+			Field:    "c_int",
+			Operator: OpEquals,
+			Value:    "1",
+		}},
+	}
+
+	totalCount, err := SelectCount(ctx, db, "core", "volume_test", "volume_test", params)
+	if err != nil {
+		t.Fatalf("SelectCount failed: %v", err)
+	}
+
+	if !totalCount.IsEstimated {
+		t.Fatalf("expected estimated count for large table with conds, got exact")
+	}
+	if totalCount.Value <= 50_000 {
+		t.Fatalf("unexpected estimated count: got %d", totalCount.Value)
+	}
+}
