@@ -86,28 +86,26 @@ func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database
 		return nil, fmt.Errorf("GetConfig failed: %w", err)
 	}
 
-	cfg.BeforeAcquire = func(ctx context.Context, conn *pgx.Conn) bool {
+	cfg.PrepareConn = func(ctx context.Context, conn *pgx.Conn) (bool, error) {
 
 		ctxVal, ok := ctx.Value(ctxKey).(ctxValueT)
 		if !ok {
-			errorLog.Error("ctxVal not found in ctx")
-			return false
+			return false, fmt.Errorf("ctxVal not found in ctx")
 		}
 
 		// set ctx value into this connection's setting
-		_, err := conn.Exec(ctx, fmt.Sprintf("SET %s TO %v;", settingName, ctxVal))
+		_, err := conn.Exec(ctx, fmt.Sprintf("SET %s TO %v;", pgx.Identifier{settingName}.Sanitize(), ctxVal))
 		if err != nil {
-			errorLog.Error("conn.Exec (set ctx value) failed: " + err.Error())
-			return false
+			return false, fmt.Errorf("conn.Exec (set ctx value) failed: %w", err)
 		}
 
-		return true
+		return true, nil
 	}
 
 	cfg.AfterRelease = func(conn *pgx.Conn) bool {
 
 		// unset the setting before this connection is released to pool
-		_, err := conn.Exec(ctx, fmt.Sprintf("SET %s TO '';", settingName))
+		_, err := conn.Exec(context.Background(), fmt.Sprintf("SET %s TO '';", pgx.Identifier{settingName}.Sanitize()))
 		if err != nil {
 			errorLog.Error("conn.Exec (unset ctx value) failed: " + err.Error())
 			return false
