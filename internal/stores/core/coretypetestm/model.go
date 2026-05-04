@@ -97,39 +97,39 @@ func GetFilledInput() (input Input, err error) {
 
 	input = Input{
 		CBool:  false,
-		CBoolN: lystype.ToPtr(true),
+		CBoolN: new(true),
 		CBoolA: []bool{false, true},
 
 		CInt:  1,
-		CIntN: lystype.ToPtr(int64(2)),
+		CIntN: new(int64(2)),
 		CIntA: []int64{1, 2},
 
 		CDouble:  1.1,
-		CDoubleN: lystype.ToPtr(float64(2.1)),
+		CDoubleN: new(float64(2.1)),
 		CDoubleA: []float64{1.1, 2.1},
 
 		CNumeric:  1.11,
-		CNumericN: lystype.ToPtr(float64(2.11)),
+		CNumericN: new(float64(2.11)),
 		CNumericA: []float64{1.11, 2.11},
 
 		CDate:  lystype.Date(d1),
-		CDateN: lystype.ToPtr(lystype.Date(d2)),
+		CDateN: new(lystype.Date(d2)),
 		CDateA: []lystype.Date{lystype.Date(d1), lystype.Date(d2)},
 
 		CTime:  lystype.Time(t1),
-		CTimeN: lystype.ToPtr(lystype.Time(t2)),
+		CTimeN: new(lystype.Time(t2)),
 		CTimeA: []lystype.Time{lystype.Time(t1), lystype.Time(t2)},
 
 		CDatetime:  lystype.Datetime(dt1),
-		CDatetimeN: lystype.ToPtr(lystype.Datetime(dt2)),
+		CDatetimeN: new(lystype.Datetime(dt2)),
 		CDatetimeA: []lystype.Datetime{lystype.Datetime(dt1), lystype.Datetime(dt2)},
 
 		CEnum:  "Monday",
-		CEnumN: lystype.ToPtr("Tuesday"),
+		CEnumN: new(string("Tuesday")),
 		CEnumA: []string{"Monday", "Tuesday"},
 
 		CText:  "a b",
-		CTextN: lystype.ToPtr("b c"),
+		CTextN: new(string("b c")),
 		CTextA: []string{"a b", "b c"},
 	}
 

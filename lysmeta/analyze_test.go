@@ -120,7 +120,7 @@ func TestGetStructFieldsSuccess(t *testing.T) {
 	}
 
 	dob := lystype.Date(time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC))
-	ptr := lystype.ToPtr("def")
+	ptr := new("def")
 
 	reflVal := reflect.ValueOf(input{ID: "abc", Ptr: ptr, Embedded: Embedded{Score: 1.5, DOB: dob}, HiddenTags: "skip"})
 	fields := getStructFields(reflVal, true)

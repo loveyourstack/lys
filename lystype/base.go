@@ -168,7 +168,3 @@ func isEmptyValue(v reflect.Value) bool {
 
 	return false
 }
-
-func ToPtr[T any](a T) *T {
-	return &a
-}
