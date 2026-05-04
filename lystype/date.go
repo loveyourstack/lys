@@ -2,6 +2,7 @@ package lystype
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -29,13 +30,11 @@ func (t *Date) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Scan implements the database/sql Scanner interface
-// lib/pq doesn't need this, but pgx does
+// Scan implements the database/sql Scanner interface.
 func (t *Date) Scan(src any) error {
 
 	if src == nil {
-		*t = Date(time.Time{})
-		return nil
+		return fmt.Errorf("unsupported Scan source type: %T", src)
 	}
 
 	switch src := src.(type) {
@@ -43,17 +42,13 @@ func (t *Date) Scan(src any) error {
 		*t = Date(src)
 		return nil
 	default:
-		*t = Date(time.Time{})
-		return nil
+		return fmt.Errorf("unsupported Scan source type: %T", src)
 	}
 }
 
 // MarshalJSON converts the receiver to json
 func (t Date) MarshalJSON() ([]byte, error) {
-
-	// marshal using db format
-	stamp := fmt.Sprintf("\"%s\"", t.Format(DateFormat))
-	return []byte(stamp), nil
+	return strconv.AppendQuote(nil, t.Format(DateFormat)), nil
 }
 
 // Format is a wrapper for the same function on the underlying time.Time variable
@@ -64,4 +59,14 @@ func (t Date) Format(layout string) string {
 // IsZero is a wrapper for the same function on the underlying time.Time variable
 func (t Date) IsZero() bool {
 	return time.Time(t).IsZero()
+}
+
+// String returns the Date as a string in the DateFormat layout.
+func (t Date) String() string {
+	return t.Format(DateFormat)
+}
+
+// ToTime converts the Date to a time.Time.
+func (t Date) ToTime() time.Time {
+	return time.Time(t)
 }

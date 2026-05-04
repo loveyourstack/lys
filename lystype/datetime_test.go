@@ -7,7 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestDatetime(t *testing.T) {
+func TestDatetimeSuccess(t *testing.T) {
 
 	datetimeStr := "\"2024-06-15 14:30:00+01\""
 	var dt Datetime
@@ -29,4 +29,35 @@ func TestDatetime(t *testing.T) {
 	marshalled2, err := dt2.MarshalJSON()
 	assert.NoError(t, err, "MarshalJSON should not error")
 	assert.Equal(t, datetimeStr, string(marshalled2), "marshalled datetime after Scan")
+}
+
+func TestDatetimeUnmarshalNull(t *testing.T) {
+	var dt Datetime
+	err := dt.UnmarshalJSON([]byte("null"))
+	assert.NoError(t, err)
+	assert.True(t, dt.IsZero())
+}
+
+func TestDatetimeUnmarshalInvalid(t *testing.T) {
+	var dt Datetime
+	err := dt.UnmarshalJSON([]byte("\"2024-06-15T14:30:00Z\""))
+	assert.Error(t, err)
+}
+
+func TestDatetimeScanNilAndUnsupported(t *testing.T) {
+	var dt Datetime
+	err := dt.Scan(nil)
+	assert.Error(t, err)
+
+	err = dt.Scan("2024-06-15 14:30:00+01")
+	assert.Error(t, err)
+}
+
+func TestDatetimeStringAndToTime(t *testing.T) {
+	var dt Datetime
+	err := dt.UnmarshalJSON([]byte("\"2024-06-15 14:30:00+01\""))
+	assert.NoError(t, err)
+
+	assert.Equal(t, "2024-06-15 14:30:00+01", dt.String())
+	assert.Equal(t, "2024-06-15 14:30:00+01", dt.ToTime().Format(DatetimeFormat))
 }

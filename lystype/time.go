@@ -2,6 +2,7 @@ package lystype
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -30,13 +31,11 @@ func (t *Time) UnmarshalJSON(b []byte) error {
 	return nil
 }
 
-// Scan implements the database/sql Scanner interface
-// lib/pq doesn't need this, but pgx does
+// Scan implements the database/sql Scanner interface.
 func (t *Time) Scan(src any) error {
 
 	if src == nil {
-		*t = Time(time.Time{})
-		return nil
+		return fmt.Errorf("unsupported Scan source type: %T", src)
 	}
 
 	switch src := src.(type) {
@@ -49,17 +48,13 @@ func (t *Time) Scan(src any) error {
 		*t = Time(ti)
 		return nil
 	default:
-		*t = Time(time.Time{})
-		return nil
+		return fmt.Errorf("unsupported Scan source type: %T", src)
 	}
 }
 
 // MarshalJSON converts the receiver to json
 func (t Time) MarshalJSON() ([]byte, error) {
-
-	// marshal using db format
-	stamp := fmt.Sprintf("\"%s\"", t.Format(TimeFormat))
-	return []byte(stamp), nil
+	return strconv.AppendQuote(nil, t.Format(TimeFormat)), nil
 }
 
 // Format is a wrapper for the same function on the underlying time.Time variable
@@ -70,4 +65,9 @@ func (t Time) Format(layout string) string {
 // IsZero is a wrapper for the same function on the underlying time.Time variable
 func (t Time) IsZero() bool {
 	return time.Time(t).IsZero()
+}
+
+// String returns the Time as a string in the TimeFormat layout.
+func (t Time) String() string {
+	return t.Format(TimeFormat)
 }
