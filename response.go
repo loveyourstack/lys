@@ -45,36 +45,40 @@ func FileResponse(filePath, outputFileName string, remove bool, w http.ResponseW
 
 	file, err := os.Open(filePath)
 	if err != nil {
-		fmt.Printf("FileResponse: os.Open failed: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(os.Stderr, "FileResponse: os.Open failed: %s", err.Error())
 		return
 	}
 	defer func() {
 		if err = file.Close(); err != nil {
-			fmt.Printf("FileResponse: file.Close failed: %s", err.Error())
+			fmt.Fprintf(os.Stderr, "FileResponse: file.Close failed: %s", err.Error())
 		}
 	}()
 
 	if remove {
 		defer func() {
 			if err = os.Remove(filePath); err != nil {
-				fmt.Printf("FileResponse: os.Remove failed: %s", err.Error())
+				fmt.Fprintf(os.Stderr, "FileResponse: os.Remove failed: %s", err.Error())
 			}
 		}()
 	}
 
 	w.Header().Set("Content-Type", "application/octet-stream")
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", outputFileName))
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%q", outputFileName))
 
-	io.Copy(w, file)
+	if _, err := io.Copy(w, file); err != nil {
+		fmt.Fprintf(os.Stderr, "FileResponse: io.Copy failed: %s", err.Error())
+	}
 }
 
 // JsonResponse marshals the supplied StdResponse to json and writes it to w
 func JsonResponse(resp StdResponse, httpStatus int, w http.ResponseWriter) {
 
-	json, err := json.Marshal(resp)
+	b, err := json.Marshal(resp)
 	if err != nil {
 		// should never happen
-		fmt.Printf("JsonResponse: json.Marshal failed: %s", err.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintf(os.Stderr, "JsonResponse: json.Marshal failed: %s", err.Error())
 		return
 	}
 
@@ -82,7 +86,9 @@ func JsonResponse(resp StdResponse, httpStatus int, w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 
 	w.WriteHeader(httpStatus)
-	w.Write(json)
+	if _, err := w.Write(b); err != nil {
+		fmt.Fprintf(os.Stderr, "JsonResponse: w.Write failed: %s", err.Error())
+	}
 }
 
 // StatusWriter is a wrapper around http.ResponseWriter that captures the status code and number of bytes written in the response
