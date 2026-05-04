@@ -148,11 +148,15 @@ func mustGetSrvApp(ctx context.Context, t testing.TB) *httpServerApplication {
 	// create http server app
 	srvApp := &httpServerApplication{
 		Application: app,
-		GetOptions:  FillGetOptions(GetOptions{}),   // use defaults
 		PostOptions: FillPostOptions(PostOptions{}), // use defaults
 	}
 
 	var err error
+	srvApp.GetOptions, err = FillGetOptions(GetOptions{})
+	if err != nil {
+		t.Fatalf("FillGetOptions failed: %v", err)
+	}
+
 	// register core.weekday type in any conn added to the pool so that Patch of type_test core.weekday[] works. If don't do this: "encode plan not found"
 	dataTypeNames := []string{
 		"core.weekday",
@@ -175,6 +179,16 @@ func mustCreateGetReq(t testing.TB, targetUrl string) *http.Request {
 	req.Header.Set("Content-Type", "application/json")
 
 	return req
+}
+
+func mustFillGetOptions(t testing.TB, input GetOptions) GetOptions {
+
+	getOptions, err := FillGetOptions(input)
+	if err != nil {
+		t.Fatalf("FillGetOptions failed: %v", err)
+	}
+
+	return getOptions
 }
 
 func mustExtractFilters(t testing.TB, urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames, setFuncUrlParamNames []string, getOptions GetOptions) []lyspg.Condition {

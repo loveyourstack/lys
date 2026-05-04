@@ -135,6 +135,28 @@ func TestEqualUnorderedFailure(t *testing.T) {
 	assert.Equal(t, false, eq)
 }
 
+func TestReportDuplicatesSuccess(t *testing.T) {
+	s := []int{1, 2, 3, 2, 4, 1}
+	dups := ReportDuplicates(s)
+	assert.Equal(t, []string{"1", "2"}, dups, "int")
+
+	s2 := []string{"a", "b", "c", "b", "d", "a"}
+	dups = ReportDuplicates(s2)
+	assert.Equal(t, []string{"a", "b"}, dups, "string")
+
+	s3 := []string{"a", "b", "c"}
+	dups = ReportDuplicates(s3)
+	assert.Equal(t, []string(nil), dups, "no duplicates")
+
+	s4 := []string{}
+	dups = ReportDuplicates(s4)
+	assert.Equal(t, []string(nil), dups, "empty slice")
+
+	s5 := []string(nil)
+	dups = ReportDuplicates(s5)
+	assert.Equal(t, []string(nil), dups, "nil slice")
+}
+
 func TestSortAndDeDuplicateSuccess(t *testing.T) {
 
 	nilS := []int(nil)

@@ -81,7 +81,7 @@ func TestExtractFiltersOptionsSuccess(t *testing.T) {
 		"b": "b_db",
 		"c": "c_db",
 	}
-	getOptions := FillGetOptions(GetOptions{})
+	getOptions := mustFillGetOptions(t, GetOptions{})
 
 	// equals
 	urlValues := url.Values{}
@@ -210,7 +210,7 @@ func TestExtractFiltersOtherSuccess(t *testing.T) {
 		"b": "b_db",
 		"c": "c_db",
 	}
-	getOptions := FillGetOptions(GetOptions{})
+	getOptions := mustFillGetOptions(t, GetOptions{})
 
 	// multiple filters, different keys
 	urlValues := url.Values{}
@@ -306,7 +306,7 @@ func TestExtractFiltersFailure(t *testing.T) {
 		"b": "b_db",
 		"c": "c_db",
 	}
-	getOptions := FillGetOptions(GetOptions{})
+	getOptions := mustFillGetOptions(t, GetOptions{})
 
 	// invalid param key
 	urlValues := url.Values{}

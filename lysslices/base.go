@@ -2,6 +2,7 @@ package lysslices
 
 import (
 	"cmp"
+	"fmt"
 	"slices"
 )
 
@@ -95,6 +96,33 @@ func EqualUnordered[S ~[]E, E comparable](s1, s2 S) bool {
 	}
 
 	return len(freq) == 0
+}
+
+func ReportDuplicates[S ~[]E, E comparable](s S) (dups []string) {
+
+	if len(s) == 0 {
+		return nil
+	}
+
+	dups = make([]string, 0, len(s))
+
+	seen := make(map[E]int, len(s))
+	for _, v := range s {
+		seen[v]++
+	}
+
+	for v, count := range seen {
+		if count > 1 {
+			dups = append(dups, fmt.Sprintf("%v", v))
+		}
+	}
+
+	if len(dups) == 0 {
+		return nil
+	}
+
+	slices.Sort(dups)
+	return dups
 }
 
 // SortAndDeDuplicate returns a sorted and de-duplicated copy of the slice.
