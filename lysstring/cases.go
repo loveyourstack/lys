@@ -9,14 +9,14 @@ import (
 	"golang.org/x/text/language"
 )
 
-// Camel removes accents and spaces in s and converts it to camel case
+// Camel removes punctuation, accents, and spaces in s and converts it to camel case
 // My string -> myString
 func Camel(s string) (res string) {
 	return FirstLower(Pascal(s))
 }
 
-// FirstLower changes the first character of s to lower case
-// from https://stackoverflow.com/questions/75988064/make-first-letter-of-string-lower-case-in-golang
+// FirstLower changes the first character of s to lower case.
+// From https://stackoverflow.com/questions/75988064/make-first-letter-of-string-lower-case-in-golang.
 func FirstLower(s string) string {
 	r, size := utf8.DecodeRuneInString(s)
 	if r == utf8.RuneError && size <= 1 {
@@ -29,67 +29,61 @@ func FirstLower(s string) string {
 	return string(lc) + s[size:]
 }
 
-// Joined removes accents and spaces in s and converts it to lower case
+// Joined removes punctuation, accents, and spaces in s and converts it to lower case
 // My string -> mystring
 func Joined(s string) (res string) {
 
-	var err error
-	res, err = ReplaceAccents(s)
-	if err != nil {
-		// should never happen
-		panic("ReplaceAccents failed:" + err.Error())
-	}
+	res, _ = ReplaceAccents(s)
+	res = StripPunct(res)
 
 	// lower case, no separation
-	return Convert(res, " ", "", strings.ToLower)
+	sFields := strings.Fields(res)
+	return Convert(strings.Join(sFields, " "), " ", "", strings.ToLower)
 }
 
-// Kebab removes accents in s and changes it to lower case with hyphen separation
+// Kebab removes punctuation and accents in s and changes it to lower case with hyphen separation
 // My string -> my-string
 func Kebab(name string) (res string) {
 
-	var err error
-	res, err = ReplaceAccents(name)
-	if err != nil {
-		// should never happen
-		panic("ReplaceAccents failed:" + err.Error())
-	}
+	res, _ = ReplaceAccents(name)
+
+	// replace hyphens with spaces so they don't get stripped by StripPunct and lost as separators
+	res = strings.ReplaceAll(res, "-", " ")
+
+	res = StripPunct(res)
 
 	// lower case, hyphen separation
-	return Convert(res, " ", "-", strings.ToLower)
+	sFields := strings.Fields(res)
+	return Convert(strings.Join(sFields, " "), " ", "-", strings.ToLower)
 }
 
-// Pascal removes accents and spaces in s and changes it to Pascal case
+// Pascal removes punctuation, accents, and spaces in s and changes it to Pascal case
 // My string -> MyString
 func Pascal(s string) (res string) {
 
-	var err error
-	res, err = ReplaceAccents(s)
-	if err != nil {
-		// should never happen
-		panic("ReplaceAccents failed:" + err.Error())
-	}
+	res, _ = ReplaceAccents(s)
+	res = StripPunct(res)
 
 	// title case, no separation
-	return Convert(res, " ", "", Title)
+	sFields := strings.Fields(res)
+	return Convert(strings.Join(sFields, " "), " ", "", Title)
 }
 
-// Snake removes accents in s and changes it to lower case with underscore separation
+// Snake removes punctuation and accents in s and changes it to lower case with underscore separation
 // My string -> my_string
 func Snake(s string) (res string) {
 
-	var err error
-	res, err = ReplaceAccents(s)
-	if err != nil {
-		// should never happen
-		panic("ReplaceAccents failed:" + err.Error())
-	}
+	res, _ = ReplaceAccents(s)
+	res = StripPunct(res)
 
 	// lower case, snake separation
-	return Convert(res, " ", "_", strings.ToLower)
+	sFields := strings.Fields(res)
+	return Convert(strings.Join(sFields, " "), " ", "_", strings.ToLower)
 }
+
+var titleCaser = cases.Title(language.Und, cases.NoLower)
 
 // Title returns s in title case using non-specific language rules
 func Title(s string) string {
-	return cases.Title(language.Und, cases.NoLower).String(s)
+	return titleCaser.String(s)
 }
