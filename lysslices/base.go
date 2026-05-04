@@ -5,13 +5,10 @@ import (
 	"slices"
 )
 
-// ContainsAll returns true if all elements are found in slice
+// ContainsAll returns true if all elements are found in slice. Elements may contain duplicates.
 func ContainsAll[T comparable](slice []T, elements []T) bool {
 
 	if len(slice) == 0 || len(elements) == 0 {
-		return false
-	}
-	if len(elements) > len(slice) {
 		return false
 	}
 
@@ -29,7 +26,7 @@ func ContainsAll[T comparable](slice []T, elements []T) bool {
 	return true
 }
 
-// ContainsAny returns true if any element is found in slice
+// ContainsAny returns true if any element is found in slice.
 func ContainsAny[T comparable](slice []T, elements []T) bool {
 
 	if len(slice) == 0 || len(elements) == 0 {
@@ -50,16 +47,22 @@ func ContainsAny[T comparable](slice []T, elements []T) bool {
 	return false
 }
 
-// DeDuplicate returns a copy of the slice with duplicates removed and without affecting value order
-// from https://stackoverflow.com/questions/66643946/how-to-remove-duplicates-strings-or-int-from-slice-in-go
+// DeDuplicate returns a copy of the slice with duplicates removed and without affecting value order.
 func DeDuplicate[S ~[]E, E comparable](s S) S {
 
-	keys := make(map[E]bool)
-	s1 := []E{}
+	if s == nil {
+		return nil
+	}
+	if len(s) == 0 {
+		return s
+	}
+
+	seen := make(map[E]bool, len(s))
+	s1 := make(S, 0, len(s))
 
 	for _, v := range s {
-		if _, ok := keys[v]; !ok {
-			keys[v] = true
+		if _, ok := seen[v]; !ok {
+			seen[v] = true
 			s1 = append(s1, v)
 		}
 	}
@@ -67,36 +70,44 @@ func DeDuplicate[S ~[]E, E comparable](s S) S {
 	return s1
 }
 
-// EqualUnordered true if s1 and s2 are equal regardless of sorting
-func EqualUnordered[S ~[]E, E cmp.Ordered](s1, s2 S) bool {
+// EqualUnordered returns true if s1 and s2 are equal regardless of sorting.
+func EqualUnordered[S ~[]E, E comparable](s1, s2 S) bool {
 
 	if len(s1) != len(s2) {
 		return false
 	}
 
-	s1s := make([]E, len(s1))
-	for i := range s1 {
-		s1s[i] = s1[i]
+	freq := make(map[E]int, len(s1))
+	for _, v := range s1 {
+		freq[v]++
 	}
 
-	s2s := make([]E, len(s2))
-	for i := range s2 {
-		s2s[i] = s2[i]
+	for _, v := range s2 {
+		count, ok := freq[v]
+		if !ok {
+			return false
+		}
+		if count == 1 {
+			delete(freq, v)
+		} else {
+			freq[v] = count - 1
+		}
 	}
 
-	slices.Sort(s1s)
-	slices.Sort(s2s)
-	return slices.Equal(s1s, s2s)
+	return len(freq) == 0
 }
 
-// SortAndDeDuplicate returns a sorted and de-duplicated copy of the slice
+// SortAndDeDuplicate returns a sorted and de-duplicated copy of the slice.
 func SortAndDeDuplicate[S ~[]E, E cmp.Ordered](s S) S {
 
-	s1 := make([]E, len(s))
-	for i := range s {
-		s1[i] = s[i]
+	if s == nil {
+		return nil
+	}
+	if len(s) == 0 {
+		return s
 	}
 
+	s1 := slices.Clone(s)
 	slices.Sort(s1)
 	return slices.Compact(s1)
 }

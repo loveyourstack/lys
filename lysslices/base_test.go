@@ -10,10 +10,13 @@ func TestContainsAllSuccess(t *testing.T) {
 	s := []int{1, 2}
 
 	e1 := []int{1}
-	assert.Equal(t, true, ContainsAll(s, e1), "e1")
+	assert.Equal(t, true, ContainsAll(s, e1), "single element")
 
 	e2 := []int{1, 2}
-	assert.Equal(t, true, ContainsAll(s, e2), "e2")
+	assert.Equal(t, true, ContainsAll(s, e2), "all elements")
+
+	e3 := []int{1, 2, 2, 1}
+	assert.Equal(t, true, ContainsAll(s, e3), "all elements with duplicates")
 }
 
 func TestContainsAllFailure(t *testing.T) {
@@ -65,6 +68,13 @@ func TestContainsAnyFailure(t *testing.T) {
 }
 
 func TestDeDuplicateSuccess(t *testing.T) {
+
+	nilS := []int(nil)
+	assert.Equal(t, []int(nil), DeDuplicate(nilS), "nil slice")
+
+	emptyS := []int{}
+	assert.Equal(t, []int{}, DeDuplicate(emptyS), "empty slice")
+
 	s1 := []int{2, 3, 1, 3, 2}
 	s1a := DeDuplicate(s1)
 	assert.Equal(t, []int{2, 3, 1, 3, 2}, s1)
@@ -80,12 +90,27 @@ func TestEqualUnorderedSuccess(t *testing.T) {
 	s1 := []int{1, 2, 3}
 	s2 := []int{3, 1, 2}
 	eq := EqualUnordered(s1, s2)
-	assert.Equal(t, true, eq)
+	assert.Equal(t, true, eq, "int")
 
 	sa := []string{"a", "b", "c"}
 	sb := []string{"c", "a", "b"}
 	eq = EqualUnordered(sa, sb)
-	assert.Equal(t, true, eq)
+	assert.Equal(t, true, eq, "string")
+
+	sA1 := []string{"a", "b", "c"}
+	sA2 := []string{"a", "b", "c"}
+	eq = EqualUnordered(sA1, sA2)
+	assert.Equal(t, true, eq, "string already sorted")
+
+	sE1 := []string{}
+	sE2 := []string{}
+	eq = EqualUnordered(sE1, sE2)
+	assert.Equal(t, true, eq, "empty slice")
+
+	sN1 := []string(nil)
+	sN2 := []string(nil)
+	eq = EqualUnordered(sN1, sN2)
+	assert.Equal(t, true, eq, "nil slice")
 }
 
 func TestEqualUnorderedFailure(t *testing.T) {
@@ -111,13 +136,24 @@ func TestEqualUnorderedFailure(t *testing.T) {
 }
 
 func TestSortAndDeDuplicateSuccess(t *testing.T) {
+
+	nilS := []int(nil)
+	assert.Equal(t, []int(nil), SortAndDeDuplicate(nilS), "nil slice")
+
+	emptyS := []int{}
+	assert.Equal(t, []int{}, SortAndDeDuplicate(emptyS), "empty slice")
+
 	s1 := []int{2, 3, 1, 3, 2}
 	s1a := SortAndDeDuplicate(s1)
-	assert.Equal(t, []int{2, 3, 1, 3, 2}, s1)
-	assert.Equal(t, []int{1, 2, 3}, s1a)
+	assert.Equal(t, []int{2, 3, 1, 3, 2}, s1, "int, input preserved")
+	assert.Equal(t, []int{1, 2, 3}, s1a, "int, sorted and de-duplicated")
 
 	s2 := []string{"b", "c", "a", "b", "a"}
 	s2a := SortAndDeDuplicate(s2)
-	assert.Equal(t, []string{"b", "c", "a", "b", "a"}, s2)
-	assert.Equal(t, []string{"a", "b", "c"}, s2a)
+	assert.Equal(t, []string{"b", "c", "a", "b", "a"}, s2, "string, input preserved")
+	assert.Equal(t, []string{"a", "b", "c"}, s2a, "string, sorted and de-duplicated")
+
+	s3 := []string{"a", "b", "c"}
+	s3a := SortAndDeDuplicate(s3)
+	assert.Equal(t, []string{"a", "b", "c"}, s3a, "input already sorted and de-duplicated")
 }
