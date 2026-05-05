@@ -15,6 +15,7 @@ var (
 	ErrIdNotAUuid         = lyserr.User{Message: "id not a uuid"}
 	ErrIdNotAnInteger     = lyserr.User{Message: "id not an integer"}
 	ErrIdNotUnique        = lyserr.User{Message: "id not unique"} // the handling func was expecting id to be unique, but it is not
+	ErrIdParseError       = lyserr.User{Message: "id could not be parsed"}
 	ErrInvalidContentType = lyserr.User{Message: "content type must be application/json"}
 	ErrInvalidId          = lyserr.User{Message: "invalid id"} // the id sent is not present in the relevant table
 	ErrInvalidJson        = lyserr.User{Message: "invalid json"}
