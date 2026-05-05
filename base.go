@@ -2,8 +2,10 @@ package lys
 
 import (
 	"log/slog"
+	"strconv"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 )
 
@@ -13,6 +15,14 @@ type Env struct {
 	Validate    *validator.Validate
 	GetOptions  GetOptions
 	PostOptions PostOptions
+}
+
+var parseIdFunc = func(idStr string) (int64, error) {
+	return strconv.ParseInt(idStr, 10, 64)
+}
+
+var parseUuidFunc = func(idStr string) (uuid.UUID, error) {
+	return uuid.Parse(idStr)
 }
 
 // RouteAdderFunc is a function returning a subrouter

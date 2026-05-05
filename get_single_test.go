@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/loveyourstack/lys/internal/stores/core/coretagtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/lysclient"
@@ -56,10 +57,45 @@ func TestGetByIdFailure(t *testing.T) {
 	// id wrong type
 	targetUrl := "/type-test/a"
 	_, err := lysclient.DoToValueTester[coretypetestm.Model](ctx, srvApp.getRouter(), "GET", targetUrl)
-	assert.EqualValues(t, "id not an integer", err.Error())
+	assert.EqualValues(t, "id could not be parsed", err.Error())
 
 	// id doesn't exist
 	targetUrl = "/type-test/100000"
+	_, err = lysclient.DoToValueTester[coretypetestm.Model](ctx, srvApp.getRouter(), "GET", targetUrl)
+	assert.EqualValues(t, "row(s) not found", err.Error())
+}
+
+func TestGetByUuidSuccess(t *testing.T) {
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	// first, get id 1
+	targetUrl := "/type-test/1"
+	item := lysclient.MustDoToValue[coretypetestm.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
+	assert.EqualValues(t, true, item.CBool)
+
+	// use id 1's uuid
+	targetUrl = "/type-test-uuid/" + item.Iduu.String()
+	itemUuid := lysclient.MustDoToValue[coretypetestm.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
+	assert.EqualValues(t, true, itemUuid.CBool)
+	assert.EqualValues(t, "a b", itemUuid.CText)
+}
+
+func TestGetByUuidFailure(t *testing.T) {
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	// uuid invalid
+	targetUrl := "/type-test-uuid/a"
+	_, err := lysclient.DoToValueTester[coretypetestm.Model](ctx, srvApp.getRouter(), "GET", targetUrl)
+	assert.EqualValues(t, "id could not be parsed", err.Error())
+
+	// uuid doesn't exist
+	targetUrl = "/type-test-uuid/" + uuid.New().String()
 	_, err = lysclient.DoToValueTester[coretypetestm.Model](ctx, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, "row(s) not found", err.Error())
 }

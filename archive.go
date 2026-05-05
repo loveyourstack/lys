@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
@@ -25,22 +24,14 @@ type iArchiveableByUuid interface {
 	RestoreByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
 }
 
-var archiveParseIdFunc = func(idStr string) (int64, error) {
-	return strconv.ParseInt(idStr, 10, 64)
-}
-
-var archiveParseUuidFunc = func(idStr string) (uuid.UUID, error) {
-	return uuid.Parse(idStr)
-}
-
 // ArchiveById handles moving a record from the supplied store into its archived table
 func ArchiveById(env Env, db *pgxpool.Pool, store iArchiveableById) http.HandlerFunc {
-	return moveRecords(env, db, store.ArchiveById, archiveParseIdFunc, "ArchiveById", DataArchived)
+	return moveRecords(env, db, store.ArchiveById, parseIdFunc, "ArchiveById", DataArchived)
 }
 
 // ArchiveByUuid handles moving a record from the supplied store into its archived table
 func ArchiveByUuid(env Env, db *pgxpool.Pool, store iArchiveableByUuid) http.HandlerFunc {
-	return moveRecords(env, db, store.ArchiveByUuid, archiveParseUuidFunc, "ArchiveByUuid", DataArchived)
+	return moveRecords(env, db, store.ArchiveByUuid, parseUuidFunc, "ArchiveByUuid", DataArchived)
 }
 
 // moveRecords handles moving record(s) back and forth between the main table and its corresponding archived table
@@ -96,10 +87,10 @@ func moveRecords[T lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc fun
 
 // RestoreById handles moving a record from the store's archived table back to the main table
 func RestoreById(env Env, db *pgxpool.Pool, store iArchiveableById) http.HandlerFunc {
-	return moveRecords(env, db, store.RestoreById, archiveParseIdFunc, "RestoreById", DataRestored)
+	return moveRecords(env, db, store.RestoreById, parseIdFunc, "RestoreById", DataRestored)
 }
 
 // RestoreByUuid handles moving a record from the store's archived table back to the main table
 func RestoreByUuid(env Env, db *pgxpool.Pool, store iArchiveableByUuid) http.HandlerFunc {
-	return moveRecords(env, db, store.RestoreByUuid, archiveParseUuidFunc, "RestoreByUuid", DataRestored)
+	return moveRecords(env, db, store.RestoreByUuid, parseUuidFunc, "RestoreByUuid", DataRestored)
 }
