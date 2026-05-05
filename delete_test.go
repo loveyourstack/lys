@@ -38,7 +38,7 @@ func TestDeleteFailure(t *testing.T) {
 
 	// id wrong type
 	_, err := lysclient.DoToValueTester[string](ctx, srvApp.getRouter(), "DELETE", "/type-test/a")
-	assert.EqualValues(t, "id not an integer", err.Error(), "id wrong type")
+	assert.EqualValues(t, "id could not be parsed", err.Error(), "id wrong type")
 
 	// invalid id
 	_, err = lysclient.DoToValueTester[string](ctx, srvApp.getRouter(), "DELETE", "/type-test/100000")

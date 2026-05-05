@@ -5,33 +5,56 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"strconv"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/loveyourstack/lys/lyspg"
 )
 
-// iPatchable is a store that can be used by Patch
-type iPatchable interface {
-	UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id int64) error
+// iPatchableById is a store that can be used by PatchById.
+type iPatchableById interface {
+	UpdatePartialById(ctx context.Context, assignmentsMap map[string]any, id int64) error
 }
 
-// Patch handles changing some of an item's fields using the supplied store
-func Patch(env Env, store iPatchable) http.HandlerFunc {
+// iPatchableByUuid is a store that can be used by PatchByUuid.
+type iPatchableByUuid interface {
+	UpdatePartialByUuid(ctx context.Context, assignmentsMap map[string]any, id uuid.UUID) error
+}
+
+// PatchById handles changing some of an item's fields using the supplied store and an int64 id.
+func PatchById(env Env, store iPatchableById) http.HandlerFunc {
+	return patch(env, store.UpdatePartialById, parseIdFunc, "PatchById")
+}
+
+// PatchByUuid handles changing some of an item's fields using the supplied store and a UUID.
+func PatchByUuid(env Env, store iPatchableByUuid) http.HandlerFunc {
+	return patch(env, store.UpdatePartialByUuid, parseUuidFunc, "PatchByUuid")
+}
+
+// patch handles changing some of an item's fields using the supplied store.
+func patch[idT lyspg.PrimaryKeyType](env Env, patchFunc func(context.Context, map[string]any, idT) error,
+	parseIdFunc func(string) (idT, error), callingFunc string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		// get the Id and ensure it is an int
-		vars := mux.Vars(r)
-		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		// get the id param
+		idStr := mux.Vars(r)["id"]
+		if idStr == "" {
+			HandleUserError(ErrIdMissing, w)
+			return
+		}
+
+		// parse the id param into a idT
+		id, err := parseIdFunc(idStr)
 		if err != nil {
-			HandleUserError(ErrIdNotAnInteger, w)
+			HandleUserError(ErrIdParseError, w)
 			return
 		}
 
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Patch: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("%s: ExtractJsonBody failed: %w", callingFunc, err), env.ErrorLog, w)
 			return
 		}
 
@@ -39,7 +62,7 @@ func Patch(env Env, store iPatchable) http.HandlerFunc {
 		assignmentsMap := make(map[string]any)
 		err = json.Unmarshal(body, &assignmentsMap)
 		if err != nil {
-			HandleInternalError(r.Context(), fmt.Errorf("Patch: json.Unmarshal failed: %w", err), env.ErrorLog, w)
+			HandleInternalError(r.Context(), fmt.Errorf("%s: json.Unmarshal failed: %w", callingFunc, err), env.ErrorLog, w)
 			return
 		}
 		if len(assignmentsMap) == 0 {
@@ -48,9 +71,9 @@ func Patch(env Env, store iPatchable) http.HandlerFunc {
 		}
 
 		// try to update the item in db
-		err = store.UpdatePartial(r.Context(), assignmentsMap, id)
+		err = patchFunc(r.Context(), assignmentsMap, id)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Patch: store.UpdatePartial failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("%s: patchFunc failed: %w", callingFunc, err), env.ErrorLog, w)
 			return
 		}
 

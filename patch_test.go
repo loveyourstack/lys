@@ -127,7 +127,7 @@ func TestPatchFailure(t *testing.T) {
 
 	// id wrong type
 	_, err = lysclient.PostToValueTester[coretypetestm.Input, string](ctx, srvApp.getRouter(), "PATCH", "/type-test/a", minInput)
-	assert.EqualValues(t, "id not an integer", err.Error(), "id wrong type")
+	assert.EqualValues(t, "id could not be parsed", err.Error(), "id wrong type")
 
 	// invalid id
 	_, err = lysclient.PostToValueTester[coretypetestm.Input, string](ctx, srvApp.getRouter(), "PATCH", "/type-test/100000", minInput)

@@ -88,9 +88,9 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	r.HandleFunc(endpoint, Get(apiEnv, tagTestStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, tagTestStore)).Methods("GET")
 	r.HandleFunc(endpoint, Post(apiEnv, tagTestStore)).Methods("POST")
-	r.HandleFunc(endpoint+"/{id}", Put(apiEnv, tagTestStore)).Methods("PUT")
-	r.HandleFunc(endpoint+"/{id}", Patch(apiEnv, tagTestStore)).Methods("PATCH")
-	r.HandleFunc(endpoint+"/{id}", Delete(apiEnv, tagTestStore)).Methods("DELETE")
+	r.HandleFunc(endpoint+"/{id}", PutById(apiEnv, tagTestStore)).Methods("PUT")
+	r.HandleFunc(endpoint+"/{id}", PatchById(apiEnv, tagTestStore)).Methods("PATCH")
+	r.HandleFunc(endpoint+"/{id}", DeleteById(apiEnv, tagTestStore)).Methods("DELETE")
 
 	endpoint = "/tracking-test"
 
@@ -98,9 +98,9 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	r.HandleFunc(endpoint, Get(apiEnv, trackingTestStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, trackingTestStore)).Methods("GET")
 	r.HandleFunc(endpoint, Post(apiEnv, trackingTestStore)).Methods("POST")
-	r.HandleFunc(endpoint+"/{id}", Put(apiEnv, trackingTestStore)).Methods("PUT")
-	r.HandleFunc(endpoint+"/{id}", Patch(apiEnv, trackingTestStore)).Methods("PATCH")
-	r.HandleFunc(endpoint+"/{id}", Delete(apiEnv, trackingTestStore)).Methods("DELETE")
+	r.HandleFunc(endpoint+"/{id}", PutById(apiEnv, trackingTestStore)).Methods("PUT")
+	r.HandleFunc(endpoint+"/{id}", PatchById(apiEnv, trackingTestStore)).Methods("PATCH")
+	r.HandleFunc(endpoint+"/{id}", DeleteById(apiEnv, trackingTestStore)).Methods("DELETE")
 
 	endpoint = "/type-test"
 
@@ -108,9 +108,9 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	r.HandleFunc(endpoint, Get(apiEnv, typeTestStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, typeTestStore)).Methods("GET")
 	r.HandleFunc(endpoint, Post(apiEnv, typeTestStore)).Methods("POST")
-	r.HandleFunc(endpoint+"/{id}", Put(apiEnv, typeTestStore)).Methods("PUT")
-	r.HandleFunc(endpoint+"/{id}", Patch(apiEnv, typeTestStore)).Methods("PATCH")
-	r.HandleFunc(endpoint+"/{id}", Delete(apiEnv, typeTestStore)).Methods("DELETE")
+	r.HandleFunc(endpoint+"/{id}", PutById(apiEnv, typeTestStore)).Methods("PUT")
+	r.HandleFunc(endpoint+"/{id}", PatchById(apiEnv, typeTestStore)).Methods("PATCH")
+	r.HandleFunc(endpoint+"/{id}", DeleteById(apiEnv, typeTestStore)).Methods("DELETE")
 
 	endpoint = "/type-test-uuid"
 
@@ -124,9 +124,9 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	r.HandleFunc(endpoint+"/int-1", GetValue[int](apiEnv, srvApp.Db, "SELECT 1;")).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, volTestStore)).Methods("GET")
 	r.HandleFunc(endpoint, Post(apiEnv, volTestStore)).Methods("POST")
-	r.HandleFunc(endpoint+"/{id}", Put(apiEnv, volTestStore)).Methods("PUT")
-	r.HandleFunc(endpoint+"/{id}", Patch(apiEnv, volTestStore)).Methods("PATCH")
-	r.HandleFunc(endpoint+"/{id}", Delete(apiEnv, volTestStore)).Methods("DELETE")
+	r.HandleFunc(endpoint+"/{id}", PutById(apiEnv, volTestStore)).Methods("PUT")
+	r.HandleFunc(endpoint+"/{id}", PatchById(apiEnv, volTestStore)).Methods("PATCH")
+	r.HandleFunc(endpoint+"/{id}", DeleteById(apiEnv, volTestStore)).Methods("DELETE")
 
 	endpoint = "/weekdays"
 	r.HandleFunc(endpoint, GetEnumValues(apiEnv, srvApp.Db, "core", "weekday")).Methods("GET")

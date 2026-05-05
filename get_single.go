@@ -20,12 +20,12 @@ type iGetableByUuid[T any] interface {
 	SelectByUuid(ctx context.Context, id uuid.UUID) (item T, err error)
 }
 
-// GetById handles retrieval of a single item from the supplied store using an integer id
+// GetById handles retrieval of a single item from the supplied store using an int64 id.
 func GetById[T any](env Env, store iGetableById[T]) http.HandlerFunc {
 	return getSingle(env, store.SelectById, parseIdFunc, "GetById")
 }
 
-// GetByUuid handles retrieval of a single item from the supplied store using a text id
+// GetByUuid handles retrieval of a single item from the supplied store using a UUID.
 func GetByUuid[T any](env Env, store iGetableByUuid[T]) http.HandlerFunc {
 	return getSingle(env, store.SelectByUuid, parseUuidFunc, "GetByUuid")
 }
@@ -42,7 +42,7 @@ func getSingle[idT lyspg.PrimaryKeyType, outT any](env Env, selectByIdFunc func(
 			return
 		}
 
-		// parse the id param into a T
+		// parse the id param into an idT
 		id, err := parseIdFunc(idStr)
 		if err != nil {
 			HandleUserError(ErrIdParseError, w)

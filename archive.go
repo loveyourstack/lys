@@ -35,8 +35,8 @@ func ArchiveByUuid(env Env, db *pgxpool.Pool, store iArchiveableByUuid) http.Han
 }
 
 // moveRecords handles moving record(s) back and forth between the main table and its corresponding archived table
-func moveRecords[T lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc func(context.Context, pgx.Tx, T) error,
-	parseIdFunc func(string) (T, error), callingFunc, msg string) http.HandlerFunc {
+func moveRecords[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc func(context.Context, pgx.Tx, idT) error,
+	parseIdFunc func(string) (idT, error), callingFunc, msg string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -47,7 +47,7 @@ func moveRecords[T lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc fun
 			return
 		}
 
-		// parse the id param into a T
+		// parse the id param into an idT
 		id, err := parseIdFunc(idStr)
 		if err != nil {
 			HandleUserError(ErrIdParseError, w)

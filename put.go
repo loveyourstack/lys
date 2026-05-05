@@ -4,56 +4,81 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"strconv"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/loveyourstack/lys/lyserr"
+	"github.com/loveyourstack/lys/lyspg"
 )
 
-// iPutable is a store that can be used by Put
-type iPutable[T any] interface {
-	Update(ctx context.Context, item T, id int64) error
+// iPutableById is a store that can be used by PutById.
+type iPutableById[T any] interface {
+	UpdateById(ctx context.Context, item T, id int64) error
 	Validate(validate *validator.Validate, item T) error
 }
 
-// Put handles changing an item using the supplied store
-func Put[T any](env Env, store iPutable[T]) http.HandlerFunc {
+// iPutableByUuid is a store that can be used by PutByUuid.
+type iPutableByUuid[T any] interface {
+	UpdateByUuid(ctx context.Context, item T, id uuid.UUID) error
+	Validate(validate *validator.Validate, item T) error
+}
+
+// PutById handles changing an item using the supplied store and an int64 id.
+func PutById[T any](env Env, store iPutableById[T]) http.HandlerFunc {
+	return put(env, store.UpdateById, store.Validate, parseIdFunc, "PutById")
+}
+
+// PutByUuid handles changing an item using the supplied store and a UUID.
+func PutByUuid[T any](env Env, store iPutableByUuid[T]) http.HandlerFunc {
+	return put(env, store.UpdateByUuid, store.Validate, parseUuidFunc, "PutByUuid")
+}
+
+// put handles changing an item using the supplied store.
+func put[idT lyspg.PrimaryKeyType, outT any](env Env, putFunc func(context.Context, outT, idT) error,
+	validateFunc func(validate *validator.Validate, item outT) error, parseIdFunc func(string) (idT, error),
+	callingFunc string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		// get the Id and ensure it is an int
-		vars := mux.Vars(r)
-		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		// get the id param
+		idStr := mux.Vars(r)["id"]
+		if idStr == "" {
+			HandleUserError(ErrIdMissing, w)
+			return
+		}
+
+		// parse the id param into a idT
+		id, err := parseIdFunc(idStr)
 		if err != nil {
-			HandleUserError(ErrIdNotAnInteger, w)
+			HandleUserError(ErrIdParseError, w)
 			return
 		}
 
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Put: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("%s: ExtractJsonBody failed: %w", callingFunc, err), env.ErrorLog, w)
 			return
 		}
 
 		// unmarshal the body
-		input, err := DecodeJsonBody[T](body)
+		input, err := DecodeJsonBody[outT](body)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Put: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("%s: DecodeJsonBody failed: %w", callingFunc, err), env.ErrorLog, w)
 			return
 		}
 
 		// validate item
-		if err = store.Validate(env.Validate, input); err != nil {
+		if err = validateFunc(env.Validate, input); err != nil {
 			HandleUserError(lyserr.User{Message: err.Error(), StatusCode: http.StatusUnprocessableEntity}, w)
 			return
 		}
 
 		// try to update the item in db
-		err = store.Update(r.Context(), input, id)
+		err = putFunc(r.Context(), input, id)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Put: store.Update failed: %w", err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("%s: putFunc failed: %w", callingFunc, err), env.ErrorLog, w)
 			return
 		}
 

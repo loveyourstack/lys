@@ -49,7 +49,7 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
-func (s Store) Delete(ctx context.Context, id int64) error {
+func (s Store) DeleteById(ctx context.Context, id int64) error {
 	return lyspg.DeleteUnique(ctx, s.Db, schemaName, tableName, pkColName, id)
 }
 
@@ -91,14 +91,14 @@ func (s Store) SelectById(ctx context.Context, id int64) (item Model, err error)
 	return item, nil
 }
 
-func (s Store) Update(ctx context.Context, input Input, id int64) error {
+func (s Store) UpdateById(ctx context.Context, input Input, id int64) error {
 
 	input.CHidden = "h22" // required field in db, but no value incoming from API, so must be set here
 
 	return lyspg.Update(ctx, s.Db, schemaName, tableName, pkColName, input, id)
 }
 
-func (s Store) UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id int64) error {
+func (s Store) UpdatePartialById(ctx context.Context, assignmentsMap map[string]any, id int64) error {
 	return lyspg.UpdatePartial(ctx, s.Db, schemaName, tableName, pkColName, inputPlan.JsonKeyDbNameMap(), assignmentsMap, id)
 }
 
