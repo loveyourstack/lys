@@ -52,6 +52,16 @@ type GetOptions struct {
 // FillGetOptions returns input GetOptions if they are passed, and sets any unset fields to a sensible default value
 func FillGetOptions(input GetOptions) (ret GetOptions, err error) {
 
+	if input.DefaultPerPage < 0 {
+		return ret, fmt.Errorf("DefaultPerPage cannot be negative")
+	}
+	if input.MaxPerPage < 0 {
+		return ret, fmt.Errorf("MaxPerPage cannot be negative")
+	}
+	if input.MaxFileRecs < 0 {
+		return ret, fmt.Errorf("MaxFileRecs cannot be negative")
+	}
+
 	ret = input
 
 	if ret.FieldsParamName == "" {
