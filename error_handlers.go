@@ -22,8 +22,7 @@ func HandleInternalError(ctx context.Context, err error, errorLog *slog.Logger, 
 	}
 	JsonResponse(resp, http.StatusInternalServerError, w)
 
-	userName := GetUserNameFromCtx(ctx)
-	errorLog.Error(err.Error(), slog.String("user", userName))
+	logError(ctx, err, errorLog)
 }
 
 // HandleUserError returns a helpful message to the API user, but does not log the error. If HTTP status is not provided, BadRequest is assumed.
@@ -47,10 +46,9 @@ func HandleExtError(ctx context.Context, extMessage string, err error, errorLog 
 		Status:         ReqFailed,
 		ErrDescription: extMessage,
 	}
-	JsonResponse(resp, http.StatusInternalServerError, w)
+	JsonResponse(resp, http.StatusBadGateway, w) // BadGateway is used to indicate that the error was caused by a 3rd party API call
 
-	userName := GetUserNameFromCtx(ctx)
-	errorLog.Error(err.Error(), slog.String("user", userName))
+	logError(ctx, err, errorLog)
 }
 
 // HandleDbError returns a specific error message to the API user if the error is caused by a bad input, e.g. a check or uniqueness violation.
@@ -63,11 +61,11 @@ func HandleDbError(ctx context.Context, line int, stmt string, err error, errorL
 		lineTxt = fmt.Sprintf("line %d: ", line)
 	}
 
-	// see if err can be unwrapped to a pgx PgError
-	var pgErr *pgconn.PgError
 	pgErrTxt := ""
 	statusCode := http.StatusBadRequest
-	if errors.As(err, &pgErr) {
+
+	// see if err can be unwrapped to a pgx PgError
+	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 
 		switch pgErr.Code {
 
@@ -81,6 +79,8 @@ func HandleDbError(ctx context.Context, line int, stmt string, err error, errorL
 			pgErrTxt = fmt.Sprintf("foreign key violation: %s", pgErr.Detail)
 		case pgerrcode.InvalidTextRepresentation: // e.g. enum value does not exist
 			pgErrTxt = fmt.Sprintf("invalid text: %s", pgErr.Message)
+		case pgerrcode.NotNullViolation:
+			pgErrTxt = fmt.Sprintf("missing required field: %s", pgErr.ColumnName)
 		case pgerrcode.StringDataRightTruncationDataException: // e.g. text too long for varchar(i) column
 			pgErrTxt = pgErr.Message
 		case pgerrcode.UndefinedObject: // e.g. enum type does not exist
@@ -97,6 +97,7 @@ func HandleDbError(ctx context.Context, line int, stmt string, err error, errorL
 		}
 	}
 
+	// known pgx error attributable to bad input: return specific message to user, error is not logged
 	if pgErrTxt != "" {
 		HandleUserError(lyserr.User{Message: fmt.Sprintf("%s%s", lineTxt, pgErrTxt), StatusCode: statusCode}, w)
 		return
@@ -109,13 +110,11 @@ func HandleDbError(ctx context.Context, line int, stmt string, err error, errorL
 	}
 	JsonResponse(resp, http.StatusInternalServerError, w)
 
-	userName := GetUserNameFromCtx(ctx)
-
+	extra := []slog.Attr{slog.String("stmt", stmt)}
 	if line > 0 {
-		errorLog.Error(err.Error(), slog.String("user", userName), slog.Int("line", line), slog.String("stmt", stmt))
-	} else {
-		errorLog.Error(err.Error(), slog.String("user", userName), slog.String("stmt", stmt))
+		extra = append(extra, slog.Int("line", line))
 	}
+	logError(ctx, err, errorLog, extra...)
 }
 
 // HandleError is the general method for handling API errors where err could contain wrapped errors of other types
@@ -130,7 +129,7 @@ func HandleError(ctx context.Context, err error, errorLog *slog.Logger, w http.R
 
 	// expected specific pgx errors
 	if errors.Is(err, pgx.ErrNoRows) {
-		HandleUserError(lyserr.User{Message: "row(s) not found"}, w)
+		HandleUserError(lyserr.User{Message: "row(s) not found", StatusCode: http.StatusNotFound}, w)
 		return
 	}
 	if errors.Is(err, pgx.ErrTooManyRows) {
@@ -163,4 +162,13 @@ func HandleError(ctx context.Context, err error, errorLog *slog.Logger, w http.R
 
 	// unknown internal error
 	HandleInternalError(ctx, err, errorLog, w)
+}
+
+// logError is a helper function to log errors with user information and any extra attributes
+func logError(ctx context.Context, err error, errorLog *slog.Logger, extra ...slog.Attr) {
+	args := []any{slog.String("user", GetUserNameFromCtx(ctx))}
+	for _, a := range extra {
+		args = append(args, a)
+	}
+	errorLog.Error(err.Error(), args...)
 }
