@@ -1,34 +1,34 @@
-package corevolumetest
+package coreuuidtest
 
 import (
 	"context"
-	"fmt"
 	"log"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/jackc/pgx/v5"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysmeta"
 	"github.com/loveyourstack/lys/lyspg"
+	"github.com/loveyourstack/lys/lystype"
 )
 
 const (
-	name           string = "Volume test"
+	name           string = "UUID test"
 	schemaName     string = "core"
-	tableName      string = "volume_test"
-	viewName       string = "volume_test"
+	tableName      string = "uuid_test"
+	viewName       string = "uuid_test"
 	pkColName      string = "id"
 	defaultOrderBy string = "id"
 )
 
 type Input struct {
-	CRnd int64 `db:"c_rnd" json:"c_rnd"`
-	CInt int64 `db:"c_int" json:"c_int"`
+	CInt  int64  `db:"c_int" json:"c_int,omitempty"`
+	CText string `db:"c_text" json:"c_text,omitempty"`
 }
 
 type Model struct {
-	Id int64 `db:"id" json:"id"`
+	Id        uuid.UUID        `db:"id" json:"id,omitempty"`
+	CreatedAt lystype.Datetime `db:"created_at" json:"created_at,omitzero"`
 	Input
 }
 
@@ -49,7 +49,7 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
-func (s Store) Delete(ctx context.Context, id int64) error {
+func (s Store) Delete(ctx context.Context, id uuid.UUID) error {
 	return lyspg.DeleteUnique(ctx, s.Db, schemaName, tableName, pkColName, id)
 }
 
@@ -60,35 +60,23 @@ func (s Store) GetPlan() lysmeta.Plan {
 	return plan
 }
 
-func (s Store) Insert(ctx context.Context, input Input) (newId int64, err error) {
-	return lyspg.Insert[Input, int64](ctx, s.Db, schemaName, tableName, pkColName, input)
+func (s Store) Insert(ctx context.Context, input Input) (newId uuid.UUID, err error) {
+	return lyspg.Insert[Input, uuid.UUID](ctx, s.Db, schemaName, tableName, pkColName, input)
 }
 
 func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {
 	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, plan.DbNames(), params)
 }
 
-func (s Store) Select10(ctx context.Context) (vals []int, err error) {
-
-	stmt := "SELECT c_int FROM core.volume_test ORDER BY c_int LIMIT 10;"
-	rows, _ := s.Db.Query(ctx, stmt)
-	vals, err = pgx.CollectRows(rows, pgx.RowTo[int])
-	if err != nil {
-		return nil, lyserr.Db{Err: fmt.Errorf("pgx.CollectRows failed: %w", err), Stmt: stmt}
-	}
-
-	return vals, nil
-}
-
-func (s Store) SelectById(ctx context.Context, id int64) (item Model, err error) {
+func (s Store) SelectById(ctx context.Context, id uuid.UUID) (item Model, err error) {
 	return lyspg.SelectUnique[Model](ctx, s.Db, schemaName, viewName, pkColName, id)
 }
 
-func (s Store) Update(ctx context.Context, input Input, id int64) error {
+func (s Store) Update(ctx context.Context, input Input, id uuid.UUID) error {
 	return lyspg.Update(ctx, s.Db, schemaName, tableName, pkColName, input, id)
 }
 
-func (s Store) UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id int64) error {
+func (s Store) UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id uuid.UUID) error {
 	return lyspg.UpdatePartial(ctx, s.Db, schemaName, tableName, pkColName, inputPlan.JsonKeyDbNameMap(), assignmentsMap, id)
 }
 

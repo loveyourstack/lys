@@ -9,6 +9,7 @@ import (
 	"github.com/loveyourstack/lys/internal/stores/core/coretagtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretrackingtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
+	"github.com/loveyourstack/lys/internal/stores/core/coreuuidtest"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/loveyourstack/lys/lyspg"
 	"github.com/stretchr/testify/assert"
@@ -89,6 +90,26 @@ func TestPutWithExtras(t *testing.T) {
 	assert.Equal(t, "e22", item.CEditable, "CEditable")
 	assert.Equal(t, "insert", item.CreatedBy, "CreatedBy")
 	assert.Equal(t, "update", item.LastUserUpdateBy, "LastUserUpdateBy")
+}
+
+func TestPutUuid(t *testing.T) {
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	input := coreuuidtest.Input{
+		CInt:  4,
+		CText: "d",
+	}
+
+	targetUrl := "/uuid-test/4bfc505c-c316-4385-af4f-63160e7326d9"
+
+	_ = lysclient.MustPostToValue[coreuuidtest.Input, string](ctx, t, srvApp.getRouter(), "PUT", targetUrl, input)
+	item := lysclient.MustDoToValue[coreuuidtest.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
+
+	assert.Equal(t, int64(4), item.CInt, "CInt")
+	assert.Equal(t, "d", item.CText, "CText")
 }
 
 func TestPutFailure(t *testing.T) {

@@ -4,7 +4,6 @@ import (
 	"context"
 	"log"
 
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/internal/stores/core/corearchivetestm"
@@ -39,12 +38,8 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
-func (s Store) ArchiveById(ctx context.Context, tx pgx.Tx, id int64) error {
+func (s Store) Archive(ctx context.Context, tx pgx.Tx, id int64) error {
 	return lyspg.Archive(ctx, tx, schemaName, tableName, pkColName, id, false)
-}
-
-func (s Store) ArchiveByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
-	return lyspg.Archive(ctx, tx, schemaName, tableName, "id_uu", id, false)
 }
 
 func (s Store) GetName() string {
@@ -54,12 +49,8 @@ func (s Store) GetPlan() lysmeta.Plan {
 	return plan
 }
 
-func (s Store) RestoreById(ctx context.Context, tx pgx.Tx, id int64) error {
+func (s Store) Restore(ctx context.Context, tx pgx.Tx, id int64) error {
 	return lyspg.Restore(ctx, tx, schemaName, tableName, pkColName, id, false)
-}
-
-func (s Store) RestoreByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
-	return lyspg.Restore(ctx, tx, schemaName, tableName, "id_uu", id, false)
 }
 
 func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []corearchivetestm.Model, unpagedCount lyspg.TotalCount, err error) {
@@ -68,8 +59,4 @@ func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []c
 
 func (s Store) SelectById(ctx context.Context, id int64) (item corearchivetestm.Model, err error) {
 	return lyspg.SelectUnique[corearchivetestm.Model](ctx, s.Db, schemaName, viewName, pkColName, id)
-}
-
-func (s Store) SelectByUuid(ctx context.Context, id uuid.UUID) (item corearchivetestm.Model, err error) {
-	return lyspg.SelectUnique[corearchivetestm.Model](ctx, s.Db, schemaName, viewName, "id_uu", id)
 }

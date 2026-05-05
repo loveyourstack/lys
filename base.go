@@ -1,12 +1,14 @@
 package lys
 
 import (
+	"fmt"
 	"log/slog"
 	"strconv"
 
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/loveyourstack/lys/lyspg"
 )
 
 // Env (environment) contains objects and options needed by API calls
@@ -17,14 +19,6 @@ type Env struct {
 	PostOptions PostOptions
 }
 
-var parseIdFunc = func(idStr string) (int64, error) {
-	return strconv.ParseInt(idStr, 10, 64)
-}
-
-var parseUuidFunc = func(idStr string) (uuid.UUID, error) {
-	return uuid.Parse(idStr)
-}
-
 // RouteAdderFunc is a function returning a subrouter
 type RouteAdderFunc func(r *mux.Router) *mux.Router
 
@@ -32,4 +26,38 @@ type RouteAdderFunc func(r *mux.Router) *mux.Router
 type SubRoute struct {
 	Url        string
 	RouteAdder RouteAdderFunc
+}
+
+func parseIdByType[idT lyspg.PrimaryKeyType](idStr string) (idT, error) {
+
+	var zero idT
+
+	switch any(zero).(type) {
+	case uuid.UUID:
+		v, err := uuid.Parse(idStr)
+		if err != nil {
+			return zero, err
+		}
+		return any(v).(idT), nil
+
+	case string:
+		return any(idStr).(idT), nil
+
+	case int64:
+		v, err := strconv.ParseInt(idStr, 10, 64)
+		if err != nil {
+			return zero, err
+		}
+		return any(v).(idT), nil
+
+	case int:
+		v, err := strconv.ParseInt(idStr, 10, strconv.IntSize)
+		if err != nil {
+			return zero, err
+		}
+		return any(int(v)).(idT), nil
+
+	default:
+		return zero, fmt.Errorf("unsupported id type %T", zero)
+	}
 }

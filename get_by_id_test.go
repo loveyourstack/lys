@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/loveyourstack/lys/internal/stores/core/coretagtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
+	"github.com/loveyourstack/lys/internal/stores/core/coreuuidtest"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/loveyourstack/lys/lyspg"
 	"github.com/stretchr/testify/assert"
@@ -71,16 +72,11 @@ func TestGetByUuidSuccess(t *testing.T) {
 	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
-	// first, get id 1
-	targetUrl := "/type-test/1"
-	item := lysclient.MustDoToValue[coretypetestm.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
-	assert.EqualValues(t, true, item.CBool)
-
-	// use id 1's uuid
-	targetUrl = "/type-test-uuid/" + item.Iduu.String()
-	itemUuid := lysclient.MustDoToValue[coretypetestm.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
-	assert.EqualValues(t, true, itemUuid.CBool)
-	assert.EqualValues(t, "a b", itemUuid.CText)
+	// check first record
+	targetUrl := "/uuid-test/b872908f-68ca-4c87-96dd-98a9b97470f0"
+	itemUuid := lysclient.MustDoToValue[coreuuidtest.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
+	assert.EqualValues(t, 1, itemUuid.CInt)
+	assert.EqualValues(t, "a", itemUuid.CText)
 }
 
 func TestGetByUuidFailure(t *testing.T) {
@@ -90,12 +86,12 @@ func TestGetByUuidFailure(t *testing.T) {
 	defer srvApp.Db.Close()
 
 	// uuid invalid
-	targetUrl := "/type-test-uuid/a"
-	_, err := lysclient.DoToValueTester[coretypetestm.Model](ctx, srvApp.getRouter(), "GET", targetUrl)
+	targetUrl := "/uuid-test/a"
+	_, err := lysclient.DoToValueTester[coreuuidtest.Model](ctx, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, "id could not be parsed", err.Error())
 
 	// uuid doesn't exist
-	targetUrl = "/type-test-uuid/" + uuid.New().String()
-	_, err = lysclient.DoToValueTester[coretypetestm.Model](ctx, srvApp.getRouter(), "GET", targetUrl)
+	targetUrl = "/uuid-test/" + uuid.New().String()
+	_, err = lysclient.DoToValueTester[coreuuidtest.Model](ctx, srvApp.getRouter(), "GET", targetUrl)
 	assert.EqualValues(t, "row(s) not found", err.Error())
 }

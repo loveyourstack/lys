@@ -5,7 +5,9 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
+	"github.com/loveyourstack/lys/internal/stores/core/coreuuidtest"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/stretchr/testify/assert"
 )
@@ -21,6 +23,29 @@ func TestDeleteSuccess(t *testing.T) {
 	newId := lysclient.MustPostToValue[coretypetestm.Input, int64](ctx, t, srvApp.getRouter(), "POST", "/type-test", minInput)
 
 	targetUrl := "/type-test/" + strconv.FormatInt(newId, 10)
+
+	// delete it
+	_ = lysclient.MustDoToValue[string](ctx, t, srvApp.getRouter(), "DELETE", targetUrl)
+
+	// try to select it
+	_, err := lysclient.DoToValueTester[string](ctx, srvApp.getRouter(), "GET", targetUrl)
+	assert.EqualValues(t, "row(s) not found", err.Error())
+}
+
+func TestDeleteUuid(t *testing.T) {
+
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	// create record
+	input := coreuuidtest.Input{
+		CInt:  4,
+		CText: "d",
+	}
+	newId := lysclient.MustPostToValue[coreuuidtest.Input, uuid.UUID](ctx, t, srvApp.getRouter(), "POST", "/uuid-test", input)
+
+	targetUrl := "/uuid-test/" + newId.String()
 
 	// delete it
 	_ = lysclient.MustDoToValue[string](ctx, t, srvApp.getRouter(), "DELETE", targetUrl)

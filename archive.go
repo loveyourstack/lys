@@ -5,38 +5,30 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lyspg"
 )
 
-// iArchiveableById is a store that can be used by ArchiveById and RestoreById
-type iArchiveableById interface {
-	ArchiveById(ctx context.Context, tx pgx.Tx, id int64) error
-	RestoreById(ctx context.Context, tx pgx.Tx, id int64) error
+type iArchiveable[idT lyspg.PrimaryKeyType] interface {
+	Archive(ctx context.Context, tx pgx.Tx, id idT) error
+	Restore(ctx context.Context, tx pgx.Tx, id idT) error
 }
 
-// iArchiveableByUuid is a store that can be used by ArchiveByUuid and RestoreByUuid
-type iArchiveableByUuid interface {
-	ArchiveByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
-	RestoreByUuid(ctx context.Context, tx pgx.Tx, id uuid.UUID) error
+// Archive handles moving a record from the supplied store into its archived table
+func Archive[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, store iArchiveable[idT]) http.HandlerFunc {
+	return moveRecords(env, db, store.Archive, "Archive", DataArchived)
 }
 
-// ArchiveById handles moving a record from the supplied store into its archived table
-func ArchiveById(env Env, db *pgxpool.Pool, store iArchiveableById) http.HandlerFunc {
-	return moveRecords(env, db, store.ArchiveById, parseIdFunc, "ArchiveById", DataArchived)
-}
-
-// ArchiveByUuid handles moving a record from the supplied store into its archived table
-func ArchiveByUuid(env Env, db *pgxpool.Pool, store iArchiveableByUuid) http.HandlerFunc {
-	return moveRecords(env, db, store.ArchiveByUuid, parseUuidFunc, "ArchiveByUuid", DataArchived)
+// Restore handles moving a record from the store's archived table back to the main table
+func Restore[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, store iArchiveable[idT]) http.HandlerFunc {
+	return moveRecords(env, db, store.Restore, "Restore", DataRestored)
 }
 
 // moveRecords handles moving record(s) back and forth between the main table and its corresponding archived table
 func moveRecords[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc func(context.Context, pgx.Tx, idT) error,
-	parseIdFunc func(string) (idT, error), callingFunc, msg string) http.HandlerFunc {
+	callingFunc, msg string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -48,7 +40,7 @@ func moveRecords[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc f
 		}
 
 		// parse the id param into an idT
-		id, err := parseIdFunc(idStr)
+		id, err := parseIdByType[idT](idStr)
 		if err != nil {
 			HandleUserError(ErrIdParseError, w)
 			return
@@ -83,14 +75,4 @@ func moveRecords[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc f
 		}
 		JsonResponse(resp, http.StatusOK, w)
 	}
-}
-
-// RestoreById handles moving a record from the store's archived table back to the main table
-func RestoreById(env Env, db *pgxpool.Pool, store iArchiveableById) http.HandlerFunc {
-	return moveRecords(env, db, store.RestoreById, parseIdFunc, "RestoreById", DataRestored)
-}
-
-// RestoreByUuid handles moving a record from the store's archived table back to the main table
-func RestoreByUuid(env Env, db *pgxpool.Pool, store iArchiveableByUuid) http.HandlerFunc {
-	return moveRecords(env, db, store.RestoreByUuid, parseUuidFunc, "RestoreByUuid", DataRestored)
 }

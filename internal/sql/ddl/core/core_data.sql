@@ -4,6 +4,11 @@ INSERT INTO core.archive_test (c_int, c_text) VALUES
   (NULL, 'a')
 ;
 
+INSERT INTO core.archive_test_uuid (id, c_int, c_text) VALUES
+  ('b872908f-68ca-4c87-96dd-98a9b97470f0', 1, NULL),
+  ('4bfc505c-c316-4385-af4f-63160e7326d9', NULL, 'a')
+;
+
 INSERT INTO core.exists_test (c_date, c_int, c_text) VALUES
   ('2001-01-01', 1, 'a'),
   (NULL, 1, 'a'),
@@ -46,6 +51,11 @@ INSERT INTO core.type_test (c_bool, c_boola, c_int, c_inta, c_double, c_doublea,
   'a b', '{a b,b c}'
 );
 
+INSERT INTO core.uuid_test (id, c_int, c_text) VALUES
+  ('b872908f-68ca-4c87-96dd-98a9b97470f0', 1, 'a'), -- for get tests
+  ('4bfc505c-c316-4385-af4f-63160e7326d9', 2, 'b'), -- for put tests
+  ('0707b293-b39c-4ae6-8ab9-a92b592e9568', 3, 'c') -- for patch tests
+;
 
 INSERT INTO core.value_map_test (c_text, c_int) VALUES
   ('alpha', 1),

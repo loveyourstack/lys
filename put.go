@@ -6,38 +6,19 @@ import (
 	"net/http"
 
 	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lyspg"
 )
 
-// iPutableById is a store that can be used by PutById.
-type iPutableById[T any] interface {
-	UpdateById(ctx context.Context, item T, id int64) error
-	Validate(validate *validator.Validate, item T) error
+// iPutable is a store that can be used by Put.
+type iPutable[idT lyspg.PrimaryKeyType, outT any] interface {
+	Update(ctx context.Context, item outT, id idT) error
+	Validate(validate *validator.Validate, item outT) error
 }
 
-// iPutableByUuid is a store that can be used by PutByUuid.
-type iPutableByUuid[T any] interface {
-	UpdateByUuid(ctx context.Context, item T, id uuid.UUID) error
-	Validate(validate *validator.Validate, item T) error
-}
-
-// PutById handles changing an item using the supplied store and an int64 id.
-func PutById[T any](env Env, store iPutableById[T]) http.HandlerFunc {
-	return put(env, store.UpdateById, store.Validate, parseIdFunc, "PutById")
-}
-
-// PutByUuid handles changing an item using the supplied store and a UUID.
-func PutByUuid[T any](env Env, store iPutableByUuid[T]) http.HandlerFunc {
-	return put(env, store.UpdateByUuid, store.Validate, parseUuidFunc, "PutByUuid")
-}
-
-// put handles changing an item using the supplied store.
-func put[idT lyspg.PrimaryKeyType, outT any](env Env, putFunc func(context.Context, outT, idT) error,
-	validateFunc func(validate *validator.Validate, item outT) error, parseIdFunc func(string) (idT, error),
-	callingFunc string) http.HandlerFunc {
+// Put handles changing an item using the supplied store.
+func Put[idT lyspg.PrimaryKeyType, outT any](env Env, store iPutable[idT, outT]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 
@@ -49,7 +30,7 @@ func put[idT lyspg.PrimaryKeyType, outT any](env Env, putFunc func(context.Conte
 		}
 
 		// parse the id param into a idT
-		id, err := parseIdFunc(idStr)
+		id, err := parseIdByType[idT](idStr)
 		if err != nil {
 			HandleUserError(ErrIdParseError, w)
 			return
@@ -58,27 +39,27 @@ func put[idT lyspg.PrimaryKeyType, outT any](env Env, putFunc func(context.Conte
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("%s: ExtractJsonBody failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("Put: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
 		// unmarshal the body
 		input, err := DecodeJsonBody[outT](body)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("%s: DecodeJsonBody failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("Put: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
 		// validate item
-		if err = validateFunc(env.Validate, input); err != nil {
+		if err = store.Validate(env.Validate, input); err != nil {
 			HandleUserError(lyserr.User{Message: err.Error(), StatusCode: http.StatusUnprocessableEntity}, w)
 			return
 		}
 
 		// try to update the item in db
-		err = putFunc(r.Context(), input, id)
+		err = store.Update(r.Context(), input, id)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("%s: putFunc failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleError(r.Context(), fmt.Errorf("Put: store.Update failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
