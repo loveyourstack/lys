@@ -4,6 +4,8 @@ import (
 	"cmp"
 	"fmt"
 	"slices"
+
+	"github.com/loveyourstack/lys/lysset"
 )
 
 // ContainsAll returns true if all elements are found in slice. Elements may contain duplicates.
@@ -13,13 +15,10 @@ func ContainsAll[T comparable](slice []T, elements []T) bool {
 		return false
 	}
 
-	sliceMap := make(map[T]bool, len(slice))
-	for _, v := range slice {
-		sliceMap[v] = true
-	}
+	sliceSet := lysset.FromSlice(slice)
 
 	for _, ele := range elements {
-		if !sliceMap[ele] {
+		if !sliceSet.Contains(ele) {
 			return false
 		}
 	}
@@ -34,18 +33,9 @@ func ContainsAny[T comparable](slice []T, elements []T) bool {
 		return false
 	}
 
-	sliceMap := make(map[T]bool, len(slice))
-	for _, v := range slice {
-		sliceMap[v] = true
-	}
+	sliceSet := lysset.FromSlice(slice)
 
-	for _, ele := range elements {
-		if sliceMap[ele] {
-			return true
-		}
-	}
-
-	return false
+	return slices.ContainsFunc(elements, sliceSet.Contains)
 }
 
 // DeDuplicate returns a copy of the slice with duplicates removed and without affecting value order.
@@ -58,12 +48,12 @@ func DeDuplicate[S ~[]E, E comparable](s S) S {
 		return s
 	}
 
-	seen := make(map[E]bool, len(s))
+	seen := lysset.New[E]()
 	s1 := make(S, 0, len(s))
 
 	for _, v := range s {
-		if _, ok := seen[v]; !ok {
-			seen[v] = true
+		if !seen.Contains(v) {
+			seen.Add(v)
 			s1 = append(s1, v)
 		}
 	}

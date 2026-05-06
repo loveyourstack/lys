@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 
 	"github.com/jackc/pgerrcode"
@@ -124,7 +123,7 @@ func GetTableColumns(ctx context.Context, db PoolOrTx, schemaName, tableName str
 		cols[i].TableName = tableName
 
 		// assign tracking cols
-		if slices.Contains(TrackingColNames, cols[i].Name) {
+		if TrackingColNames.Contains(cols[i].Name) {
 			cols[i].IsTracking = true
 		}
 	}

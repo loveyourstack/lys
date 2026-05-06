@@ -43,7 +43,7 @@ func Exists(ctx context.Context, db PoolOrTx, schemaName, tableName, columnName 
 func ExistsConditions(ctx context.Context, db PoolOrTx, schemaName, tableName, match string, colValMap map[string]any) (ret bool, err error) {
 
 	match = strings.ToUpper(match)
-	if !slices.Contains([]string{"AND", "OR"}, match) {
+	if !LogicalOperators.Contains(match) {
 		return false, fmt.Errorf("match must be 'AND' or 'OR'")
 	}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/loveyourstack/lys/lysexcel"
 	"github.com/loveyourstack/lys/lysmeta"
 	"github.com/loveyourstack/lys/lyspg"
+	"github.com/loveyourstack/lys/lysset"
 	"github.com/loveyourstack/lys/lystype"
 )
 
@@ -20,10 +21,19 @@ type iGetable[T any] interface {
 }
 
 type GetOption[T any] struct {
-	AdditionalFilterParamNames []string                                                                                                   // param names that are not part of the store's db tags, but should be allowed anyway. Must be handled by store's Select func
-	GetLastSyncAt              func(ctx context.Context) (lastSyncAt lystype.Datetime, err error)                                         // for external data: func to get the last synced timestamp
-	SelectFunc                 func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error) // if passed, override the default Select() func
-	SetFuncUrlParamNames       []string                                                                                                   // if selecting from a setFunc rather than a view: the names of the url params that must be passed and that will be passed, in order, to the setFunc
+
+	// AdditionalFilterParamNames are param names that are not in the store's db tags, but should be allowed anyway. Must be handled by the store's Select func.
+	AdditionalFilterParamNames lysset.Set[string]
+
+	// GetLastSyncAt gets the last synced timestamp for external data.
+	GetLastSyncAt func(ctx context.Context) (lastSyncAt lystype.Datetime, err error)
+
+	// SelectFunc, if passed, overrides the default store Select() func.
+	SelectFunc func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error)
+
+	// SetFuncUrlParamNames are used if selecting from a setFunc rather than a view. They are the names of the url params that will be passed, in order, to the setFunc.
+	// Don't use a Set: order must be preserved.
+	SetFuncUrlParamNames []string
 }
 
 // Get handles retrieval of multiple items from the supplied store
@@ -32,9 +42,9 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		// get additionalFilterParamNames from options if it was passed
-		additionalFilterParamNames := []string{}
+		additionalFilterParamNames := lysset.New[string]()
 		for _, option := range options {
-			if len(option.AdditionalFilterParamNames) > 0 {
+			if option.AdditionalFilterParamNames.Len() > 0 {
 				additionalFilterParamNames = option.AdditionalFilterParamNames
 			}
 		}
@@ -50,11 +60,11 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 		// get request modifiers from url params
 		getReqModifiers, err := ExtractGetRequestModifiers(r,
 			ExtractGetRequestModifierParams{
-				DbNames:                    store.GetPlan().DbNames(),
+				AdditionalFilterParamNames: additionalFilterParamNames,
+				DbNames:                    lysset.FromSlice(store.GetPlan().DbNames()),
+				GetOptions:                 env.GetOptions,
 				JsonKeyDbNameMap:           store.GetPlan().JsonKeyDbNameMap(),
 				SetFuncUrlParamNames:       setFuncUrlParamNames,
-				AdditionalFilterParamNames: additionalFilterParamNames,
-				GetOptions:                 env.GetOptions,
 			})
 		if err != nil {
 			HandleError(r.Context(), fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.ErrorLog, w)

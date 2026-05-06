@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	"github.com/loveyourstack/lys/lyspg"
+	"github.com/loveyourstack/lys/lysset"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestExtractFieldsSuccess(t *testing.T) {
 
-	dbNames := []string{"a_db", "b_db", "c_db"}
+	dbNames := lysset.New("a_db", "b_db", "c_db")
 	jsonKeyDbNameMap := map[string]string{
 		"a": "a_db",
 		"b": "b_db",
@@ -42,13 +43,13 @@ func TestExtractFieldsSuccess(t *testing.T) {
 		if err != nil {
 			t.Errorf("ExtractFields failed: %v", err)
 		}
-		assert.EqualValues(t, dbNames, fields)
+		assert.EqualValues(t, []string{"a_db", "b_db", "c_db"}, fields)
 	})
 }
 
 func TestExtractFieldsFailure(t *testing.T) {
 
-	dbNames := []string{"a", "b"}
+	dbNames := lysset.New("a", "b")
 	jsonKeyDbNameMap := map[string]string{
 		"a": "a_db",
 		"b": "b_db",

@@ -24,6 +24,7 @@ import (
 	"github.com/loveyourstack/lys/internal/stores/core/corevolumetest"
 	"github.com/loveyourstack/lys/lyspg"
 	"github.com/loveyourstack/lys/lyspgdb"
+	"github.com/loveyourstack/lys/lysset"
 )
 
 type httpServerApplication struct {
@@ -200,7 +201,7 @@ func mustFillGetOptions(t testing.TB, input GetOptions) GetOptions {
 	return getOptions
 }
 
-func mustExtractFilters(t testing.TB, urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames, setFuncUrlParamNames []string, getOptions GetOptions) []lyspg.Condition {
+func mustExtractFilters(t testing.TB, urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames lysset.Set[string], setFuncUrlParamNames []string, getOptions GetOptions) []lyspg.Condition {
 
 	conds, err := ExtractFilters(urlValues, jsonKeyDbNameMap, additionalFilterParamNames, setFuncUrlParamNames, getOptions)
 	if err != nil {

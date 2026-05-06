@@ -6,6 +6,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/loveyourstack/lys/lysset"
 	"golang.org/x/exp/constraints"
 )
 
@@ -34,5 +35,7 @@ type PrimaryKeyType interface {
 	constraints.Integer | uuid.UUID | ~string
 }
 
+var LogicalOperators = lysset.New("AND", "OR")
+
 // TrackingColNames is the list of reserved tracking column names that are automatically set in Store operations
-var TrackingColNames = []string{"created_at", "created_by", "updated_at", "last_user_update_by"}
+var TrackingColNames = lysset.New("created_at", "created_by", "updated_at", "last_user_update_by")

@@ -10,6 +10,7 @@ import (
 
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lyspg"
+	"github.com/loveyourstack/lys/lysset"
 )
 
 // output format consts
@@ -24,11 +25,11 @@ var (
 )
 
 type ExtractGetRequestModifierParams struct {
-	DbNames                    []string
+	AdditionalFilterParamNames lysset.Set[string]
+	DbNames                    lysset.Set[string]
+	GetOptions                 GetOptions
 	JsonKeyDbNameMap           map[string]string
 	SetFuncUrlParamNames       []string
-	AdditionalFilterParamNames []string
-	GetOptions                 GetOptions
 }
 
 // GetReqModifiers contains data from a GET request's Url params which is used to modify a database SELECT statement
@@ -113,7 +114,7 @@ func ExtractFormat(formatParamName, formatVal string) (format string, err error)
 }
 
 // ExtractFields returns a slice of strings parsed from the request's fields param
-func ExtractFields(fieldsParamName, fieldsVal string, dbNames []string, jsonKeyDbNameMap map[string]string) (fields []string, err error) {
+func ExtractFields(fieldsParamName, fieldsVal string, dbNames lysset.Set[string], jsonKeyDbNameMap map[string]string) (fields []string, err error) {
 
 	/*
 	  fieldsParamName: e.g. "xfields"
@@ -121,9 +122,11 @@ func ExtractFields(fieldsParamName, fieldsVal string, dbNames []string, jsonKeyD
 	  exclusion example: &xfields=-id,name
 	*/
 
-	// if no fields param defined, return all db names
+	// if no fields param defined, return sorted db names
 	if fieldsVal == "" {
-		return dbNames, nil
+		fields = dbNames.Values()
+		slices.Sort(fields)
+		return fields, nil
 	}
 
 	// check for inclusion or exclusion
@@ -137,7 +140,7 @@ func ExtractFields(fieldsParamName, fieldsVal string, dbNames []string, jsonKeyD
 
 	// split by comma
 	jsonVals := strings.Split(fieldsVal, ",")
-	dbVals := []string{}
+	dbVals := lysset.New[string]()
 
 	// for each field val
 	for _, v := range jsonVals {
@@ -148,44 +151,47 @@ func ExtractFields(fieldsParamName, fieldsVal string, dbNames []string, jsonKeyD
 			return nil, lyserr.User{
 				Message: fieldsParamName + " param value is invalid: " + v}
 		}
-		dbVals = append(dbVals, dbVal)
+		dbVals.Add(dbVal)
 	}
 
 	// if inclusion, fields are the dbVals
 	if inclusion {
-		return dbVals, nil
+		fields = dbVals.Values()
+		slices.Sort(fields)
+		return fields, nil
 	}
 
 	// exclusion: fields are all dbNames that are not in dbVals
-	for _, f := range dbNames {
-		if !slices.Contains(dbVals, f) {
+	for f := range dbNames {
+		if !dbVals.Contains(f) {
 			fields = append(fields, f)
 		}
 	}
 
+	slices.Sort(fields)
 	return fields, nil
 }
 
 // ExtractFilters returns a slice of conditions parsed from the request's params
 // to get urlValues from a request: r.Url.Query()
-func ExtractFilters(urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames, setFuncUrlParamNames []string, getOptions GetOptions) (conds []lyspg.Condition, err error) {
+func ExtractFilters(urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames lysset.Set[string], setFuncUrlParamNames []string, getOptions GetOptions) (conds []lyspg.Condition, err error) {
 
 	// define special param names which have another purpose and may not be used as filter keys
-	specialParams := []string{getOptions.FormatParamName, getOptions.FieldsParamName, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.SortParamName}
-	specialParams = append(specialParams, setFuncUrlParamNames...)
+	specialParams := lysset.New(getOptions.FormatParamName, getOptions.FieldsParamName, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.SortParamName)
+	specialParams.AddAll(setFuncUrlParamNames...)
 
 	// for each Url value
 	for key, vals := range urlValues {
 
 		// skip if this is a special param
-		if slices.Contains(specialParams, key) {
+		if specialParams.Contains(key) {
 			continue
 		}
 
 		dbName := ""
 
 		// if this is one of the additionalFilterParamNames, allow it even though it's not in the jsonKeyDbNameMap
-		if slices.Contains(additionalFilterParamNames, key) {
+		if additionalFilterParamNames.Contains(key) {
 			dbName = key
 		} else {
 

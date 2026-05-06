@@ -1,6 +1,10 @@
 package lysclient
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/loveyourstack/lys/lysset"
+)
 
 // structs and funcs for testing lys endpoints which return StdResponse
 
@@ -35,4 +39,4 @@ type ValueResp[T any] struct {
 
 const successStatus string = "succeeded"
 
-var allowedPostMethods = []string{http.MethodPost, http.MethodPut, http.MethodPatch}
+var allowedPostMethods = lysset.New(http.MethodPost, http.MethodPut, http.MethodPatch)
