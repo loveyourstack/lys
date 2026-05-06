@@ -1,13 +1,14 @@
-package lystype
+package lysmap
 
 import (
 	"testing"
 	"time"
 
+	"github.com/loveyourstack/lys/lystype"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestRecsToMapSuccess(t *testing.T) {
+func TestFromRecsSuccess(t *testing.T) {
 
 	type recS struct {
 		ID        int    `json:"id"`
@@ -21,8 +22,8 @@ func TestRecsToMapSuccess(t *testing.T) {
 		{ID: 2, Name: "two", Excluded: "excluded2", NoJsonTag: "nojsontag2"},
 	}
 
-	recsMap, err := RecsToMap(recs)
-	assert.NoError(t, err, "RecsToMap should not error")
+	recsMap, err := FromRecs(recs)
+	assert.NoError(t, err, "FromRecs should not error")
 	assert.Len(t, recsMap, 2, "recsMap length")
 
 	expected0 := map[string]any{"id": 1, "name": "one"}
@@ -32,7 +33,7 @@ func TestRecsToMapSuccess(t *testing.T) {
 	assert.Equal(t, expected1, recsMap[1], "record 1")
 }
 
-func TestRecsToMapPointerRecordsSuccess(t *testing.T) {
+func TestFromRecsPointerRecordsSuccess(t *testing.T) {
 
 	type recS struct {
 		ID   int     `json:"id"`
@@ -45,34 +46,34 @@ func TestRecsToMapPointerRecordsSuccess(t *testing.T) {
 		{ID: 2, Note: nil},
 	}
 
-	recsMap, err := RecsToMap(recs)
+	recsMap, err := FromRecs(recs)
 	assert.NoError(t, err)
 	assert.Len(t, recsMap, 2)
 	assert.Equal(t, map[string]any{"id": 1, "note": "hello"}, recsMap[0])
 	assert.Equal(t, map[string]any{"id": 2, "note": nil}, recsMap[1])
 }
 
-func TestRecsToMapOmitOptions(t *testing.T) {
+func TestFromRecsOmitOptions(t *testing.T) {
 
 	type recS struct {
-		Name string `json:"name,omitempty"`
-		DOB  Date   `json:"dob,omitzero"`
-		City string `json:"city"`
+		Name string       `json:"name,omitempty"`
+		DOB  lystype.Date `json:"dob,omitzero"`
+		City string       `json:"city"`
 	}
 
-	d := Date(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+	d := lystype.Date(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
 	recs := []recS{
-		{Name: "", DOB: Date{}, City: "x"},
+		{Name: "", DOB: lystype.Date{}, City: "x"},
 		{Name: "ann", DOB: d, City: "y"},
 	}
 
-	recsMap, err := RecsToMap(recs)
+	recsMap, err := FromRecs(recs)
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]any{"city": "x"}, recsMap[0])
 	assert.Equal(t, map[string]any{"name": "ann", "dob": d, "city": "y"}, recsMap[1])
 }
 
-func TestRecsToMapEmbeddedFlattening(t *testing.T) {
+func TestFromRecsEmbeddedFlattening(t *testing.T) {
 
 	type innerS struct {
 		Code string `json:"code"`
@@ -84,29 +85,29 @@ func TestRecsToMapEmbeddedFlattening(t *testing.T) {
 
 	recs := []recS{{innerS: innerS{Code: "A"}, Name: "alpha"}}
 
-	recsMap, err := RecsToMap(recs)
+	recsMap, err := FromRecs(recs)
 	assert.NoError(t, err)
 	assert.Equal(t, map[string]any{"code": "A", "name": "alpha"}, recsMap[0])
 }
 
-func TestRecsToMapKeepsNativeCustomType(t *testing.T) {
+func TestFromRecsKeepsNativeCustomType(t *testing.T) {
 
 	type recS struct {
-		Start Date `json:"start"`
+		Start lystype.Date `json:"start"`
 	}
 
-	d := Date(time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC))
+	d := lystype.Date(time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC))
 	recs := []recS{{Start: d}}
 
-	recsMap, err := RecsToMap(recs)
+	recsMap, err := FromRecs(recs)
 	assert.NoError(t, err)
 
-	val, ok := recsMap[0]["start"].(Date)
+	val, ok := recsMap[0]["start"].(lystype.Date)
 	assert.True(t, ok)
 	assert.Equal(t, d, val)
 }
 
-func TestRecsToMapEmptyFailure(t *testing.T) {
+func TestFromRecsEmptyFailure(t *testing.T) {
 
 	type recS struct {
 		ID   int    `json:"id"`
@@ -115,18 +116,18 @@ func TestRecsToMapEmptyFailure(t *testing.T) {
 
 	recs := []recS{}
 
-	_, err := RecsToMap(recs)
+	_, err := FromRecs(recs)
 	assert.Error(t, err, "empty recs")
 }
 
-func TestRecsToMapFirstElementTypeFailure(t *testing.T) {
+func TestFromRecsFirstElementTypeFailure(t *testing.T) {
 	recs := []int{1, 2, 3}
 
-	_, err := RecsToMap(recs)
+	_, err := FromRecs(recs)
 	assert.EqualError(t, err, "T must be a struct or pointer to struct")
 }
 
-func TestRecsToMapNilPointerFailure(t *testing.T) {
+func TestFromRecsNilPointerFailure(t *testing.T) {
 
 	type recS struct {
 		ID int `json:"id"`
@@ -134,6 +135,6 @@ func TestRecsToMapNilPointerFailure(t *testing.T) {
 
 	recs := []*recS{{ID: 1}, nil}
 
-	_, err := RecsToMap(recs)
+	_, err := FromRecs(recs)
 	assert.EqualError(t, err, "recs[1] is nil")
 }

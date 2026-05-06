@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 
+	"github.com/loveyourstack/lys/lysmap"
 	"github.com/loveyourstack/lys/lystype"
 	"golang.org/x/exp/maps"
 )
@@ -32,9 +33,9 @@ func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, delimi
 	}
 
 	// convert items to []map[string]any
-	recsMap, err := lystype.RecsToMap(items)
+	recsMap, err := lysmap.FromRecs(items)
 	if err != nil {
-		return fmt.Errorf("lystype.RecsToMap failed: %w", err)
+		return fmt.Errorf("lysmap.FromRecs failed: %w", err)
 	}
 
 	// get [][]string

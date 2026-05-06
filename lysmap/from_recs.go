@@ -1,4 +1,4 @@
-package lystype
+package lysmap
 
 import (
 	"fmt"
@@ -6,11 +6,11 @@ import (
 	"strings"
 )
 
-// RecsToMap converts a slice of structs to map[string]any using reflection.
+// FromRecs converts a slice of recs (structs from db) to map[string]any using reflection.
 // It only includes fields with a json tag and uses the json tag name as the map key.
 // Embedded structs with no json tag are flattened recursively.
 // Values are written with their native Go types.
-func RecsToMap[T any](recs []T) (recsMap []map[string]any, err error) {
+func FromRecs[T any](recs []T) (recsMap []map[string]any, err error) {
 
 	if len(recs) == 0 {
 		return nil, fmt.Errorf("recs is empty")

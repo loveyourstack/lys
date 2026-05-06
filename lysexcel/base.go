@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"codeberg.org/tealeg/xlsx/v4"
+	"github.com/loveyourstack/lys/lysmap"
 	"github.com/loveyourstack/lys/lystype"
 	"golang.org/x/exp/maps"
 )
@@ -30,9 +31,9 @@ func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, sheetN
 	}
 
 	// convert items to []map[string]any
-	recsMap, err := lystype.RecsToMap(items)
+	recsMap, err := lysmap.FromRecs(items)
 	if err != nil {
-		return fmt.Errorf("lystype.RecsToMap failed: %w", err)
+		return fmt.Errorf("lysmap.FromRecs failed: %w", err)
 	}
 
 	// write to Excel file in memory, return workbook

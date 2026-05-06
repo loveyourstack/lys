@@ -275,7 +275,7 @@ func TestGetSetfuncFailure(t *testing.T) {
 	// param missing
 	targetUrl := "/setfunc-test?p_text=a&p_int=1"
 	_, err := lysclient.GetItemRespTester(ctx, srvApp.getRouter(), targetUrl)
-	assert.EqualValues(t, "setFunc param name p_inta is missing", err.Error())
+	assert.EqualValues(t, "setFunc param name 'p_inta' is missing", err.Error())
 
 	// param is wrong type
 	// TODO - not working - GetItemsTester does not return an error
