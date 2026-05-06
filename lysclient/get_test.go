@@ -114,8 +114,8 @@ func TestMustGetHelpers(t *testing.T) {
 
 	t.Run("MustGetFile", func(t *testing.T) {
 		h := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-			w.Header().Set("Content-Disposition", "attachment; filename=test.bin")
-			w.Header().Set("Content-Type", "application/octet-stream")
+			w.Header().Set("Content-Disposition", "attachment; filename=test.csv")
+			w.Header().Set("Content-Type", "text/csv")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte("file-content"))
 		})

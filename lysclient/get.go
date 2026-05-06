@@ -186,12 +186,43 @@ func MustGetFile(ctx context.Context, t testing.TB, h http.Handler, targetUrl st
 		t.Fatalf("content-disposition header is missing 'attachment' value for Url: %s", targetUrl)
 	}
 
-	expectedContentType := "application/octet-stream"
-	if respHeader.Get("Content-Type") != "application/octet-stream" {
-		t.Fatalf("expected content-type header: %s, got: %s for Url: %s", expectedContentType, respHeader.Get("Content-Type"), targetUrl)
+	contentTypeHeader := respHeader.Get("Content-Type")
+	if contentTypeHeader == "" {
+		t.Fatalf("content-type header for Url: %s is missing", targetUrl)
+	}
+	if contentTypeHeader != "text/csv" && contentTypeHeader != "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" {
+		t.Fatalf("unexpected content-type header: %s for Url: %s", contentTypeHeader, targetUrl)
 	}
 
 	// success
+}
+
+// MustGetFileWithHeaders GETs the target Url using a test handler and returns the body and response headers. It expects file output headers and will fail on any error
+func MustGetFileWithHeaders(ctx context.Context, t testing.TB, h http.Handler, targetUrl string) (body []byte, headers http.Header) {
+
+	// create req
+	req, err := http.NewRequestWithContext(ctx, "GET", targetUrl, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequestWithContext failed: %v", err)
+	}
+
+	// do req
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, req)
+
+	// check status code
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected statusCode: %d, got: %d for Url: %s", http.StatusOK, rr.Code, targetUrl)
+	}
+
+	// read body
+	respBody, err := io.ReadAll(rr.Body)
+	if err != nil {
+		t.Fatalf("io.ReadAll failed: %v", err)
+	}
+
+	// success
+	return respBody, rr.Result().Header
 }
 
 // MustGetItemResp GETs the target Url using a test handler. It expects an array of items in response and will fail on any error

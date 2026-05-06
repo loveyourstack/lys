@@ -21,7 +21,7 @@ const (
 )
 
 var (
-	ValidFormats = []string{FormatCsv, FormatExcel, FormatJson}
+	ValidFormats = lysset.New(FormatCsv, FormatExcel, FormatJson)
 )
 
 type ExtractGetRequestModifierParams struct {
@@ -105,7 +105,7 @@ func ExtractFormat(formatParamName, formatVal string) (format string, err error)
 	}
 
 	// ensure value is valid
-	if !slices.Contains(ValidFormats, formatVal) {
+	if !ValidFormats.Contains(formatVal) {
 		return "", lyserr.User{
 			Message: formatParamName + " param value is invalid: " + formatVal}
 	}

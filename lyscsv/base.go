@@ -19,9 +19,6 @@ import (
 // jsonTagTypeMap is a map of [json tag]type.
 func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, delimiter rune, w io.Writer) (err error) {
 
-	if len(items) == 0 {
-		return fmt.Errorf("items is empty")
-	}
 	if len(jsonTagTypeMap) == 0 {
 		return fmt.Errorf("jsonTagTypeMap is empty")
 	}
@@ -31,6 +28,8 @@ func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, delimi
 	if w == nil {
 		return fmt.Errorf("writer is mandatory")
 	}
+
+	fmt.Println("a")
 
 	// convert items to []map[string]any
 	recsMap, err := lysmap.FromRecs(items)

@@ -12,12 +12,8 @@ import (
 // Values are written with their native Go types.
 func FromRecs[T any](recs []T) (recsMap []map[string]any, err error) {
 
-	if len(recs) == 0 {
-		return nil, fmt.Errorf("recs is empty")
-	}
-
 	// ensure T is struct or pointer to struct
-	if !isStructOrPtrToStruct(reflect.ValueOf(recs[0])) {
+	if len(recs) > 0 && !isStructOrPtrToStruct(reflect.ValueOf(recs[0])) {
 		return nil, fmt.Errorf("T must be a struct or pointer to struct")
 	}
 

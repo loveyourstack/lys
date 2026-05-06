@@ -10,27 +10,41 @@ import (
 
 func TestFromRecsSuccess(t *testing.T) {
 
-	type recS struct {
-		ID        int    `json:"id"`
-		Name      string `json:"name"`
-		Excluded  string `json:"-"`
-		NoJsonTag string
-	}
+	t.Run("with recs", func(t *testing.T) {
+		type recS struct {
+			ID        int    `json:"id"`
+			Name      string `json:"name"`
+			Excluded  string `json:"-"`
+			NoJsonTag string
+		}
 
-	recs := []recS{
-		{ID: 1, Name: "one", Excluded: "excluded1", NoJsonTag: "nojsontag1"},
-		{ID: 2, Name: "two", Excluded: "excluded2", NoJsonTag: "nojsontag2"},
-	}
+		recs := []recS{
+			{ID: 1, Name: "one", Excluded: "excluded1", NoJsonTag: "nojsontag1"},
+			{ID: 2, Name: "two", Excluded: "excluded2", NoJsonTag: "nojsontag2"},
+		}
 
-	recsMap, err := FromRecs(recs)
-	assert.NoError(t, err, "FromRecs should not error")
-	assert.Len(t, recsMap, 2, "recsMap length")
+		recsMap, err := FromRecs(recs)
+		assert.NoError(t, err, "FromRecs should not error")
+		assert.Len(t, recsMap, 2, "recsMap length")
 
-	expected0 := map[string]any{"id": 1, "name": "one"}
-	expected1 := map[string]any{"id": 2, "name": "two"}
+		expected0 := map[string]any{"id": 1, "name": "one"}
+		expected1 := map[string]any{"id": 2, "name": "two"}
 
-	assert.Equal(t, expected0, recsMap[0], "record 0")
-	assert.Equal(t, expected1, recsMap[1], "record 1")
+		assert.Equal(t, expected0, recsMap[0], "record 0")
+		assert.Equal(t, expected1, recsMap[1], "record 1")
+	})
+
+	t.Run("empty recs", func(t *testing.T) {
+		type recS struct {
+			ID   int    `json:"id"`
+			Name string `json:"name"`
+		}
+
+		recs := []recS{}
+
+		_, err := FromRecs(recs)
+		assert.NoError(t, err)
+	})
 }
 
 func TestFromRecsPointerRecordsSuccess(t *testing.T) {
@@ -105,19 +119,6 @@ func TestFromRecsKeepsNativeCustomType(t *testing.T) {
 	val, ok := recsMap[0]["start"].(lystype.Date)
 	assert.True(t, ok)
 	assert.Equal(t, d, val)
-}
-
-func TestFromRecsEmptyFailure(t *testing.T) {
-
-	type recS struct {
-		ID   int    `json:"id"`
-		Name string `json:"name"`
-	}
-
-	recs := []recS{}
-
-	_, err := FromRecs(recs)
-	assert.Error(t, err, "empty recs")
 }
 
 func TestFromRecsFirstElementTypeFailure(t *testing.T) {

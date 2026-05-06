@@ -25,47 +25,52 @@ type writeItemsRec struct {
 }
 
 func TestWriteItemsSuccess(t *testing.T) {
-	timeDate := time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC)
-	timeDT := time.Date(2026, 4, 23, 12, 34, 56, 0, time.FixedZone("UTC+2", 2*3600))
-	timeOnly := time.Date(2026, 4, 23, 9, 15, 0, 0, time.UTC)
 
-	items := []writeItemsRec{{
-		CBool:     true,
-		CDate:     lystype.Date(timeDate),
-		CDatetime: lystype.Datetime(timeDT),
-		CFloat64:  1.5,
-		CInt64:    42,
-		CString:   "alpha",
-		CTime:     lystype.Time(timeOnly),
-		Ignored:   "x",
-		NoJSONTag: "y",
-	}}
+	t.Run("with items", func(t *testing.T) {
+		timeDate := time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC)
+		timeDT := time.Date(2026, 4, 23, 12, 34, 56, 0, time.FixedZone("UTC+2", 2*3600))
+		timeOnly := time.Date(2026, 4, 23, 9, 15, 0, 0, time.UTC)
 
-	jsonTagTypeMap := map[string]reflect.Type{
-		"c_bool":     reflect.TypeFor[bool](),
-		"c_date":     reflect.TypeFor[lystype.Date](),
-		"c_datetime": reflect.TypeFor[lystype.Datetime](),
-		"c_float64":  reflect.TypeFor[float64](),
-		"c_int64":    reflect.TypeFor[int64](),
-		"c_string":   reflect.TypeFor[string](),
-		"c_time":     reflect.TypeFor[lystype.Time](),
-	}
+		items := []writeItemsRec{{
+			CBool:     true,
+			CDate:     lystype.Date(timeDate),
+			CDatetime: lystype.Datetime(timeDT),
+			CFloat64:  1.5,
+			CInt64:    42,
+			CString:   "alpha",
+			CTime:     lystype.Time(timeOnly),
+			Ignored:   "x",
+			NoJSONTag: "y",
+		}}
 
-	var b bytes.Buffer
-	err := WriteItems(items, jsonTagTypeMap, ',', &b)
-	require.NoError(t, err)
+		jsonTagTypeMap := map[string]reflect.Type{
+			"c_bool":     reflect.TypeFor[bool](),
+			"c_date":     reflect.TypeFor[lystype.Date](),
+			"c_datetime": reflect.TypeFor[lystype.Datetime](),
+			"c_float64":  reflect.TypeFor[float64](),
+			"c_int64":    reflect.TypeFor[int64](),
+			"c_string":   reflect.TypeFor[string](),
+			"c_time":     reflect.TypeFor[lystype.Time](),
+		}
 
-	expected := "c_bool,c_date,c_datetime,c_float64,c_int64,c_string,c_time\n" +
-		"true,2026-04-23,2026-04-23 12:34:56+02,1.5,42,alpha,09:15\n"
-	assert.Equal(t, expected, b.String())
-}
+		var b bytes.Buffer
+		err := WriteItems(items, jsonTagTypeMap, ',', &b)
+		require.NoError(t, err)
 
-func TestWriteItemsFailureValidation(t *testing.T) {
+		expected := "c_bool,c_date,c_datetime,c_float64,c_int64,c_string,c_time\n" +
+			"true,2026-04-23,2026-04-23 12:34:56+02,1.5,42,alpha,09:15\n"
+		assert.Equal(t, expected, b.String())
+	})
+
 	t.Run("empty items", func(t *testing.T) {
 		var b bytes.Buffer
 		err := WriteItems([]writeItemsRec{}, map[string]reflect.Type{"name": reflect.TypeFor[string]()}, ',', &b)
-		assert.EqualError(t, err, "items is empty")
+		assert.NoError(t, err)
 	})
+
+}
+
+func TestWriteItemsFailureValidation(t *testing.T) {
 
 	t.Run("empty jsonTagTypeMap", func(t *testing.T) {
 		var b bytes.Buffer

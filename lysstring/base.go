@@ -68,6 +68,25 @@ func RemoveCharacters(input string, charsToRemove string) string {
 	}, input)
 }
 
+// SafeFileName returns a version of name that is safe to use as a file name, with ext appended. It replaces chars that are not letters, digits, hyphens, underscores, or periods with underscores, and trims leading and trailing periods and underscores.
+// If the resulting name is empty, it returns "file" + ext.
+func SafeFileName(name, ext string) string {
+
+	var b strings.Builder
+	for _, r := range name {
+		if unicode.IsLetter(r) || unicode.IsDigit(r) || r == '-' || r == '_' || r == ' ' || r == '.' {
+			b.WriteRune(r)
+		} else {
+			b.WriteByte('_')
+		}
+	}
+	n := strings.Trim(b.String(), "._")
+	if n == "" {
+		n = "file"
+	}
+	return n + ext
+}
+
 var singleLineRegexp = regexp.MustCompile(`[\t\r\n]+`)
 
 // SingleLine removes tabs and excess line breaks from s.

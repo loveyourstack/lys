@@ -20,9 +20,6 @@ import (
 // sheetName is optional and defaults to "data".
 func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, sheetName string, w io.Writer) (err error) {
 
-	if len(items) == 0 {
-		return fmt.Errorf("items is empty")
-	}
 	if len(jsonTagTypeMap) == 0 {
 		return fmt.Errorf("jsonTagTypeMap is empty")
 	}

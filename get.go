@@ -3,6 +3,7 @@ package lys
 import (
 	"context"
 	"fmt"
+	"mime"
 	"net/http"
 
 	"github.com/loveyourstack/lys/lyscsv"
@@ -10,6 +11,7 @@ import (
 	"github.com/loveyourstack/lys/lysmeta"
 	"github.com/loveyourstack/lys/lyspg"
 	"github.com/loveyourstack/lys/lysset"
+	"github.com/loveyourstack/lys/lysstring"
 	"github.com/loveyourstack/lys/lystype"
 )
 
@@ -20,7 +22,7 @@ type iGetable[T any] interface {
 	Select(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error)
 }
 
-type GetOption[T any] struct {
+type GetOpts[T any] struct {
 
 	// AdditionalFilterParamNames are param names that are not in the store's db tags, but should be allowed anyway. Must be handled by the store's Select func.
 	AdditionalFilterParamNames lysset.Set[string]
@@ -37,33 +39,45 @@ type GetOption[T any] struct {
 }
 
 // Get handles retrieval of multiple items from the supplied store
-func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.HandlerFunc {
+func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
+
+	// preprocess options and get store vars before returning handler func to avoid doing this on every request
+
+	// set option defaults
+	additionalFilterParamNames := lysset.New[string]()
+	var getLastSyncAt func(ctx context.Context) (lastSyncAt lystype.Datetime, err error) = nil
+	storeSelectFunc := store.Select
+	setFuncUrlParamNames := []string{}
+
+	// override defaults with any supplied options
+	if opts != nil {
+		if opts.AdditionalFilterParamNames.Len() > 0 {
+			additionalFilterParamNames = opts.AdditionalFilterParamNames
+		}
+		if opts.GetLastSyncAt != nil {
+			getLastSyncAt = opts.GetLastSyncAt
+		}
+		if opts.SelectFunc != nil {
+			storeSelectFunc = opts.SelectFunc
+		}
+		if len(opts.SetFuncUrlParamNames) > 0 {
+			setFuncUrlParamNames = opts.SetFuncUrlParamNames
+		}
+	}
+
+	// get store vars
+	plan := store.GetPlan()
+	storeName := store.GetName()
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		// get additionalFilterParamNames from options if it was passed
-		additionalFilterParamNames := lysset.New[string]()
-		for _, option := range options {
-			if option.AdditionalFilterParamNames.Len() > 0 {
-				additionalFilterParamNames = option.AdditionalFilterParamNames
-			}
-		}
-
-		// get setFuncUrlParamNames from options if it was passed
-		setFuncUrlParamNames := []string{}
-		for _, option := range options {
-			if len(option.SetFuncUrlParamNames) > 0 {
-				setFuncUrlParamNames = option.SetFuncUrlParamNames
-			}
-		}
 
 		// get request modifiers from url params
 		getReqModifiers, err := ExtractGetRequestModifiers(r,
 			ExtractGetRequestModifierParams{
 				AdditionalFilterParamNames: additionalFilterParamNames,
-				DbNames:                    lysset.FromSlice(store.GetPlan().DbNames()),
+				DbNames:                    lysset.FromSlice(plan.DbNames()),
 				GetOptions:                 env.GetOptions,
-				JsonKeyDbNameMap:           store.GetPlan().JsonKeyDbNameMap(),
+				JsonKeyDbNameMap:           plan.JsonKeyDbNameMap(),
 				SetFuncUrlParamNames:       setFuncUrlParamNames,
 			})
 		if err != nil {
@@ -95,16 +109,6 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 			selectParams.Limit = env.GetOptions.MaxFileRecs
 		}
 
-		// default select func is Select() in store
-		storeSelectFunc := store.Select
-
-		// if a select func with the same signature was sent via options, use it
-		for _, option := range options {
-			if option.SelectFunc != nil {
-				storeSelectFunc = option.SelectFunc
-			}
-		}
-
 		// select items from db
 		items, unpagedCount, err := storeSelectFunc(r.Context(), selectParams)
 		if err != nil {
@@ -117,22 +121,14 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 
 		case FormatCsv:
 
-			// if no items, return empty json response
-			if len(items) == 0 {
-				resp := StdResponse{
-					Status: ReqSucceeded,
-					Data:   nil,
-				}
-				JsonResponse(resp, http.StatusOK, w)
-				return
-			}
-
 			// set file download headers
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.csv", store.GetName()))
+			w.Header().Set("Content-Type", "text/csv")
+			w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{
+				"filename": lysstring.SafeFileName(storeName, ".csv"),
+			}))
 
 			// stream csv to response writer
-			err = lyscsv.WriteItems(items, store.GetPlan().JsonKeyTypeMap(), env.GetOptions.CsvDelimiter, w)
+			err = lyscsv.WriteItems(items, plan.JsonKeyTypeMap(), env.GetOptions.CsvDelimiter, w)
 			if err != nil {
 				HandleInternalError(r.Context(), fmt.Errorf("Get: lyscsv.WriteItems failed: %w", err), env.ErrorLog, w)
 				return
@@ -140,22 +136,14 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 
 		case FormatExcel:
 
-			// if no items, return empty json response
-			if len(items) == 0 {
-				resp := StdResponse{
-					Status: ReqSucceeded,
-					Data:   nil,
-				}
-				JsonResponse(resp, http.StatusOK, w)
-				return
-			}
-
 			// set file download headers
-			w.Header().Set("Content-Type", "application/octet-stream")
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s.xlsx", store.GetName()))
+			w.Header().Set("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+			w.Header().Set("Content-Disposition", mime.FormatMediaType("attachment", map[string]string{
+				"filename": lysstring.SafeFileName(storeName, ".xlsx"),
+			}))
 
 			// stream Excel to response writer
-			err = lysexcel.WriteItems(items, store.GetPlan().JsonKeyTypeMap(), "", w)
+			err = lysexcel.WriteItems(items, plan.JsonKeyTypeMap(), "", w)
 			if err != nil {
 				HandleInternalError(r.Context(), fmt.Errorf("Get: lysexcel.WriteItems failed: %w", err), env.ErrorLog, w)
 				return
@@ -175,15 +163,13 @@ func Get[T any](env Env, store iGetable[T], options ...GetOption[T]) http.Handle
 			}
 
 			// if GetLastSyncAt func was passed, call it and add timestamp to resp
-			for _, option := range options {
-				if option.GetLastSyncAt != nil {
-					lastSyncAt, err := option.GetLastSyncAt(r.Context())
-					if err != nil {
-						HandleError(r.Context(), fmt.Errorf("Get: option.GetLastSyncAt failed: %w", err), env.ErrorLog, w)
-						return
-					}
-					resp.LastSyncAt = &lastSyncAt
+			if getLastSyncAt != nil {
+				lastSyncAt, err := getLastSyncAt(r.Context())
+				if err != nil {
+					HandleError(r.Context(), fmt.Errorf("Get: getLastSyncAt failed: %w", err), env.ErrorLog, w)
+					return
 				}
+				resp.LastSyncAt = &lastSyncAt
 			}
 
 			JsonResponse(resp, http.StatusOK, w)
@@ -203,10 +189,10 @@ type iGetableWithLastSync[T any] interface {
 
 // GetWithLastSync is a wrapper for Get which adds the lastSyncAt timestamp from the supplied func to the JSON response
 func GetWithLastSync[T any](env Env, store iGetableWithLastSync[T]) http.HandlerFunc {
-	return Get(env, store, GetOption[T]{GetLastSyncAt: store.GetLastSyncAt})
+	return Get(env, store, &GetOpts[T]{GetLastSyncAt: store.GetLastSyncAt})
 }
 
 // GetFunc is a wrapper for Get which allows passing an alternative Select func with the same signature
 func GetFunc[T any](env Env, store iGetable[T], selectFunc func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error)) http.HandlerFunc {
-	return Get(env, store, GetOption[T]{SelectFunc: selectFunc})
+	return Get(env, store, &GetOpts[T]{SelectFunc: selectFunc})
 }

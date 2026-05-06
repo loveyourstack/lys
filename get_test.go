@@ -353,3 +353,128 @@ func TestGetIrregularTags(t *testing.T) {
 	require.NoError(t, err, "lyspg.Select failed")
 	assert.Equal(t, "h1", items[0].CHidden, "CHidden via DB")
 }
+
+// TestGetOptNilIsValid verifies that passing nil GetOpt works correctly
+func TestGetOptNilIsValid(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	// nil GetOpt should use all defaults
+	targetUrl := "/param-test"
+	resp := lysclient.MustGetItemResp(ctx, t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 2, len(resp.Data), "nil GetOpt returns results")
+}
+
+// TestGetCsvContentType verifies CSV response has correct Content-Type header
+func TestGetCsvContentType(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	targetUrl := "/param-test?id=1&xformat=csv"
+	_, respHeaders := lysclient.MustGetFileWithHeaders(ctx, t, srvApp.getRouter(), targetUrl)
+	assert.Equal(t, "text/csv", respHeaders.Get("Content-Type"), "CSV Content-Type")
+}
+
+// TestGetExcelContentType verifies Excel response has correct Content-Type header
+func TestGetExcelContentType(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	targetUrl := "/param-test?id=1&xformat=excel"
+	_, respHeaders := lysclient.MustGetFileWithHeaders(ctx, t, srvApp.getRouter(), targetUrl)
+	assert.Equal(t, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", respHeaders.Get("Content-Type"), "Excel Content-Type")
+}
+
+// TestGetCsvContentDisposition verifies CSV Content-Disposition header includes safe filename
+func TestGetCsvContentDisposition(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	targetUrl := "/param-test?id=1&xformat=csv"
+	_, respHeaders := lysclient.MustGetFileWithHeaders(ctx, t, srvApp.getRouter(), targetUrl)
+	disposition := respHeaders.Get("Content-Disposition")
+	assert.Contains(t, disposition, "attachment;", "CSV Content-Disposition has attachment")
+	assert.Contains(t, disposition, "filename=", "CSV Content-Disposition has filename")
+	assert.Contains(t, disposition, ".csv", "CSV Content-Disposition filename ends with .csv")
+}
+
+// TestGetExcelContentDisposition verifies Excel Content-Disposition header includes safe filename
+func TestGetExcelContentDisposition(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	targetUrl := "/param-test?id=1&xformat=excel"
+	_, respHeaders := lysclient.MustGetFileWithHeaders(ctx, t, srvApp.getRouter(), targetUrl)
+	disposition := respHeaders.Get("Content-Disposition")
+	assert.Contains(t, disposition, "attachment;", "Excel Content-Disposition has attachment")
+	assert.Contains(t, disposition, "filename=", "Excel Content-Disposition has filename")
+	assert.Contains(t, disposition, ".xlsx", "Excel Content-Disposition filename ends with .xlsx")
+}
+
+// TestGetCsvAlwaysOutputsFile verifies CSV format always outputs file, even with no results
+func TestGetCsvAlwaysOutputsFile(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	// Filter that returns no results
+	targetUrl := "/param-test?c_int=99999&xformat=csv"
+	_, respHeaders := lysclient.MustGetFileWithHeaders(ctx, t, srvApp.getRouter(), targetUrl)
+	assert.Equal(t, "text/csv", respHeaders.Get("Content-Type"), "CSV format with no results still outputs file")
+	assert.Contains(t, respHeaders.Get("Content-Disposition"), "attachment;", "CSV file headers present even with empty results")
+}
+
+// TestGetExcelAlwaysOutputsFile verifies Excel format always outputs file, even with no results
+func TestGetExcelAlwaysOutputsFile(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	// Filter that returns no results
+	targetUrl := "/param-test?c_int=99999&xformat=excel"
+	_, respHeaders := lysclient.MustGetFileWithHeaders(ctx, t, srvApp.getRouter(), targetUrl)
+	assert.Equal(t, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", respHeaders.Get("Content-Type"), "Excel format with no results still outputs file")
+	assert.Contains(t, respHeaders.Get("Content-Disposition"), "attachment;", "Excel file headers present even with empty results")
+}
+
+// TestGetSetFuncUrlParamNamesInheritedFromStore verifies SetFuncUrlParamNames from store
+func TestGetSetFuncUrlParamNamesInheritedFromStore(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	// setfunc-test route already passes SetFuncUrlParamNames from store
+	targetUrl := "/setfunc-test?p_text=a&p_int=1&p_inta=1,2"
+	resp := lysclient.MustGetItemResp(ctx, t, srvApp.getRouter(), targetUrl)
+	assert.EqualValues(t, 2, len(resp.Data), "setfunc with params works correctly")
+}
+
+// TestGetJsonMetadataIncluded verifies JSON response includes metadata
+func TestGetJsonMetadataIncluded(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	targetUrl := "/param-test?xformat=json"
+	resp := lysclient.MustGetItemResp(ctx, t, srvApp.getRouter(), targetUrl)
+	assert.NotNil(t, resp.GetMetadata, "JSON response includes metadata")
+	assert.Greater(t, resp.GetMetadata.Count, 0, "metadata Count is set")
+	assert.Greater(t, resp.GetMetadata.TotalCount, int64(0), "metadata TotalCount is set")
+}
+
+// TestGetJsonDefaultFormat verifies JSON is default format when xformat not specified
+func TestGetJsonDefaultFormat(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	targetUrl := "/param-test?id=1"
+	resp := lysclient.MustGetItemResp(ctx, t, srvApp.getRouter(), targetUrl)
+	assert.NotNil(t, resp.GetMetadata, "default format is JSON with metadata")
+	assert.EqualValues(t, 1, len(resp.Data), "default format returns items")
+}
