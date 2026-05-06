@@ -1,4 +1,4 @@
-package lysslices
+package lysslice
 
 import (
 	"testing"

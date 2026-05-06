@@ -3,7 +3,7 @@ package lys
 import (
 	"fmt"
 
-	"github.com/loveyourstack/lys/lysslices"
+	"github.com/loveyourstack/lys/lysslice"
 )
 
 const (
@@ -99,7 +99,7 @@ func FillGetOptions(input GetOptions) (ret GetOptions, err error) {
 	}
 
 	// param names and separators must be unique
-	dups := lysslices.ReportDuplicates([]string{
+	dups := lysslice.ReportDuplicates([]string{
 		ret.FieldsParamName,
 		ret.FormatParamName,
 		ret.PageParamName,

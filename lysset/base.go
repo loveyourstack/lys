@@ -15,7 +15,7 @@ func New[T comparable](vals ...T) Set[T] {
 	return s
 }
 
-// FromSlice returns a set built from vals.
+// FromSlice returns a set built from vals. Only use this if the element order is irrelevant.
 func FromSlice[T comparable](vals []T) Set[T] {
 	s := make(Set[T], len(vals))
 	for _, v := range vals {
