@@ -16,12 +16,11 @@ func TestExtractFieldsSuccess(t *testing.T) {
 		"b": "b_db",
 		"c": "c_db",
 	}
-	fieldsReqParamName := "xfields"
+	fieldsParamName := "xfields"
 
 	// with inclusion fields param
 	t.Run("inclusion", func(t *testing.T) {
-		r := mustCreateGetReq(t, "/test?xfields=a,b")
-		fields, err := ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
+		fields, err := ExtractFields(fieldsParamName, "a,b", dbNames, jsonKeyDbNameMap)
 		if err != nil {
 			t.Errorf("ExtractFields failed: %v", err)
 		}
@@ -30,8 +29,7 @@ func TestExtractFieldsSuccess(t *testing.T) {
 
 	// with exclusion fields param
 	t.Run("exclusion", func(t *testing.T) {
-		r := mustCreateGetReq(t, "/test?xfields=-a,b")
-		fields, err := ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
+		fields, err := ExtractFields(fieldsParamName, "-a,b", dbNames, jsonKeyDbNameMap)
 		if err != nil {
 			t.Errorf("ExtractFields failed: %v", err)
 		}
@@ -40,8 +38,7 @@ func TestExtractFieldsSuccess(t *testing.T) {
 
 	// without fields param (use default)
 	t.Run("default", func(t *testing.T) {
-		r := mustCreateGetReq(t, "/test")
-		fields, err := ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
+		fields, err := ExtractFields(fieldsParamName, "", dbNames, jsonKeyDbNameMap)
 		if err != nil {
 			t.Errorf("ExtractFields failed: %v", err)
 		}
@@ -56,21 +53,18 @@ func TestExtractFieldsFailure(t *testing.T) {
 		"a": "a_db",
 		"b": "b_db",
 	}
-	fieldsReqParamName := "xfields"
+	fieldsParamName := "xfields"
 
 	// inclusion: invalid param value
-	r := mustCreateGetReq(t, "/test?xfields=c")
-	_, err := ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
+	_, err := ExtractFields(fieldsParamName, "c", dbNames, jsonKeyDbNameMap)
 	assert.EqualValues(t, "xfields param value is invalid: c", err.Error(), "inclusion: invalid param value")
 
 	// exclusion: invalid param value
-	r = mustCreateGetReq(t, "/test?xfields=-c")
-	_, err = ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
+	_, err = ExtractFields(fieldsParamName, "-c", dbNames, jsonKeyDbNameMap)
 	assert.EqualValues(t, "xfields param value is invalid: c", err.Error(), "exclusion: invalid param value")
 
 	// exclusion: wrong usage
-	r = mustCreateGetReq(t, "/test?xfields=-a,-b")
-	_, err = ExtractFields(r, dbNames, jsonKeyDbNameMap, fieldsReqParamName)
+	_, err = ExtractFields(fieldsParamName, "-a,-b", dbNames, jsonKeyDbNameMap)
 	assert.EqualValues(t, "xfields param value is invalid: -b", err.Error(), "exclusion: wrong usage")
 }
 
@@ -323,19 +317,17 @@ func TestExtractFiltersFailure(t *testing.T) {
 
 func TestExtractFormatSuccess(t *testing.T) {
 
-	formatReqParamName := "xformat"
+	formatParamName := "xformat"
 
 	// with fields param
-	r := mustCreateGetReq(t, "/test?xformat=excel")
-	format, err := ExtractFormat(r, formatReqParamName)
+	format, err := ExtractFormat(formatParamName, "excel")
 	if err != nil {
 		t.Errorf("ExtractFormat failed: %v", err)
 	}
 	assert.EqualValues(t, "excel", format)
 
 	// without format param (use json default)
-	r = mustCreateGetReq(t, "/test")
-	format, err = ExtractFormat(r, formatReqParamName)
+	format, err = ExtractFormat(formatParamName, "")
 	if err != nil {
 		t.Errorf("ExtractFormat failed: %v", err)
 	}
@@ -344,24 +336,22 @@ func TestExtractFormatSuccess(t *testing.T) {
 
 func TestExtractFormatFailure(t *testing.T) {
 
-	formatReqParamName := "xformat"
+	formatParamName := "xformat"
 
 	// invalid value
-	r := mustCreateGetReq(t, "/test?xformat=a")
-	_, err := ExtractFormat(r, formatReqParamName)
+	_, err := ExtractFormat(formatParamName, "a")
 	assert.EqualValues(t, "xformat param value is invalid: a", err.Error())
 }
 
 func TestExtractPagingSuccess(t *testing.T) {
 
-	pageReqParamName := "xpage"
-	perPageReqParamName := "xper_page"
+	pageParamName := "xpage"
+	perPageParamName := "xper_page"
 	defaultPerPage := 20
 	maxPerPage := 500
 
 	// with paging params
-	r := mustCreateGetReq(t, "/test?xpage=2&xper_page=50")
-	page, perPage, err := ExtractPaging(r, pageReqParamName, perPageReqParamName, defaultPerPage, maxPerPage)
+	page, perPage, err := ExtractPaging(pageParamName, "2", perPageParamName, "50", defaultPerPage, maxPerPage)
 	if err != nil {
 		t.Errorf("ExtractPaging failed: %v", err)
 	}
@@ -369,8 +359,7 @@ func TestExtractPagingSuccess(t *testing.T) {
 	assert.EqualValues(t, 50, perPage)
 
 	// without paging params (use default)
-	r = mustCreateGetReq(t, "/test")
-	page, perPage, err = ExtractPaging(r, pageReqParamName, perPageReqParamName, defaultPerPage, maxPerPage)
+	page, perPage, err = ExtractPaging(pageParamName, "", perPageParamName, "", defaultPerPage, maxPerPage)
 	if err != nil {
 		t.Errorf("ExtractPaging failed: %v", err)
 	}
@@ -378,8 +367,7 @@ func TestExtractPagingSuccess(t *testing.T) {
 	assert.EqualValues(t, defaultPerPage, perPage)
 
 	// enforcement of maxPerPage
-	r = mustCreateGetReq(t, "/test?xper_page=1000000")
-	_, perPage, err = ExtractPaging(r, pageReqParamName, perPageReqParamName, defaultPerPage, maxPerPage)
+	_, perPage, err = ExtractPaging(pageParamName, "", perPageParamName, "1000000", defaultPerPage, maxPerPage)
 	if err != nil {
 		t.Errorf("ExtractPaging failed: %v", err)
 	}
@@ -388,30 +376,30 @@ func TestExtractPagingSuccess(t *testing.T) {
 
 func TestExtractPagingFailure(t *testing.T) {
 
-	pageReqParamName := "xpage"
-	perPageReqParamName := "xper_page"
+	pageParamName := "xpage"
+	perPageParamName := "xper_page"
 	defaultPerPage := 20
 	maxPerPage := 500
 
+	// invalid maxPerPage
+	_, _, err := ExtractPaging(pageParamName, "", perPageParamName, "", defaultPerPage, 0)
+	assert.EqualValues(t, "maxPerPage must be >= 1", err.Error())
+
 	// page wrong type
-	r := mustCreateGetReq(t, "/test?xpage=a")
-	_, _, err := ExtractPaging(r, pageReqParamName, perPageReqParamName, defaultPerPage, maxPerPage)
-	assert.EqualValues(t, "xpage param not an integer", err.Error())
+	_, _, err = ExtractPaging(pageParamName, "a", perPageParamName, "", defaultPerPage, maxPerPage)
+	assert.EqualValues(t, "xpage param value is not an integer", err.Error())
 
 	// page invalid
-	r = mustCreateGetReq(t, "/test?xpage=0")
-	_, _, err = ExtractPaging(r, pageReqParamName, perPageReqParamName, defaultPerPage, maxPerPage)
-	assert.EqualValues(t, "invalid xpage param", err.Error())
+	_, _, err = ExtractPaging(pageParamName, "0", perPageParamName, "", defaultPerPage, maxPerPage)
+	assert.EqualValues(t, "xpage param value must be >= 1", err.Error())
 
 	// perPage wrong type
-	r = mustCreateGetReq(t, "/test?xper_page=a")
-	_, _, err = ExtractPaging(r, pageReqParamName, perPageReqParamName, defaultPerPage, maxPerPage)
-	assert.EqualValues(t, "xper_page param not an integer", err.Error())
+	_, _, err = ExtractPaging(pageParamName, "", perPageParamName, "a", defaultPerPage, maxPerPage)
+	assert.EqualValues(t, "xper_page param value is not an integer", err.Error())
 
 	// perPage invalid
-	r = mustCreateGetReq(t, "/test?xper_page=0")
-	_, _, err = ExtractPaging(r, pageReqParamName, perPageReqParamName, defaultPerPage, maxPerPage)
-	assert.EqualValues(t, "invalid xper_page param", err.Error())
+	_, _, err = ExtractPaging(pageParamName, "", perPageParamName, "0", defaultPerPage, maxPerPage)
+	assert.EqualValues(t, "xper_page param value must be >= 1", err.Error())
 }
 
 func TestExtractSetFuncParamValuesSuccess(t *testing.T) {
@@ -433,7 +421,7 @@ func TestExtractSetFuncParamValuesFailure(t *testing.T) {
 	// missing a value
 	r := mustCreateGetReq(t, "/test?x=1")
 	_, err := ExtractSetFuncParamValues(r, setFuncParamNames)
-	assert.EqualValues(t, "setFunc param name y is missing", err.Error())
+	assert.EqualValues(t, "setFunc param name 'y' is missing", err.Error())
 }
 
 func TestExtractSortsSuccess(t *testing.T) {
@@ -443,35 +431,31 @@ func TestExtractSortsSuccess(t *testing.T) {
 		"b": "b_db",
 		"c": "c_db",
 	}
-	sortReqParamName := "xsort"
+	sortParamName := "xsort"
 
 	// with single ASC sort param
-	r := mustCreateGetReq(t, "/test?xsort=a")
-	sortCols, err := ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
+	sortCols, err := ExtractSorts(sortParamName, "a", jsonKeyDbNameMap)
 	if err != nil {
 		t.Errorf("ExtractSorts failed: %v", err)
 	}
 	assert.EqualValues(t, []string{"a_db"}, sortCols)
 
 	// with single DESC sort param
-	r = mustCreateGetReq(t, "/test?xsort=-a")
-	sortCols, err = ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
+	sortCols, err = ExtractSorts(sortParamName, "-a", jsonKeyDbNameMap)
 	if err != nil {
 		t.Errorf("ExtractSorts failed: %v", err)
 	}
 	assert.EqualValues(t, []string{"a_db DESC"}, sortCols)
 
 	// with mixed sort params
-	r = mustCreateGetReq(t, "/test?xsort=a,-b")
-	sortCols, err = ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
+	sortCols, err = ExtractSorts(sortParamName, "a,-b", jsonKeyDbNameMap)
 	if err != nil {
 		t.Errorf("ExtractSorts failed: %v", err)
 	}
 	assert.EqualValues(t, []string{"a_db", "b_db DESC"}, sortCols)
 
 	// without sort param (no default)
-	r = mustCreateGetReq(t, "/test")
-	sortCols, err = ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
+	sortCols, err = ExtractSorts(sortParamName, "", jsonKeyDbNameMap)
 	if err != nil {
 		t.Errorf("ExtractSorts failed: %v", err)
 	}
@@ -487,7 +471,6 @@ func TestExtractSortsFailure(t *testing.T) {
 	sortReqParamName := "xsort"
 
 	// invalid param value
-	r := mustCreateGetReq(t, "/test?xsort=c")
-	_, err := ExtractSorts(r, jsonKeyDbNameMap, sortReqParamName)
-	assert.EqualValues(t, "invalid sort field: c", err.Error())
+	_, err := ExtractSorts(sortReqParamName, "c", jsonKeyDbNameMap)
+	assert.EqualValues(t, "xsort has invalid field: c", err.Error())
 }

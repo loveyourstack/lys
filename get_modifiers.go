@@ -20,7 +20,7 @@ const (
 )
 
 var (
-	ValidFormats = [...]string{FormatCsv, FormatExcel, FormatJson}
+	ValidFormats = []string{FormatCsv, FormatExcel, FormatJson}
 )
 
 type ExtractGetRequestModifierParams struct {
@@ -46,7 +46,7 @@ type GetReqModifiers struct {
 func ExtractGetRequestModifiers(r *http.Request, params ExtractGetRequestModifierParams) (getReqModifiers GetReqModifiers, err error) {
 
 	// format (output format of GET req)
-	getReqModifiers.Format, err = ExtractFormat(r, params.GetOptions.FormatParamName)
+	getReqModifiers.Format, err = ExtractFormat(params.GetOptions.FormatParamName, r.FormValue(params.GetOptions.FormatParamName))
 	if err != nil {
 		return GetReqModifiers{}, fmt.Errorf("ExtractFormat failed: %w", err)
 	}
@@ -64,7 +64,7 @@ func ExtractGetRequestModifiers(r *http.Request, params ExtractGetRequestModifie
 	}
 
 	// sorts (become ORDER BY)
-	getReqModifiers.Sorts, err = ExtractSorts(r, params.JsonKeyDbNameMap, params.GetOptions.SortParamName)
+	getReqModifiers.Sorts, err = ExtractSorts(params.GetOptions.SortParamName, r.FormValue(params.GetOptions.SortParamName), params.JsonKeyDbNameMap)
 	if err != nil {
 		return GetReqModifiers{}, fmt.Errorf("ExtractSorts failed: %w", err)
 	}
@@ -77,14 +77,14 @@ func ExtractGetRequestModifiers(r *http.Request, params ExtractGetRequestModifie
 	// json output
 
 	// fields (become column selection)
-	getReqModifiers.Fields, err = ExtractFields(r, params.DbNames, params.JsonKeyDbNameMap, params.GetOptions.FieldsParamName)
+	getReqModifiers.Fields, err = ExtractFields(params.GetOptions.FieldsParamName, r.FormValue(params.GetOptions.FieldsParamName), params.DbNames, params.JsonKeyDbNameMap)
 	if err != nil {
 		return GetReqModifiers{}, fmt.Errorf("ExtractFields failed: %w", err)
 	}
 
 	// paging (become LIMIT and OFFSET)
-	getReqModifiers.Page, getReqModifiers.PerPage, err = ExtractPaging(r, params.GetOptions.PageParamName, params.GetOptions.PerPageParamName,
-		params.GetOptions.DefaultPerPage, params.GetOptions.MaxPerPage)
+	getReqModifiers.Page, getReqModifiers.PerPage, err = ExtractPaging(params.GetOptions.PageParamName, r.FormValue(params.GetOptions.PageParamName),
+		params.GetOptions.PerPageParamName, r.FormValue(params.GetOptions.PerPageParamName), params.GetOptions.DefaultPerPage, params.GetOptions.MaxPerPage)
 	if err != nil {
 		return GetReqModifiers{}, fmt.Errorf("ExtractPaging failed: %w", err)
 	}
@@ -93,12 +93,10 @@ func ExtractGetRequestModifiers(r *http.Request, params ExtractGetRequestModifie
 }
 
 // ExtractFormat returns the output format for the GET req
-func ExtractFormat(r *http.Request, formatReqParamName string) (format string, err error) {
+func ExtractFormat(formatParamName, formatVal string) (format string, err error) {
 
-	// formatReqParamName: e.g. "xformat"
+	// formatParamName: e.g. "xformat"
 	// example: &xformat=excel
-
-	formatVal := r.FormValue(formatReqParamName)
 
 	// if no format param defined, default to json
 	if formatVal == "" {
@@ -106,42 +104,39 @@ func ExtractFormat(r *http.Request, formatReqParamName string) (format string, e
 	}
 
 	// ensure value is valid
-	if !slices.Contains(ValidFormats[:], formatVal) {
+	if !slices.Contains(ValidFormats, formatVal) {
 		return "", lyserr.User{
-			Message: formatReqParamName + " param value is invalid: " + formatVal}
+			Message: formatParamName + " param value is invalid: " + formatVal}
 	}
 
 	return formatVal, nil
 }
 
 // ExtractFields returns a slice of strings parsed from the request's fields param
-func ExtractFields(r *http.Request, dbNames []string, jsonKeyDbNameMap map[string]string, fieldsReqParamName string) (fields []string, err error) {
+func ExtractFields(fieldsParamName, fieldsVal string, dbNames []string, jsonKeyDbNameMap map[string]string) (fields []string, err error) {
 
 	/*
-	  fieldsReqParamName: e.g. "xfields"
+	  fieldsParamName: e.g. "xfields"
 	  inclusion example: &xfields=id,name
 	  exclusion example: &xfields=-id,name
 	*/
 
-	// see if fields GET param exists
-	fieldsRaw := r.FormValue(fieldsReqParamName)
-
 	// if no fields param defined, return all db names
-	if fieldsRaw == "" {
+	if fieldsVal == "" {
 		return dbNames, nil
 	}
 
 	// check for inclusion or exclusion
 	inclusion := true
-	if fieldsRaw[:1] == "-" {
+	if fieldsVal[:1] == "-" {
 		inclusion = false
-		fieldsRaw = fieldsRaw[1:]
+		fieldsVal = fieldsVal[1:]
 	}
 
 	// ensure correct format and valid fields
 
 	// split by comma
-	jsonVals := strings.Split(fieldsRaw, ",")
+	jsonVals := strings.Split(fieldsVal, ",")
 	dbVals := []string{}
 
 	// for each field val
@@ -151,7 +146,7 @@ func ExtractFields(r *http.Request, dbNames []string, jsonKeyDbNameMap map[strin
 		dbVal, ok := jsonKeyDbNameMap[v]
 		if !ok {
 			return nil, lyserr.User{
-				Message: fieldsReqParamName + " param value is invalid: " + v}
+				Message: fieldsParamName + " param value is invalid: " + v}
 		}
 		dbVals = append(dbVals, dbVal)
 	}
@@ -175,12 +170,14 @@ func ExtractFields(r *http.Request, dbNames []string, jsonKeyDbNameMap map[strin
 // to get urlValues from a request: r.Url.Query()
 func ExtractFilters(urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames, setFuncUrlParamNames []string, getOptions GetOptions) (conds []lyspg.Condition, err error) {
 
+	// define special param names which have another purpose and may not be used as filter keys
+	specialParams := []string{getOptions.FormatParamName, getOptions.FieldsParamName, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.SortParamName}
+	specialParams = append(specialParams, setFuncUrlParamNames...)
+
 	// for each Url value
 	for key, vals := range urlValues {
 
-		// skip if this is a Url key assigned to one of the other purposes (.e.g paging, sorting) or is expected as a setFunc url param
-		specialParams := []string{getOptions.FormatParamName, getOptions.FieldsParamName, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.SortParamName}
-		specialParams = append(specialParams, setFuncUrlParamNames...)
+		// skip if this is a special param
 		if slices.Contains(specialParams, key) {
 			continue
 		}
@@ -257,7 +254,7 @@ func processFilterParam(dbName, rawValue string, getOptions GetOptions) (cond ly
 		cond.Operator = lyspg.OpLessThan
 		cond.Value = rawValue[1:]
 
-	// containsAny (~[ at start, ]~ at end, values separated by MultipleValueSeparator)
+	// contains any (~[ at start, ]~ at end, values separated by MultipleValueSeparator)
 	case len(rawValue) > 4 && (rawValue[:2] == "~[" && rawValue[len(rawValue)-2:] == "]~"):
 		cond.Operator = lyspg.OpContainsAny
 		cond.InValues = strings.Split(rawValue[2:len(rawValue)-2], getOptions.MultipleValueSeparator)
@@ -265,55 +262,55 @@ func processFilterParam(dbName, rawValue string, getOptions GetOptions) (cond ly
 	// not contains (!~ at start, ~ at end)
 	case len(rawValue) > 3 && (rawValue[:2] == "!~" && rawValue[len(rawValue)-1:] == "~"):
 		cond.Operator = lyspg.OpNotContains
-		cond.Value = strings.Replace(rawValue[1:], "~", "", -1)
+		cond.Value = rawValue[2 : len(rawValue)-1]
 
 	// contains (~ at start and end)
 	case len(rawValue) > 2 && (rawValue[:1] == "~" && rawValue[len(rawValue)-1:] == "~"):
 		cond.Operator = lyspg.OpContains
-		cond.Value = strings.Replace(rawValue, "~", "", -1)
+		cond.Value = rawValue[1 : len(rawValue)-1]
 
 	// starts with (~ at end)
 	case len(rawValue) > 1 && rawValue[len(rawValue)-1:] == "~":
 		cond.Operator = lyspg.OpStartsWith
-		cond.Value = strings.Replace(rawValue, "~", "", -1)
+		cond.Value = rawValue[:len(rawValue)-1]
 
 	// end with (~ at start)
 	case len(rawValue) > 1 && rawValue[:1] == "~":
 		cond.Operator = lyspg.OpEndsWith
-		cond.Value = strings.Replace(rawValue, "~", "", -1)
+		cond.Value = rawValue[1:]
 
 	// empty (={empty})
-	case len(rawValue) > 1 && rawValue == "{empty}":
+	case rawValue == "{empty}":
 		cond.Operator = lyspg.OpEmpty
 		cond.Value = "0"
 
 	// not empty (={!empty})
-	case len(rawValue) > 1 && rawValue == "{!empty}":
+	case rawValue == "{!empty}":
 		cond.Operator = lyspg.OpNotEmpty
 		cond.Value = "0"
 
 	// is null (={null})
-	case len(rawValue) > 1 && rawValue == "{null}":
+	case rawValue == "{null}":
 		cond.Operator = lyspg.OpNull
 		cond.Value = ""
 
 	// is not null (={!null})
-	case len(rawValue) > 1 && rawValue == "{!null}":
+	case rawValue == "{!null}":
 		cond.Operator = lyspg.OpNotNull
 		cond.Value = ""
 
 	// not equals (! at start, no MultipleValueSeparator)
-	case len(rawValue) > 1 && rawValue[:1] == "!" && !strings.ContainsAny(rawValue, getOptions.MultipleValueSeparator):
+	case len(rawValue) > 1 && rawValue[:1] == "!" && !strings.Contains(rawValue, getOptions.MultipleValueSeparator):
 		cond.Operator = lyspg.OpNotEquals
 		cond.Value = rawValue[1:]
 
 	// not in (! at start, contains the MultipleValueSeparator)
-	case len(rawValue) > 2 && rawValue[:1] == "!" && strings.ContainsAny(rawValue, getOptions.MultipleValueSeparator):
+	case len(rawValue) > 2 && rawValue[:1] == "!" && strings.Contains(rawValue, getOptions.MultipleValueSeparator):
 		cond.Operator = lyspg.OpNotIn
 		cond.InValues = strings.Split(rawValue[1:], getOptions.MultipleValueSeparator)
 
-	// in (contains the MultipleValueSeparator - treat each MultipleValueSeparator-separated value as part of the IN clause)
-	case len(rawValue) > 1 && strings.ContainsAny(rawValue, getOptions.MultipleValueSeparator):
+	// in (contains the MultipleValueSeparator)
+	case len(rawValue) > 1 && strings.Contains(rawValue, getOptions.MultipleValueSeparator):
 		cond.Operator = lyspg.OpIn
 		cond.InValues = strings.Split(rawValue, getOptions.MultipleValueSeparator)
 
@@ -328,38 +325,40 @@ func processFilterParam(dbName, rawValue string, getOptions GetOptions) (cond ly
 
 // ExtractPaging returns paging variables parsed from a request's paging params
 // page defaults to 1, perPage defaults to defaultPerPage
-func ExtractPaging(r *http.Request, pageReqParamName, perPageReqParamName string, defaultPerPage, maxPerPage int) (page int, perPage int, err error) {
+func ExtractPaging(pageParamName, pageVal, perPageParamName, perPageVal string, defaultPerPage, maxPerPage int) (page int, perPage int, err error) {
 
-	// pageReqParamName: e.g. "xpage"
-	// perPageReqParamName: e.g. "xper_page"
+	// pageParamName: e.g. "xpage"
+	// perPageParamName: e.g. "xper_page"
+
+	if maxPerPage < 1 {
+		return 0, 0, fmt.Errorf("maxPerPage must be >= 1")
+	}
 
 	// see if page GET param exists, and if so, ensure it is an integer >= 1
-	pageParam := r.FormValue(pageReqParamName)
 	page = 1
-	if pageParam != "" {
-		page, err = strconv.Atoi(pageParam)
+	if pageVal != "" {
+		page, err = strconv.Atoi(pageVal)
 		if err != nil {
 			return 0, 0, lyserr.User{
-				Message: pageReqParamName + " param not an integer"}
+				Message: pageParamName + " param value is not an integer"}
 		}
 		if page < 1 {
 			return 0, 0, lyserr.User{
-				Message: "invalid " + pageReqParamName + " param"}
+				Message: pageParamName + " param value must be >= 1"}
 		}
 	}
 
 	// see if per_page GET param exists, and if so, ensure it is an integer >= 1
-	perPageParam := r.FormValue(perPageReqParamName)
 	perPage = defaultPerPage
-	if perPageParam != "" {
-		perPage, err = strconv.Atoi(perPageParam)
+	if perPageVal != "" {
+		perPage, err = strconv.Atoi(perPageVal)
 		if err != nil {
 			return 0, 0, lyserr.User{
-				Message: perPageReqParamName + " param not an integer"}
+				Message: perPageParamName + " param value is not an integer"}
 		}
 		if perPage < 1 {
 			return 0, 0, lyserr.User{
-				Message: "invalid " + perPageReqParamName + " param"}
+				Message: perPageParamName + " param value must be >= 1"}
 		}
 	}
 
@@ -372,17 +371,16 @@ func ExtractPaging(r *http.Request, pageReqParamName, perPageReqParamName string
 }
 
 // ExtractSorts returns an array of SQL sorting statements parsed from the request's sort param
-func ExtractSorts(r *http.Request, jsonKeyDbNameMap map[string]string, sortReqParamName string) (sortCols []string, err error) {
+func ExtractSorts(sortParamName, sortVal string, jsonKeyDbNameMap map[string]string) (sortCols []string, err error) {
 
-	// sortReqParamName: e.g. "xsort"
+	// sortParamName: e.g. "xsort"
 	// format: xsort=entry_by,-name (use "-" (minus) for a DESC sort)
 
 	// see if sort GET param exists, and if so, ensure correct format and valid fields
-	sortRaw := r.FormValue(sortReqParamName)
-	if sortRaw != "" {
+	if sortVal != "" {
 
 		// split by comma into array
-		sortVals := strings.Split(sortRaw, ",")
+		sortVals := strings.Split(sortVal, ",")
 
 		for _, v := range sortVals {
 
@@ -398,7 +396,7 @@ func ExtractSorts(r *http.Request, jsonKeyDbNameMap map[string]string, sortReqPa
 			// get corresponding db name for this field
 			dbName, ok := jsonKeyDbNameMap[fieldName]
 			if !ok {
-				return nil, lyserr.User{Message: "invalid sort field: " + fieldName}
+				return nil, lyserr.User{Message: sortParamName + " has invalid field: " + fieldName}
 			}
 
 			// add sortCol
@@ -417,7 +415,7 @@ func ExtractSetFuncParamValues(r *http.Request, setFuncUrlParamNames []string) (
 
 		paramValue := r.FormValue(paramName)
 		if paramValue == "" {
-			return nil, lyserr.User{Message: fmt.Sprintf("setFunc param name %s is missing", paramName)}
+			return nil, lyserr.User{Message: fmt.Sprintf("setFunc param name '%s' is missing", paramName)}
 		}
 
 		setFuncUrlParamValues = append(setFuncUrlParamValues, paramValue)

@@ -28,20 +28,12 @@ type SubRoute struct {
 	RouteAdder RouteAdderFunc
 }
 
+// parseIdByType parses a string id (from a request) into an idT.
 func parseIdByType[idT lyspg.PrimaryKeyType](idStr string) (idT, error) {
 
 	var zero idT
 
 	switch any(zero).(type) {
-	case uuid.UUID:
-		v, err := uuid.Parse(idStr)
-		if err != nil {
-			return zero, err
-		}
-		return any(v).(idT), nil
-
-	case string:
-		return any(idStr).(idT), nil
 
 	case int64:
 		v, err := strconv.ParseInt(idStr, 10, 64)
@@ -56,6 +48,16 @@ func parseIdByType[idT lyspg.PrimaryKeyType](idStr string) (idT, error) {
 			return zero, err
 		}
 		return any(int(v)).(idT), nil
+
+	case string:
+		return any(idStr).(idT), nil
+
+	case uuid.UUID:
+		v, err := uuid.Parse(idStr)
+		if err != nil {
+			return zero, err
+		}
+		return any(v).(idT), nil
 
 	default:
 		return zero, fmt.Errorf("unsupported id type %T", zero)
