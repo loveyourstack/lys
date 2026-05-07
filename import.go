@@ -69,6 +69,11 @@ func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], va
 			return
 		}
 
+		if len(inputs) > env.PostOptions.MaxImportRecs {
+			HandleUserError(lyserr.User{Message: fmt.Sprintf("found %v records; max allowed is %v", len(inputs), env.PostOptions.MaxImportRecs), StatusCode: http.StatusUnprocessableEntity}, w)
+			return
+		}
+
 		// validate each item
 		for i, input := range inputs {
 			if err = store.Validate(input); err != nil {

@@ -22,7 +22,8 @@ const (
 	defaultMaxFileRecs  int  = 10000
 	defaultCsvDelimiter rune = ','
 
-	defaultMaxBodySize int64 = 1024 * 1024 // 1 Mb
+	defaultMaxBodySize   int64 = 1024 * 1024 // 1 Mb
+	defaultMaxImportRecs int   = 1000
 )
 
 // GetOptions contains the options used when processing GET requests, such as paging param names and default values.
@@ -121,7 +122,8 @@ func FillGetOptions(input GetOptions) (ret GetOptions, err error) {
 
 // PostOptions contains the options used when processing POST or PUT requests
 type PostOptions struct {
-	MaxBodySize int64 // bytes
+	MaxBodySize   int64 // max bytes allowed in request body
+	MaxImportRecs int   // max number of records allowed in Import
 }
 
 // FillPostOptions returns input PostOptions if they are passed, and sets any unset fields to a sensible default value
@@ -130,6 +132,9 @@ func FillPostOptions(input PostOptions) (ret PostOptions) {
 
 	if ret.MaxBodySize == 0 {
 		ret.MaxBodySize = defaultMaxBodySize
+	}
+	if ret.MaxImportRecs == 0 {
+		ret.MaxImportRecs = defaultMaxImportRecs
 	}
 
 	return ret
