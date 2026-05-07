@@ -55,6 +55,10 @@ func TestArchiveByIdFailure(t *testing.T) {
 	// restore invalid id
 	_, err = lysclient.DoToValueTester[string](ctx, srvApp.getRouter(), "POST", targetUrl+"/restore")
 	assert.EqualValues(t, "row(s) not found", err.Error(), "invalid id")
+
+	// id not parseable to int64
+	_, err = lysclient.DoToValueTester[string](ctx, srvApp.getRouter(), "POST", "/archive-test/a/restore")
+	assert.EqualValues(t, "id could not be parsed", err.Error(), "invalid id")
 }
 
 func TestArchiveByUuidSuccess(t *testing.T) {
@@ -101,4 +105,8 @@ func TestArchiveByUuidFailure(t *testing.T) {
 	// restore invalid id
 	_, err = lysclient.DoToValueTester[string](ctx, srvApp.getRouter(), "POST", targetUrl+"/restore")
 	assert.EqualValues(t, "row(s) not found", err.Error(), "invalid id")
+
+	// id not parseable to uuid
+	_, err = lysclient.DoToValueTester[string](ctx, srvApp.getRouter(), "POST", "/archive-test-uuid/a/restore")
+	assert.EqualValues(t, "id could not be parsed", err.Error(), "invalid id")
 }

@@ -3,6 +3,7 @@ package lys
 import (
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strconv"
 
 	"github.com/google/uuid"
@@ -24,6 +25,25 @@ type RouteAdderFunc func(r *mux.Router) *mux.Router
 type SubRoute struct {
 	Url        string
 	RouteAdder RouteAdderFunc
+}
+
+func getIdFromReq[idT lyspg.PrimaryKeyType](r *http.Request) (id idT, err error) {
+
+	var zero idT
+
+	// get the id param
+	idStr := mux.Vars(r)["id"]
+	if idStr == "" {
+		return zero, ErrIdMissing
+	}
+
+	// parse the id param into an idT
+	id, err = parseIdByType[idT](idStr)
+	if err != nil {
+		return zero, ErrIdParseError
+	}
+
+	return id, nil
 }
 
 // parseIdByType parses a string id (from a request) into an idT.

@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lyspg"
 )
@@ -22,17 +21,10 @@ func Put[idT lyspg.PrimaryKeyType, inputT any](env Env, store iPutable[idT, inpu
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// get the id param
-		idStr := mux.Vars(r)["id"]
-		if idStr == "" {
-			HandleUserError(ErrIdMissing, w)
-			return
-		}
-
-		// parse the id param into a idT
-		id, err := parseIdByType[idT](idStr)
+		// get the id param and parse it into an idT
+		id, err := getIdFromReq[idT](r)
 		if err != nil {
-			HandleUserError(ErrIdParseError, w)
+			HandleError(ctx, fmt.Errorf("Put: getIdFromReq failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

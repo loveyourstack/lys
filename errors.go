@@ -20,6 +20,7 @@ var (
 	ErrInvalidId          = lyserr.User{Message: "invalid id"} // the id sent is not present in the relevant table
 	ErrInvalidJson        = lyserr.User{Message: "invalid json"}
 	ErrNoAssignments      = lyserr.User{Message: "no assignments found"} // for patch reqs where assignmentMap is expected
+	ErrNotParseableToMap  = lyserr.User{Message: "json body could not be parsed into a map of field names to values"}
 	ErrRouteNotFound      = lyserr.User{Message: "route not found"}
 
 	// forbidden

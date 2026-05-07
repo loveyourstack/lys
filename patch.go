@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/loveyourstack/lys/lyspg"
 )
 
@@ -21,17 +20,10 @@ func Patch[idT lyspg.PrimaryKeyType](env Env, store iPatchable[idT]) http.Handle
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// get the id param
-		idStr := mux.Vars(r)["id"]
-		if idStr == "" {
-			HandleUserError(ErrIdMissing, w)
-			return
-		}
-
-		// parse the id param into a idT
-		id, err := parseIdByType[idT](idStr)
+		// get the id param and parse it into an idT
+		id, err := getIdFromReq[idT](r)
 		if err != nil {
-			HandleUserError(ErrIdParseError, w)
+			HandleError(ctx, fmt.Errorf("Patch: getIdFromReq failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
@@ -46,7 +38,7 @@ func Patch[idT lyspg.PrimaryKeyType](env Env, store iPatchable[idT]) http.Handle
 		assignmentsMap := make(map[string]any)
 		err = json.Unmarshal(body, &assignmentsMap)
 		if err != nil {
-			HandleInternalError(ctx, fmt.Errorf("Patch: json.Unmarshal failed: %w", err), env.ErrorLog, w)
+			HandleUserError(ErrNotParseableToMap, w)
 			return
 		}
 		if len(assignmentsMap) == 0 {

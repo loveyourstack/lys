@@ -124,30 +124,41 @@ func TestPatchFailure(t *testing.T) {
 
 	targetUrl := "/type-test/" + strconv.FormatInt(newId, 10)
 
-	// struct with unknown field
-	type testS struct {
-		Val string
-	}
-	inputTestS := testS{
-		Val: "a",
-	}
-	_, err := lysclient.PostToValueTester[testS, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, inputTestS)
-	assert.EqualValues(t, "invalid field: Val", err.Error(), "invalid field")
+	t.Run("json not parseable to map[string]any", func(t *testing.T) {
+		_, err := lysclient.PostToValueTester[string, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, "not a map")
+		assert.EqualValues(t, "json body could not be parsed into a map of field names to values", err.Error())
+	})
 
-	// nil input
-	_, err = lysclient.PostToValueTester[any, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, nil)
-	assert.EqualValues(t, "no assignments found", err.Error(), "nil")
+	t.Run("invalid field", func(t *testing.T) {
 
-	// empty struct
-	inputTT := coretypetestm.Input{}
-	_, err = lysclient.PostToValueTester[coretypetestm.Input, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, inputTT)
-	assert.EqualValues(t, "invalid text: invalid input value for enum core.weekday: \"\"", err.Error(), "empty struct")
+		type testS struct {
+			Val string
+		}
+		inputTestS := testS{
+			Val: "a",
+		}
+		_, err := lysclient.PostToValueTester[testS, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, inputTestS)
+		assert.EqualValues(t, "invalid field: Val", err.Error(), "invalid field")
+	})
 
-	// id wrong type
-	_, err = lysclient.PostToValueTester[coretypetestm.Input, string](ctx, srvApp.getRouter(), "PATCH", "/type-test/a", minInput)
-	assert.EqualValues(t, "id could not be parsed", err.Error(), "id wrong type")
+	t.Run("no assignments", func(t *testing.T) {
+		_, err := lysclient.PostToValueTester[any, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, nil)
+		assert.EqualValues(t, "no assignments found", err.Error())
+	})
 
-	// invalid id
-	_, err = lysclient.PostToValueTester[coretypetestm.Input, string](ctx, srvApp.getRouter(), "PATCH", "/type-test/100000", minInput)
-	assert.EqualValues(t, "row(s) not found", err.Error(), "invalid id")
+	t.Run("empty struct", func(t *testing.T) {
+		inputTT := coretypetestm.Input{}
+		_, err := lysclient.PostToValueTester[coretypetestm.Input, string](ctx, srvApp.getRouter(), "PATCH", targetUrl, inputTT)
+		assert.EqualValues(t, "invalid text: invalid input value for enum core.weekday: \"\"", err.Error())
+	})
+
+	t.Run("id wrong type", func(t *testing.T) {
+		_, err := lysclient.PostToValueTester[coretypetestm.Input, string](ctx, srvApp.getRouter(), "PATCH", "/type-test/a", minInput)
+		assert.EqualValues(t, "id could not be parsed", err.Error())
+	})
+
+	t.Run("invalid id", func(t *testing.T) {
+		_, err := lysclient.PostToValueTester[coretypetestm.Input, string](ctx, srvApp.getRouter(), "PATCH", "/type-test/100000", minInput)
+		assert.EqualValues(t, "row(s) not found", err.Error())
+	})
 }

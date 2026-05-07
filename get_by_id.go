@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/gorilla/mux"
 	"github.com/loveyourstack/lys/lyspg"
 )
 
@@ -20,17 +19,10 @@ func GetById[idT lyspg.PrimaryKeyType, outT any](env Env, store iGetableById[idT
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		// get the id param
-		idStr := mux.Vars(r)["id"]
-		if idStr == "" {
-			HandleUserError(ErrIdMissing, w)
-			return
-		}
-
-		// parse the id param into an idT
-		id, err := parseIdByType[idT](idStr)
+		// get the id param and parse it into an idT
+		id, err := getIdFromReq[idT](r)
 		if err != nil {
-			HandleUserError(ErrIdParseError, w)
+			HandleError(ctx, fmt.Errorf("GetById: getIdFromReq failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
