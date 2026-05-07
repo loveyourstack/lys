@@ -13,9 +13,9 @@ import (
 )
 
 // iImportable is a store that can be used by Import
-type iImportable[T any] interface {
-	InsertTx(ctx context.Context, tx pgx.Tx, input T) (newId int64, err error)
-	Validate(input T) error
+type iImportable[inputT any] interface {
+	InsertTx(ctx context.Context, tx pgx.Tx, input inputT) (newId int64, err error)
+	Validate(input inputT) error
 }
 
 /*
@@ -35,7 +35,7 @@ type ImportValueRepl struct {
 
 // Import handles creating multiple new items using the supplied store and returning the number of rows inserted
 // the supplied db is used for the MapFunc in valRepls
-func Import[T any](env Env, db *pgxpool.Pool, store iImportable[T], valRepls ...ImportValueRepl) http.HandlerFunc {
+func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], valRepls ...ImportValueRepl) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -57,7 +57,7 @@ func Import[T any](env Env, db *pgxpool.Pool, store iImportable[T], valRepls ...
 		}
 
 		// unmarshal the body into a slice of inputs
-		inputs, err := DecodeJsonBody[[]T](body)
+		inputs, err := DecodeJsonBody[[]inputT](body)
 		if err != nil {
 			HandleError(ctx, fmt.Errorf("Import: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
 			return

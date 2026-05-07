@@ -11,13 +11,13 @@ import (
 )
 
 // iPutable is a store that can be used by Put.
-type iPutable[idT lyspg.PrimaryKeyType, outT any] interface {
-	Update(ctx context.Context, item outT, id idT) error
-	Validate(item outT) error
+type iPutable[idT lyspg.PrimaryKeyType, inputT any] interface {
+	Update(ctx context.Context, input inputT, id idT) error
+	Validate(input inputT) error
 }
 
 // Put handles changing an item using the supplied store.
-func Put[idT lyspg.PrimaryKeyType, outT any](env Env, store iPutable[idT, outT]) http.HandlerFunc {
+func Put[idT lyspg.PrimaryKeyType, inputT any](env Env, store iPutable[idT, inputT]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -44,7 +44,7 @@ func Put[idT lyspg.PrimaryKeyType, outT any](env Env, store iPutable[idT, outT])
 		}
 
 		// unmarshal the body
-		input, err := DecodeJsonBody[outT](body)
+		input, err := DecodeJsonBody[inputT](body)
 		if err != nil {
 			HandleError(ctx, fmt.Errorf("Put: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
 			return
