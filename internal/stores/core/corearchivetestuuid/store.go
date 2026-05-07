@@ -48,6 +48,12 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
+func New(db *pgxpool.Pool) Store {
+	return Store{
+		Db: db,
+	}
+}
+
 func (s Store) Archive(ctx context.Context, tx pgx.Tx, id uuid.UUID) error {
 	return lyspg.Archive(ctx, tx, schemaName, tableName, pkColName, id, false)
 }

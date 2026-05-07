@@ -30,6 +30,7 @@ const (
 type GetOptions struct {
 
 	// special param names
+
 	FieldsParamName  string // name of the param which limits the fields returned by a GET request, e.g. "xfields=name,age"
 	FormatParamName  string // name of the param which determines the output format of a GET request, e.g. "xformat=csv"
 	PageParamName    string // name of the param which defines the page offset returned by a paged GET request, e.g. "xpage=1"
@@ -37,14 +38,17 @@ type GetOptions struct {
 	SortParamName    string // name of the param which sorts the records returned by a GET request, e.g. "xsort=name,-age"
 
 	// separators
+
 	MultipleValueSeparator string // the string used by a GET request to separate values in a filter where each value should be returned, e.g. "|", usage: "name=Bill|Sam"
 	MetadataSeparator      string // the string used to separate any extra data appended to a GET request query filter, e.g. "^", usage: "sales=>100^Last 7 days"
 
 	// paging limits
+
 	DefaultPerPage int // default number of results returned by a paged GET request, e.g. 20
 	MaxPerPage     int // max number of results returned per paged GET request, regardless of what the caller enters in the "PerPageParamName" param, e.g. 500
 
 	// output config
+
 	MaxFileRecs  int  // max number of records contained in a file output
 	CsvDelimiter rune // delimiter between values in CSV file output. 0 means not set, and the default will be used.
 }

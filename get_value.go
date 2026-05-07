@@ -12,12 +12,13 @@ import (
 func GetValue[T any](env Env, db *pgxpool.Pool, stmt string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// select value from db
-		rows, _ := db.Query(r.Context(), stmt)
+		rows, _ := db.Query(ctx, stmt)
 		res, err := pgx.CollectExactlyOneRow(rows, pgx.RowTo[T])
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("GetValue: pgx.CollectExactlyOneRow failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("GetValue: pgx.CollectExactlyOneRow failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

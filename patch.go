@@ -19,6 +19,7 @@ type iPatchable[idT lyspg.PrimaryKeyType] interface {
 func Patch[idT lyspg.PrimaryKeyType](env Env, store iPatchable[idT]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// get the id param
 		idStr := mux.Vars(r)["id"]
@@ -37,7 +38,7 @@ func Patch[idT lyspg.PrimaryKeyType](env Env, store iPatchable[idT]) http.Handle
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Patch: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Patch: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
@@ -45,7 +46,7 @@ func Patch[idT lyspg.PrimaryKeyType](env Env, store iPatchable[idT]) http.Handle
 		assignmentsMap := make(map[string]any)
 		err = json.Unmarshal(body, &assignmentsMap)
 		if err != nil {
-			HandleInternalError(r.Context(), fmt.Errorf("Patch: json.Unmarshal failed: %w", err), env.ErrorLog, w)
+			HandleInternalError(ctx, fmt.Errorf("Patch: json.Unmarshal failed: %w", err), env.ErrorLog, w)
 			return
 		}
 		if len(assignmentsMap) == 0 {
@@ -54,9 +55,9 @@ func Patch[idT lyspg.PrimaryKeyType](env Env, store iPatchable[idT]) http.Handle
 		}
 
 		// try to update the item in db
-		err = store.UpdatePartial(r.Context(), assignmentsMap, id)
+		err = store.UpdatePartial(ctx, assignmentsMap, id)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Patch: store.UpdatePartial failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Patch: store.UpdatePartial failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

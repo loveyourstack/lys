@@ -10,11 +10,12 @@ import (
 func RunSimple(env Env, runFunc func(context.Context) error) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// run the func
-		err := runFunc(r.Context())
+		err := runFunc(ctx)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("RunSimple: runFunc failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("RunSimple: runFunc failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

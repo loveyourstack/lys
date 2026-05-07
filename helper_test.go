@@ -39,7 +39,6 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 	// define env struct needed for lys route handlers
 	apiEnv := Env{
 		ErrorLog:    srvApp.ErrorLog,
-		Validate:    srvApp.Validate,
 		GetOptions:  srvApp.GetOptions,
 		PostOptions: srvApp.PostOptions,
 	}
@@ -49,7 +48,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 	endpoint := "/archive-test"
 
-	archiveTestStore := corearchivetest.Store{Db: srvApp.Db}
+	archiveTestStore := corearchivetest.New(srvApp.Db)
 	r.HandleFunc(endpoint, Get(apiEnv, archiveTestStore, nil)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, archiveTestStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}/restore", Restore(apiEnv, srvApp.Db, archiveTestStore)).Methods("POST")
@@ -57,19 +56,19 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 	endpoint = "/archive-test-uuid"
 
-	archiveTestUuidStore := corearchivetestuuid.Store{Db: srvApp.Db}
+	archiveTestUuidStore := corearchivetestuuid.New(srvApp.Db)
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, archiveTestUuidStore)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}/restore", Restore(apiEnv, srvApp.Db, archiveTestUuidStore)).Methods("POST")
 	r.HandleFunc(endpoint+"/{id}/archive", Archive(apiEnv, srvApp.Db, archiveTestUuidStore)).Methods("DELETE")
 
 	endpoint = "/import-test"
 
-	importTestStore := coreimporttest.Store{Db: srvApp.Db}
+	importTestStore := coreimporttest.New(srvApp.Db, srvApp.Validate)
 	r.HandleFunc(endpoint+"/import", Import(apiEnv, srvApp.Db, importTestStore)).Methods("POST")
 
 	endpoint = "/param-test"
 
-	paramTestStore := coreparamtest.Store{Db: srvApp.Db}
+	paramTestStore := coreparamtest.New(srvApp.Db)
 	r.HandleFunc(endpoint, Get(apiEnv, paramTestStore, nil)).Methods("GET")
 
 	endpoint = "/process-slice-test"
@@ -81,14 +80,14 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 	endpoint = "/setfunc-test"
 
-	setfuncTestStore := coresetfunc.Store{Db: srvApp.Db}
+	setfuncTestStore := coresetfunc.New(srvApp.Db)
 	r.HandleFunc(endpoint, Get(apiEnv, setfuncTestStore, &GetOpts[coresetfunc.Model]{
 		SetFuncUrlParamNames: setfuncTestStore.GetSetFuncUrlParamNames(),
 	})).Methods("GET")
 
 	endpoint = "/tag-test"
 
-	tagTestStore := coretagtest.Store{Db: srvApp.Db}
+	tagTestStore := coretagtest.New(srvApp.Db, srvApp.Validate)
 	r.HandleFunc(endpoint, Get(apiEnv, tagTestStore, nil)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, tagTestStore)).Methods("GET")
 	r.HandleFunc(endpoint, Post(apiEnv, tagTestStore)).Methods("POST")
@@ -98,7 +97,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 	endpoint = "/tracking-test"
 
-	trackingTestStore := coretrackingtest.Store{Db: srvApp.Db}
+	trackingTestStore := coretrackingtest.New(srvApp.Db, srvApp.Validate)
 	r.HandleFunc(endpoint, Get(apiEnv, trackingTestStore, nil)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, trackingTestStore)).Methods("GET")
 	r.HandleFunc(endpoint, Post(apiEnv, trackingTestStore)).Methods("POST")
@@ -108,7 +107,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 	endpoint = "/type-test"
 
-	typeTestStore := coretypetest.Store{Db: srvApp.Db}
+	typeTestStore := coretypetest.New(srvApp.Db, srvApp.Validate)
 	r.HandleFunc(endpoint, Get(apiEnv, typeTestStore, nil)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, typeTestStore)).Methods("GET")
 	r.HandleFunc(endpoint, Post(apiEnv, typeTestStore)).Methods("POST")
@@ -118,7 +117,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 	endpoint = "/uuid-test"
 
-	uuidTestStore := coreuuidtest.Store{Db: srvApp.Db}
+	uuidTestStore := coreuuidtest.New(srvApp.Db, srvApp.Validate)
 	r.HandleFunc(endpoint, Get(apiEnv, uuidTestStore, nil)).Methods("GET")
 	r.HandleFunc(endpoint+"/{id}", GetById(apiEnv, uuidTestStore)).Methods("GET")
 	r.HandleFunc(endpoint, Post(apiEnv, uuidTestStore)).Methods("POST")
@@ -128,7 +127,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 	endpoint = "/volume-test"
 
-	volTestStore := corevolumetest.Store{Db: srvApp.Db}
+	volTestStore := corevolumetest.New(srvApp.Db, srvApp.Validate)
 	r.HandleFunc(endpoint, Get(apiEnv, volTestStore, nil)).Methods("GET")
 	r.HandleFunc(endpoint+"/any-10", GetSimple(apiEnv, volTestStore.Select10)).Methods("GET")
 	r.HandleFunc(endpoint+"/int-1", GetValue[int](apiEnv, srvApp.Db, "SELECT 1;")).Methods("GET")

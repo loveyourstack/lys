@@ -18,6 +18,7 @@ type iDeletable[idT lyspg.PrimaryKeyType] interface {
 func Delete[idT lyspg.PrimaryKeyType](env Env, store iDeletable[idT]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// get the id param
 		idStr := mux.Vars(r)["id"]
@@ -34,9 +35,9 @@ func Delete[idT lyspg.PrimaryKeyType](env Env, store iDeletable[idT]) http.Handl
 		}
 
 		// delete item from db
-		err = store.Delete(r.Context(), id)
+		err = store.Delete(ctx, id)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Delete: store.Delete failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Delete: store.Delete failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

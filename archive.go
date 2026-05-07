@@ -31,6 +31,7 @@ func moveRecords[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc f
 	callingFunc, msg string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// get the id param
 		idStr := mux.Vars(r)["id"]
@@ -47,24 +48,24 @@ func moveRecords[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc f
 		}
 
 		// begin tx
-		tx, err := db.Begin(r.Context())
+		tx, err := db.Begin(ctx)
 		if err != nil {
-			HandleInternalError(r.Context(), fmt.Errorf("%s: db.Begin failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleInternalError(ctx, fmt.Errorf("%s: db.Begin failed: %w", callingFunc, err), env.ErrorLog, w)
 			return
 		}
-		defer tx.Rollback(r.Context())
+		defer tx.Rollback(ctx)
 
 		// try the operation
-		err = moveFunc(r.Context(), tx, id)
+		err = moveFunc(ctx, tx, id)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("%s: moveFunc failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("%s: moveFunc failed: %w", callingFunc, err), env.ErrorLog, w)
 			return
 		}
 
 		// success: commit tx
-		err = tx.Commit(r.Context())
+		err = tx.Commit(ctx)
 		if err != nil {
-			HandleInternalError(r.Context(), fmt.Errorf("%s: tx.Commit failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleInternalError(ctx, fmt.Errorf("%s: tx.Commit failed: %w", callingFunc, err), env.ErrorLog, w)
 			return
 		}
 

@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lyserr"
@@ -16,7 +15,7 @@ import (
 // iImportable is a store that can be used by Import
 type iImportable[T any] interface {
 	InsertTx(ctx context.Context, tx pgx.Tx, input T) (newId int64, err error)
-	Validate(validate *validator.Validate, input T) error
+	Validate(input T) error
 }
 
 /*
@@ -39,19 +38,20 @@ type ImportValueRepl struct {
 func Import[T any](env Env, db *pgxpool.Pool, store iImportable[T], valRepls ...ImportValueRepl) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Import: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Import: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
 		// replace string values with int64 if needed
 		if len(valRepls) > 0 {
-			body, err = importReplaceValues(r.Context(), db, body, valRepls...)
+			body, err = importReplaceValues(ctx, db, body, valRepls...)
 			if err != nil {
-				HandleError(r.Context(), fmt.Errorf("Import: importReplaceValues failed: %w", err), env.ErrorLog, w)
+				HandleError(ctx, fmt.Errorf("Import: importReplaceValues failed: %w", err), env.ErrorLog, w)
 				return
 			}
 		}
@@ -59,7 +59,7 @@ func Import[T any](env Env, db *pgxpool.Pool, store iImportable[T], valRepls ...
 		// unmarshal the body into a slice of inputs
 		inputs, err := DecodeJsonBody[[]T](body)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Import: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Import: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
@@ -71,40 +71,40 @@ func Import[T any](env Env, db *pgxpool.Pool, store iImportable[T], valRepls ...
 
 		// validate each item
 		for i, input := range inputs {
-			if err = store.Validate(env.Validate, input); err != nil {
+			if err = store.Validate(input); err != nil {
 				HandleUserError(lyserr.User{Message: fmt.Sprintf("line %v: %s", i+1, err.Error()), StatusCode: http.StatusUnprocessableEntity}, w)
 				return
 			}
 		}
 
 		// begin tx
-		tx, err := db.Begin(r.Context())
+		tx, err := db.Begin(ctx)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Import: db.Begin failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Import: db.Begin failed: %w", err), env.ErrorLog, w)
 			return
 		}
-		defer tx.Rollback(r.Context())
+		defer tx.Rollback(ctx)
 
 		// insert items as a tx
 		for i, input := range inputs {
-			if _, err := store.InsertTx(r.Context(), tx, input); err != nil {
+			if _, err := store.InsertTx(ctx, tx, input); err != nil {
 
 				// if it was user-fixable db error, e.g. a unique constraint violation, show the line number to user
 				dbErr := lyserr.Db{}
 				if errors.As(err, &dbErr) {
-					HandleDbError(r.Context(), i+1, dbErr.Stmt, fmt.Errorf("Import: store.InsertTx failed: %w", dbErr.Err), env.ErrorLog, w)
+					HandleDbError(ctx, i+1, dbErr.Stmt, fmt.Errorf("Import: store.InsertTx failed: %w", dbErr.Err), env.ErrorLog, w)
 					return
 				}
 
-				HandleError(r.Context(), fmt.Errorf("Import: store.InsertTx failed on line %v: %w", i+1, err), env.ErrorLog, w)
+				HandleError(ctx, fmt.Errorf("Import: store.InsertTx failed on line %v: %w", i+1, err), env.ErrorLog, w)
 				return
 			}
 		}
 
 		// success: commit tx
-		err = tx.Commit(r.Context())
+		err = tx.Commit(ctx)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Import: tx.Commit failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Import: tx.Commit failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

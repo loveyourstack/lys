@@ -15,25 +15,26 @@ import (
 func GetEnumValues(env Env, db *pgxpool.Pool, schema, enum string) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// get include or exclude filters, if any
 		includeVals, excludeVals, err := extractEnumFilters(r.URL.Query(), env.GetOptions.SortParamName)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("GetEnumValues: extractEnumFilters failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("GetEnumValues: extractEnumFilters failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
 		// get sort instruction, if any
 		sortVal, err := extractEnumSort(r.URL.Query(), env.GetOptions.SortParamName)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("GetEnumValues: extractEnumSort failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("GetEnumValues: extractEnumSort failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
 		// select enum from db
-		vals, err := lyspg.SelectEnum(r.Context(), db, schema+"."+enum, includeVals, excludeVals, sortVal)
+		vals, err := lyspg.SelectEnum(ctx, db, schema+"."+enum, includeVals, excludeVals, sortVal)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("GetEnumValues: lyspg.SelectEnum failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("GetEnumValues: lyspg.SelectEnum failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

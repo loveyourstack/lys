@@ -70,6 +70,7 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 	storeName := store.GetName()
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// get request modifiers from url params
 		getReqModifiers, err := ExtractGetRequestModifiers(r,
@@ -81,7 +82,7 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 				SetFuncUrlParamNames:       setFuncUrlParamNames,
 			})
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
@@ -110,9 +111,9 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 		}
 
 		// select items from db
-		items, unpagedCount, err := storeSelectFunc(r.Context(), selectParams)
+		items, unpagedCount, err := storeSelectFunc(ctx, selectParams)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("Get: storeSelectFunc failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Get: storeSelectFunc failed: %w", err), env.ErrorLog, w)
 			return
 		}
 
@@ -130,7 +131,7 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 			// stream csv to response writer
 			err = lyscsv.WriteItems(items, plan.JsonKeyTypeMap(), env.GetOptions.CsvDelimiter, w)
 			if err != nil {
-				HandleInternalError(r.Context(), fmt.Errorf("Get: lyscsv.WriteItems failed: %w", err), env.ErrorLog, w)
+				HandleInternalError(ctx, fmt.Errorf("Get: lyscsv.WriteItems failed: %w", err), env.ErrorLog, w)
 				return
 			}
 
@@ -145,7 +146,7 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 			// stream Excel to response writer
 			err = lysexcel.WriteItems(items, plan.JsonKeyTypeMap(), "", w)
 			if err != nil {
-				HandleInternalError(r.Context(), fmt.Errorf("Get: lysexcel.WriteItems failed: %w", err), env.ErrorLog, w)
+				HandleInternalError(ctx, fmt.Errorf("Get: lysexcel.WriteItems failed: %w", err), env.ErrorLog, w)
 				return
 			}
 
@@ -164,9 +165,9 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 
 			// if GetLastSyncAt func was passed, call it and add timestamp to resp
 			if getLastSyncAt != nil {
-				lastSyncAt, err := getLastSyncAt(r.Context())
+				lastSyncAt, err := getLastSyncAt(ctx)
 				if err != nil {
-					HandleError(r.Context(), fmt.Errorf("Get: getLastSyncAt failed: %w", err), env.ErrorLog, w)
+					HandleError(ctx, fmt.Errorf("Get: getLastSyncAt failed: %w", err), env.ErrorLog, w)
 					return
 				}
 				resp.LastSyncAt = &lastSyncAt
@@ -176,7 +177,7 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 
 		default:
 			// should never happen assuming format param gets checked
-			HandleInternalError(r.Context(), fmt.Errorf("Get: unknown format: '%s'", getReqModifiers.Format), env.ErrorLog, w)
+			HandleInternalError(ctx, fmt.Errorf("Get: unknown format: '%s'", getReqModifiers.Format), env.ErrorLog, w)
 		}
 	}
 }

@@ -18,6 +18,7 @@ type iGetableById[idT lyspg.PrimaryKeyType, outT any] interface {
 func GetById[idT lyspg.PrimaryKeyType, outT any](env Env, store iGetableById[idT, outT]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 
 		// get the id param
 		idStr := mux.Vars(r)["id"]
@@ -34,9 +35,9 @@ func GetById[idT lyspg.PrimaryKeyType, outT any](env Env, store iGetableById[idT
 		}
 
 		// select item from Db
-		item, err := store.SelectById(r.Context(), id)
+		item, err := store.SelectById(ctx, id)
 		if err != nil {
-			HandleError(r.Context(), fmt.Errorf("GetById: SelectById failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("GetById: SelectById failed: %w", err), env.ErrorLog, w)
 			return
 		}
 

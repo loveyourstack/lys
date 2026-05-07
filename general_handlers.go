@@ -37,7 +37,6 @@ func NotFound() http.HandlerFunc {
 func PgSleep(db lyspg.PoolOrTx, errorLog *slog.Logger, sleepSecs, cancelAfterSecs int) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
-
 		ctx := r.Context()
 
 		if cancelAfterSecs > 0 && cancelAfterSecs < sleepSecs {
