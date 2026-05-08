@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/loveyourstack/lys/lyserr"
 )
 
 // iPostable is a store that can be used by Post
 type iPostable[inputT any, outputT any] interface {
 	Insert(ctx context.Context, input inputT) (newVal outputT, err error)
-	Validate(input inputT) error
+	Validate(validate *validator.Validate, input inputT) error
 }
 
 // Post handles creating a new item using the supplied store and returning an output (the new item or its ID) in the response
@@ -35,7 +36,7 @@ func Post[inputT any, outputT any](env Env, store iPostable[inputT, outputT]) ht
 		}
 
 		// validate item
-		if err = store.Validate(input); err != nil {
+		if err = store.Validate(env.Validate, input); err != nil {
 			HandleUserError(lyserr.User{Message: err.Error(), StatusCode: http.StatusUnprocessableEntity}, w)
 			return
 		}

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lyserr"
@@ -15,7 +16,7 @@ import (
 // iImportable is a store that can be used by Import
 type iImportable[inputT any] interface {
 	InsertTx(ctx context.Context, tx pgx.Tx, input inputT) (newId int64, err error)
-	Validate(input inputT) error
+	Validate(validate *validator.Validate, input inputT) error
 }
 
 /*
@@ -76,7 +77,7 @@ func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], va
 
 		// validate each item
 		for i, input := range inputs {
-			if err = store.Validate(input); err != nil {
+			if err = store.Validate(env.Validate, input); err != nil {
 				HandleUserError(lyserr.User{Message: fmt.Sprintf("line %v: %s", i+1, err.Error()), StatusCode: http.StatusUnprocessableEntity}, w)
 				return
 			}

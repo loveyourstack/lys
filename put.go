@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lyspg"
 )
@@ -12,7 +13,7 @@ import (
 // iPutable is a store that can be used by Put.
 type iPutable[idT lyspg.PrimaryKeyType, inputT any] interface {
 	Update(ctx context.Context, input inputT, id idT) error
-	Validate(input inputT) error
+	Validate(validate *validator.Validate, input inputT) error
 }
 
 // Put handles changing an item using the supplied store.
@@ -43,7 +44,7 @@ func Put[idT lyspg.PrimaryKeyType, inputT any](env Env, store iPutable[idT, inpu
 		}
 
 		// validate item
-		if err = store.Validate(input); err != nil {
+		if err = store.Validate(env.Validate, input); err != nil {
 			HandleUserError(lyserr.User{Message: err.Error(), StatusCode: http.StatusUnprocessableEntity}, w)
 			return
 		}

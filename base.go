@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/loveyourstack/lys/lyspg"
@@ -14,6 +15,7 @@ import (
 // Env (environment) contains objects and options needed by API calls
 type Env struct {
 	ErrorLog    *slog.Logger
+	Validate    *validator.Validate
 	GetOptions  GetOptions
 	PostOptions PostOptions
 }

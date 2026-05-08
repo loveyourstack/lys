@@ -35,15 +35,7 @@ func init() {
 }
 
 type Store struct {
-	Db        *pgxpool.Pool
-	Validator *validator.Validate
-}
-
-func New(db *pgxpool.Pool, validator *validator.Validate) Store {
-	return Store{
-		Db:        db,
-		Validator: validator,
-	}
+	Db *pgxpool.Pool
 }
 
 func (s Store) GetName() string {
@@ -57,12 +49,12 @@ func (s Store) InsertTx(ctx context.Context, tx pgx.Tx, input coretypetestm.Inpu
 	return lyspg.Insert[coretypetestm.Input, int64](ctx, tx, schemaName, tableName, "id", input)
 }
 
-func (s Store) Validate(input coretypetestm.Input) error {
+func (s Store) Validate(validate *validator.Validate, input coretypetestm.Input) error {
 
 	// add dummy failure condition for tests
 	if input.CText == "fail" {
 		return fmt.Errorf("CText is invalid")
 	}
 
-	return lysmeta.Validate(s.Validator, input)
+	return lysmeta.Validate(validate, input)
 }
