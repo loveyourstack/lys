@@ -44,12 +44,6 @@ type Store struct {
 	Db *pgxpool.Pool
 }
 
-func New(db *pgxpool.Pool) Store {
-	return Store{
-		Db: db,
-	}
-}
-
 func (s Store) GetName() string {
 	return name
 }
