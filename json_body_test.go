@@ -3,6 +3,7 @@ package lys
 import (
 	"bytes"
 	"net/http"
+	"net/netip"
 	"testing"
 
 	"github.com/loveyourstack/lys/lystype"
@@ -35,6 +36,7 @@ func TestDecodeJsonBodyFailure(t *testing.T) {
 		B *string      `json:"b"`
 		C lystype.Date `json:"c"`
 		D lystype.Time `json:"d"`
+		E netip.Addr   `json:"e"`
 	}
 
 	_, err := DecodeJsonBody[value](nil)
@@ -74,6 +76,10 @@ func TestDecodeJsonBodyFailure(t *testing.T) {
 	rawBody = []byte(`{"d":"22:61"}`)
 	_, err = DecodeJsonBody[value](rawBody)
 	assert.EqualValues(t, "failed to parse a date or time: parsing time \"22:61\": minute out of range", err.Error(), "time parse error (invalid minute)")
+
+	rawBody = []byte(`{"e":"invalid-ip"}`)
+	_, err = DecodeJsonBody[value](rawBody)
+	assert.EqualValues(t, "failed to parse IP address", err.Error(), "IP parse error")
 }
 
 func TestExtractJsonBodySuccess(t *testing.T) {

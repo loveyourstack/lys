@@ -49,6 +49,9 @@ func DecodeJsonBody[T any](body []byte) (dest T, err error) {
 			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
 			return dest, lyserr.User{Message: "unknown field: " + strings.Trim(fieldName, `"`)}
 
+		case strings.HasSuffix(err.Error(), "unable to parse IP"):
+			return dest, lyserr.User{Message: "failed to parse IP address"}
+
 		case errors.As(err, &timeParseErr):
 			msg := timeParseErr.Error()
 			asLoc := strings.Index(msg, " as ")
