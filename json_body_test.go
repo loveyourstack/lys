@@ -65,21 +65,21 @@ func TestDecodeJsonBodyFailure(t *testing.T) {
 	_, err = DecodeJsonBody[value](rawBody)
 	assert.EqualValues(t, "unknown field: x", err.Error(), "unknown field")
 
+	rawBody = []byte(`{"e":"invalid-ip"}`)
+	_, err = DecodeJsonBody[value](rawBody)
+	assert.EqualValues(t, "failed to parse IP address: invalid-ip", err.Error(), "IP parse error")
+
 	rawBody = []byte(`{"c":"2024-01-aa"}`)
 	_, err = DecodeJsonBody[value](rawBody)
 	assert.EqualValues(t, "failed to parse a date or time: 2024-01-aa", err.Error(), "date parse error")
 
 	rawBody = []byte(`{"c":"2021-06-282"}`)
 	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "failed to parse a date or time: parsing time \"2021-06-282\": extra text: \"2\"", err.Error(), "date parse error (extra text)")
+	assert.EqualValues(t, "failed to parse a date or time: 2021-06-282: extra text: 2", err.Error(), "date parse error (extra text)")
 
 	rawBody = []byte(`{"d":"22:61"}`)
 	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "failed to parse a date or time: parsing time \"22:61\": minute out of range", err.Error(), "time parse error (invalid minute)")
-
-	rawBody = []byte(`{"e":"invalid-ip"}`)
-	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "failed to parse IP address", err.Error(), "IP parse error")
+	assert.EqualValues(t, "failed to parse a date or time: 22:61: minute out of range", err.Error(), "time parse error (invalid minute)")
 }
 
 func TestExtractJsonBodySuccess(t *testing.T) {

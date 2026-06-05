@@ -33,6 +33,7 @@ func DecodeJsonBody[T any](body []byte) (dest T, err error) {
 		var unmarshalTypeErr *json.UnmarshalTypeError
 		var timeParseErr *time.ParseError
 
+		// return a useful user error where possible
 		switch {
 		case errors.Is(err, io.ErrUnexpectedEOF):
 			return dest, lyserr.User{Message: "request body contains badly-formed json"}
@@ -50,16 +51,36 @@ func DecodeJsonBody[T any](body []byte) (dest T, err error) {
 			return dest, lyserr.User{Message: "unknown field: " + strings.Trim(fieldName, `"`)}
 
 		case strings.HasSuffix(err.Error(), "unable to parse IP"):
+			if val, ok := parseWrappedValue(`ParseAddr("`, `")`, err.Error()); ok {
+				return dest, lyserr.User{Message: "failed to parse IP address: " + val}
+			}
 			return dest, lyserr.User{Message: "failed to parse IP address"}
 
 		case errors.As(err, &timeParseErr):
 			msg := timeParseErr.Error()
-			asLoc := strings.Index(msg, " as ")
-			const longMsgLen = 13
-			if asLoc > longMsgLen && len(msg) > longMsgLen+1 {
-				return dest, lyserr.User{Message: "failed to parse a date or time: " + strings.Trim(msg[longMsgLen:asLoc], "\\\"")}
+
+			// cannot parse
+			if strings.Contains(msg, "cannot parse") {
+				if val, ok := parseWrappedValue(`parsing time "`, `" as `, msg); ok {
+					return dest, lyserr.User{Message: "failed to parse a date or time: " + val}
+				}
 			}
-			return dest, lyserr.User{Message: "failed to parse a date or time: " + msg}
+
+			// extra text
+			if strings.Contains(msg, "extra text") {
+				if _, after, ok := strings.Cut(msg, "parsing time "); ok {
+					return dest, lyserr.User{Message: "failed to parse a date or time: " + strings.ReplaceAll(after, `"`, "")}
+				}
+			}
+
+			// out of range
+			if strings.Contains(msg, "out of range") {
+				if _, after, ok := strings.Cut(msg, "parsing time "); ok {
+					return dest, lyserr.User{Message: "failed to parse a date or time: " + strings.ReplaceAll(after, `"`, "")}
+				}
+			}
+
+			return dest, lyserr.User{Message: "failed to parse a date or time: " + strings.ReplaceAll(msg, `"`, "")}
 
 		default:
 			return dest, fmt.Errorf("dec.Decode failed: %w", err)
@@ -107,4 +128,15 @@ func ExtractJsonBody(r *http.Request, maxBodySize int64) (body []byte, err error
 // findLineinJson returns the line number in a json body corresponding to a given offset. This is used to provide more helpful error messages when json decoding fails.
 func findLineinJson(body []byte, offset int) (line int) {
 	return bytes.Count(body[:offset], []byte("\n")) + 1
+}
+
+// parseWrappedValue is a helper for extracting a value from an error message that is wrapped in a prefix and suffix.
+func parseWrappedValue(prefix, suffix, msg string) (string, bool) {
+	_, after, found := strings.Cut(msg, prefix)
+	if !found {
+		return "", false
+	}
+	rest := after
+	val, _, ok := strings.Cut(rest, suffix)
+	return val, ok
 }
