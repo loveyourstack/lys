@@ -171,10 +171,21 @@ func (appS *AppSessions) DeleteByUserId(userId int64) {
 // FromRequest returns the session associated with the request, or an error if the session is invalid.
 func (appS *AppSessions) FromRequest(r *http.Request, infoLog *slog.Logger) (sess Session, err error) {
 
-	// get token from req auth header
-	token, err := GetBearerToken(r.Header)
-	if err != nil {
-		return Session{}, fmt.Errorf("GetBearerToken failed: %w", err)
+	isWebSocket := IsWebSocket(r.Header)
+	token := ""
+
+	if isWebSocket {
+		// ws: get token from query param
+		token = r.URL.Query().Get("token")
+		if token == "" {
+			return Session{}, fmt.Errorf("ws: token param is empty or missing")
+		}
+	} else {
+		// http: get token from req auth header
+		token, err = GetBearerToken(r.Header)
+		if err != nil {
+			return Session{}, fmt.Errorf("GetBearerToken failed: %w", err)
+		}
 	}
 
 	// get IP
@@ -197,8 +208,8 @@ func (appS *AppSessions) FromRequest(r *http.Request, infoLog *slog.Logger) (ses
 		return Session{}, lyserr.User{Message: "invalid token", StatusCode: http.StatusForbidden}
 	}
 
-	// make sure request UserAgent matches session UserAgent
-	if r.UserAgent() != session.UserAgent {
+	// http only: make sure request UserAgent matches session UserAgent
+	if !isWebSocket && r.UserAgent() != session.UserAgent {
 		infoLog.Debug(fmt.Sprintf("session UserAgent mismatch: requestUserAgent=%s, sessionUserAgent=%s", r.UserAgent(), session.UserAgent))
 		return Session{}, lyserr.User{Message: "invalid token", StatusCode: http.StatusForbidden}
 	}

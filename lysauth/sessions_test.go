@@ -31,6 +31,20 @@ func newAuthRequest(t *testing.T, ip, token, userAgent string) *http.Request {
 	return req
 }
 
+func newWebSocketAuthRequest(t *testing.T, ip, token, userAgent string) *http.Request {
+	t.Helper()
+
+	req, err := http.NewRequest(http.MethodGet, "http://example.com/ws?token="+token, nil)
+	if err != nil {
+		t.Fatalf("failed creating websocket request: %v", err)
+	}
+	req.RemoteAddr = net.JoinHostPort(ip, "12345")
+	req.Header.Set("Upgrade", "websocket")
+	req.Header.Set("User-Agent", userAgent)
+
+	return req
+}
+
 func newDefaultSessionInput() SessionInput {
 	return SessionInput{
 		AllowMultipleSessions: false,
@@ -434,6 +448,61 @@ func TestAppSessions_FromRequest_AcceptsMappedIPv4(t *testing.T) {
 	if _, err = appS.FromRequest(req, slog.Default()); err != nil {
 		t.Fatalf("FromRequest(mapped ipv4 remote) returned unexpected error: %v", err)
 	}
+}
+
+func TestAppSessions_FromRequest_WebSocket(t *testing.T) {
+	validate := validator.New()
+	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+
+	sessionInput := newDefaultSessionInput()
+	sessionInput.Ip = netip.MustParseAddr("198.51.100.120")
+	sessionInput.UserAgent = "ua-http"
+	sessionInput.UserId = 6120
+	sessionInput.UserName = "ws-user"
+
+	token, err := appS.Add(sessionInput)
+	if err != nil {
+		t.Fatalf("setup Add returned unexpected error: %v", err)
+	}
+
+	t.Run("valid websocket request uses token query param", func(t *testing.T) {
+		req := newWebSocketAuthRequest(t, sessionInput.Ip.String(), token, "different-ua")
+
+		sess, err := appS.FromRequest(req, slog.Default())
+		if err != nil {
+			t.Fatalf("FromRequest(valid websocket) returned unexpected error: %v", err)
+		}
+		if sess.UserId != sessionInput.UserId {
+			t.Fatalf("FromRequest(valid websocket) UserId mismatch: got %d, want %d", sess.UserId, sessionInput.UserId)
+		}
+	})
+
+	t.Run("websocket ignores Authorization header", func(t *testing.T) {
+		req := newWebSocketAuthRequest(t, sessionInput.Ip.String(), token, sessionInput.UserAgent)
+		req.Header.Set("Authorization", "Bearer wrong-token")
+
+		if _, err = appS.FromRequest(req, slog.Default()); err != nil {
+			t.Fatalf("FromRequest(websocket with wrong Authorization header) returned unexpected error: %v", err)
+		}
+	})
+
+	t.Run("missing token query param", func(t *testing.T) {
+		req, err := http.NewRequest(http.MethodGet, "http://example.com/ws", nil)
+		if err != nil {
+			t.Fatalf("failed creating websocket request: %v", err)
+		}
+		req.RemoteAddr = net.JoinHostPort(sessionInput.Ip.String(), "12345")
+		req.Header.Set("Upgrade", "websocket")
+		req.Header.Set("User-Agent", sessionInput.UserAgent)
+
+		_, err = appS.FromRequest(req, slog.Default())
+		if err == nil {
+			t.Fatalf("FromRequest(websocket missing token query) expected error, got nil")
+		}
+		if !strings.Contains(err.Error(), "ws: token param is empty or missing") {
+			t.Fatalf("FromRequest(websocket missing token query) error mismatch: got %q, want contains %q", err.Error(), "ws: token param is empty or missing")
+		}
+	})
 }
 
 func TestAppSessions_FromRequest_XForwardedFor(t *testing.T) {
