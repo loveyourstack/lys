@@ -1,9 +1,11 @@
 package lys
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"os"
 
@@ -89,23 +91,42 @@ func JsonResponse(resp StdResponse, httpStatus int, w http.ResponseWriter) {
 	}
 }
 
-// StatusWriter is a wrapper around http.ResponseWriter that captures the status code and number of bytes written in the response
+// StatusWriter is a wrapper around http.ResponseWriter that captures the status code and number of bytes written in the response.
+// It implements http.Flusher and http.Hijacker so that it can also write websocket responses.
 type StatusWriter struct {
 	http.ResponseWriter
 	Status int
 	Bytes  int
 }
 
-func (w *StatusWriter) WriteHeader(code int) {
-	w.Status = code
-	w.ResponseWriter.WriteHeader(code)
+func (sw *StatusWriter) Flush() {
+	if fl, ok := sw.ResponseWriter.(http.Flusher); ok {
+		fl.Flush()
+	}
 }
 
-func (w *StatusWriter) Write(b []byte) (int, error) {
-	if w.Status == 0 {
-		w.Status = http.StatusOK
+func (sw *StatusWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hj, ok := sw.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, http.ErrNotSupported
 	}
-	n, err := w.ResponseWriter.Write(b)
-	w.Bytes += n
+	return hj.Hijack()
+}
+
+func (sw *StatusWriter) Unwrap() http.ResponseWriter {
+	return sw.ResponseWriter
+}
+
+func (sw *StatusWriter) WriteHeader(code int) {
+	sw.Status = code
+	sw.ResponseWriter.WriteHeader(code)
+}
+
+func (sw *StatusWriter) Write(b []byte) (int, error) {
+	if sw.Status == 0 {
+		sw.Status = http.StatusOK
+	}
+	n, err := sw.ResponseWriter.Write(b)
+	sw.Bytes += n
 	return n, err
 }
