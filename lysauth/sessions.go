@@ -219,12 +219,14 @@ func (appS *AppSessions) FromRequest(r *http.Request, infoLog *slog.Logger) (ses
 		return Session{}, lyserr.User{Message: "session expired", StatusCode: http.StatusForbidden}
 	}
 
-	// session verified, update LastAccessAt and ExpiresAt
-	session.LastAccessAt = lystype.Datetime(time.Now())
-	session.ExpiresAt = lystype.Datetime(time.Now().Add(appS.sessionDuration))
-	appS.mu.Lock()
-	appS.all[token] = session
-	appS.mu.Unlock()
+	// session verified, http only: update LastAccessAt and ExpiresAt
+	if !isWebSocket {
+		session.LastAccessAt = lystype.Datetime(time.Now())
+		session.ExpiresAt = lystype.Datetime(time.Now().Add(appS.sessionDuration))
+		appS.mu.Lock()
+		appS.all[token] = session
+		appS.mu.Unlock()
+	}
 
 	return session, nil
 }
