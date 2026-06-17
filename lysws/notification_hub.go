@@ -56,22 +56,22 @@ func NewNotificationHub(ctx context.Context, db *pgxpool.Pool, dbListenChannel s
 	allowedOrigin string, infoLog, errorLog *slog.Logger, options ...NotificationHubOptions) (hub *NotificationHub, err error) {
 
 	if allowedOrigin == "" {
-		return nil, fmt.Errorf("allowedOrigin is required")
+		return nil, fmt.Errorf("hub: allowedOrigin is required")
 	}
 	if db == nil {
-		return nil, fmt.Errorf("db is required")
+		return nil, fmt.Errorf("hub: db is required")
 	}
 	if dbListenChannel == "" {
-		return nil, fmt.Errorf("dbListenChannel is required")
+		return nil, fmt.Errorf("hub: dbListenChannel is required")
 	}
 	if errorLog == nil {
-		return nil, fmt.Errorf("errorLog is required")
+		return nil, fmt.Errorf("hub: errorLog is required")
 	}
 	if infoLog == nil {
-		return nil, fmt.Errorf("infoLog is required")
+		return nil, fmt.Errorf("hub: infoLog is required")
 	}
 	if maxUserConnections < 1 {
-		return nil, fmt.Errorf("maxUserConnections must be greater than 0")
+		return nil, fmt.Errorf("hub: maxUserConnections must be greater than 0")
 	}
 
 	opts := NotificationHubOptions{
@@ -119,11 +119,11 @@ func NewNotificationHub(ctx context.Context, db *pgxpool.Pool, dbListenChannel s
 
 	return &NotificationHub{
 		conns:              make(map[int64][]*websocket.Conn),
-		errorLog:           errorLog,
+		errorLog:           errorLog.With("component", "notification hub"),
 		heartbeatPingIntvl: opts.HeartbeatPingInterval,
 		heartbeatPongWait:  opts.HeartbeatPongWait,
 		heartbeatWriteWait: opts.HeartbeatWriteWait,
-		infoLog:            infoLog,
+		infoLog:            infoLog.With("component", "notification hub"),
 		maxUserConnections: maxUserConnections,
 		upgrader:           upgrader,
 
