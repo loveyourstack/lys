@@ -48,6 +48,7 @@ func newWebSocketAuthRequest(t *testing.T, ip, token, userAgent string) *http.Re
 func newDefaultSessionInput() SessionInput {
 	return SessionInput{
 		AllowMultipleSessions: false,
+		Email:                 "jane.doe@example.com",
 		FamilyName:            "Doe",
 		ForcePasswordChange:   false,
 		GeoIpCountryIsoCode:   "US",
@@ -140,6 +141,28 @@ func TestAppSessions_Add(t *testing.T) {
 				i := newDefaultSessionInput()
 				i.Ip = netip.MustParseAddr("203.0.113.20")
 				i.UserName = ""
+				return i
+			}(),
+			wantErr: "lysmeta.Validate failed",
+		},
+		{
+			name: "missing email",
+			input: func() SessionInput {
+				i := newDefaultSessionInput()
+				i.Ip = netip.MustParseAddr("203.0.113.22")
+				i.Email = ""
+				i.UserName = "user"
+				return i
+			}(),
+			wantErr: "lysmeta.Validate failed",
+		},
+		{
+			name: "invalid email",
+			input: func() SessionInput {
+				i := newDefaultSessionInput()
+				i.Ip = netip.MustParseAddr("203.0.113.23")
+				i.Email = "not-an-email"
+				i.UserName = "user"
 				return i
 			}(),
 			wantErr: "lysmeta.Validate failed",

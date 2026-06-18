@@ -19,6 +19,7 @@ import (
 // SessionInput is a user session input.
 type SessionInput struct {
 	AllowMultipleSessions bool       `json:"allow_multiple_sessions"`
+	Email                 string     `json:"email,omitempty" validate:"required,email,max=256"`
 	FamilyName            string     `json:"family_name" validate:"required"`
 	ForcePasswordChange   bool       `json:"force_password_change"`
 	GeoIpCountryIsoCode   string     `json:"geo_ip_country_iso_code" validate:"required,len=2"`
