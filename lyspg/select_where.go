@@ -18,7 +18,8 @@ func GetWhereClause(existingParamCount int, conds []Condition, orCondSets [][]Co
 	for _, cond := range conds {
 		idx++
 		part, newIdx := getWherePart(cond, idx)
-		clause.WriteString(" AND " + part)
+		clause.WriteString(" AND ")
+		clause.WriteString(part)
 		idx = newIdx
 	}
 
@@ -33,7 +34,9 @@ func GetWhereClause(existingParamCount int, conds []Condition, orCondSets [][]Co
 			orParts = append(orParts, part)
 			idx = newIdx
 		}
-		clause.WriteString(" AND (" + strings.Join(orParts, " OR ") + ")")
+		clause.WriteString(" AND (")
+		clause.WriteString(strings.Join(orParts, " OR "))
+		clause.WriteString(")")
 	}
 
 	return clause.String(), idx
