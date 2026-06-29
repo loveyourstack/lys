@@ -38,7 +38,7 @@ type FileReplacement struct {
 }
 
 // ExecuteFile extracts the supplied file from the supplied filesystem and executes it into supplied database
-func ExecuteFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlAssets embed.FS, replacements []FileReplacement, infoLog *slog.Logger) (err error) {
+func ExecuteFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlAssets embed.FS, replacements []FileReplacement, logger *slog.Logger) (err error) {
 
 	// get file content from packaged sql
 	rawQry, err := fs.ReadFile(sqlAssets, sqlFileName)
@@ -46,7 +46,7 @@ func ExecuteFile(ctx context.Context, db *pgxpool.Pool, sqlFileName string, sqlA
 		return fmt.Errorf("fs.ReadFile failed for file: %v: %w", sqlFileName, err)
 	}
 
-	infoLog.Info("Executing " + sqlFileName)
+	logger.Info("Executing " + sqlFileName)
 
 	// make text replacements, if any
 	for _, r := range replacements {

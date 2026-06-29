@@ -18,7 +18,7 @@ func GetValue[T any](env Env, db *pgxpool.Pool, stmt string) http.HandlerFunc {
 		rows, _ := db.Query(ctx, stmt)
 		res, err := pgx.CollectExactlyOneRow(rows, pgx.RowTo[T])
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("GetValue: pgx.CollectExactlyOneRow failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("GetValue: pgx.CollectExactlyOneRow failed: %w", err), env.Logger, w)
 			return
 		}
 

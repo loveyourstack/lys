@@ -15,7 +15,7 @@ func GetSimple[T any](env Env, selectFunc func(ctx context.Context) (items []T, 
 		// select items from Db
 		items, err := selectFunc(ctx)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("GetSimple: selectFunc failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("GetSimple: selectFunc failed: %w", err), env.Logger, w)
 			return
 		}
 

@@ -15,7 +15,7 @@ import (
 
 // CreateLocalDb creates or recreates a test or dev db
 func CreateLocalDb(ctx context.Context, sqlAssets embed.FS, dbConf Database, dbSuperUser, dbOwnerConf User,
-	dropExisting, addSecurityPermissions bool, replacements []FileReplacement, infoLog *slog.Logger) (err error) {
+	dropExisting, addSecurityPermissions bool, replacements []FileReplacement, logger *slog.Logger) (err error) {
 
 	pgDbConf := Database{
 		Host:     dbConf.Host,
@@ -37,13 +37,13 @@ func CreateLocalDb(ctx context.Context, sqlAssets embed.FS, dbConf Database, dbS
 
 	// (re-)create database
 	if dropExisting {
-		infoLog.Info("Dropping database " + dbConf.Database + " if exists")
+		logger.Info("Dropping database " + dbConf.Database + " if exists")
 		if err = DropDb(ctx, pgSuperUserPgDb, dbConf.Database); err != nil {
 			return fmt.Errorf("DropDb failed for database: %v: %w", dbConf.Database, err)
 		}
 	}
 
-	infoLog.Info("Creating database " + dbConf.Database)
+	logger.Info("Creating database " + dbConf.Database)
 	if err = CreateDb(ctx, pgSuperUserPgDb, dbConf.Database); err != nil {
 		return fmt.Errorf("CreateDb failed for database: %v: %w", dbConf.Database, err)
 	}
@@ -58,21 +58,21 @@ func CreateLocalDb(ctx context.Context, sqlAssets embed.FS, dbConf Database, dbS
 	defer pgSuperUserDb.Close()
 
 	// add database extensions
-	infoLog.Info("Adding extensions, if any")
-	if err = ExecuteFile(ctx, pgSuperUserDb, "extensions.sql", sqlAssets, replacements, infoLog); err != nil {
+	logger.Info("Adding extensions, if any")
+	if err = ExecuteFile(ctx, pgSuperUserDb, "extensions.sql", sqlAssets, replacements, logger); err != nil {
 		return fmt.Errorf("ExecuteFile failed (extensions): %w", err)
 	}
 
 	// grant all rights on the db to the db owner user
-	infoLog.Info("Granting all rights to " + dbOwnerConf.Name)
+	logger.Info("Granting all rights to " + dbOwnerConf.Name)
 	if err = GrantAll(ctx, pgSuperUserDb, dbOwnerConf, dbConf.Database); err != nil {
 		return fmt.Errorf("GrantAll failed for all rights for user: %v: %w", dbOwnerConf.Name, err)
 	}
 
 	// add other security permissions from file
 	if addSecurityPermissions {
-		infoLog.Info("Adding security permissions")
-		if err = ExecuteFile(ctx, pgSuperUserDb, "security_permissions.sql", sqlAssets, replacements, infoLog); err != nil {
+		logger.Info("Adding security permissions")
+		if err = ExecuteFile(ctx, pgSuperUserDb, "security_permissions.sql", sqlAssets, replacements, logger); err != nil {
 			return fmt.Errorf("ExecuteFile failed (security_permissions): %w", err)
 		}
 	}
@@ -88,12 +88,12 @@ func CreateLocalDb(ctx context.Context, sqlAssets embed.FS, dbConf Database, dbS
 
 	// populate and analyze db
 
-	infoLog.Info("Populating database")
-	if err = PopulateDb(ctx, dbOwnerUserDb, sqlAssets, dbConf.SchemaCreationOrder, replacements, infoLog); err != nil {
+	logger.Info("Populating database")
+	if err = PopulateDb(ctx, dbOwnerUserDb, sqlAssets, dbConf.SchemaCreationOrder, replacements, logger); err != nil {
 		return fmt.Errorf("PopulateDb failed: %w", err)
 	}
 
-	infoLog.Info("Analyze")
+	logger.Info("Analyze")
 	if _, err = dbOwnerUserDb.Exec(ctx, "ANALYZE;"); err != nil {
 		return fmt.Errorf("dbOwnerUserDb.Exec failed (ANALYZE): %w", err)
 	}
@@ -148,7 +148,7 @@ func GrantAll(ctx context.Context, pgUserDb *pgxpool.Pool, userConf User, dbName
 
 // PopulateDb writes schema, tables, functions and views
 func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schemaCreationOrder []string, replacements []FileReplacement,
-	infoLog *slog.Logger) (err error) {
+	logger *slog.Logger) (err error) {
 
 	// make sure db is empty (no user objects)
 	stmt := `SELECT count(*) FROM pg_class c
@@ -166,7 +166,7 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 	}
 
 	// create schemas and assign default permissions
-	if err = ExecuteFile(ctx, db, "schemas.sql", sqlAssets, replacements, infoLog); err != nil {
+	if err = ExecuteFile(ctx, db, "schemas.sql", sqlAssets, replacements, logger); err != nil {
 		return fmt.Errorf("ExecuteFile failed (schemas): %w", err)
 	}
 
@@ -175,7 +175,7 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 	for _, assetType := range assetTypes {
 		for _, schema := range schemaCreationOrder {
 			assetPath := fmt.Sprintf("%s/%s_%s.sql", schema, schema, assetType)
-			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, infoLog); err != nil {
+			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, logger); err != nil {
 				if errors.Is(err, fs.ErrNotExist) {
 					continue
 				}
@@ -194,7 +194,7 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 			}
 			for _, dirEntry := range dirEntries {
 				if strings.HasPrefix(dirEntry.Name(), funcType) {
-					if err = ExecuteFile(ctx, db, schema+"/"+dirEntry.Name(), sqlAssets, replacements, infoLog); err != nil {
+					if err = ExecuteFile(ctx, db, schema+"/"+dirEntry.Name(), sqlAssets, replacements, logger); err != nil {
 						return fmt.Errorf("ExecuteFile failed for schema: %v, func type: %v: %w", schema, funcType, err)
 					}
 				}
@@ -208,7 +208,7 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 		for _, schema := range schemaCreationOrder {
 
 			assetPath := fmt.Sprintf("%s/%s_%s.sql", schema, schema, assetType)
-			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, infoLog); err != nil {
+			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, logger); err != nil {
 				if errors.Is(err, fs.ErrNotExist) {
 					continue
 				}
@@ -222,7 +222,7 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 	for _, assetType := range assetTypes {
 		for _, schema := range schemaCreationOrder {
 			assetPath := fmt.Sprintf("%s/%s_%s.sql", schema, schema, assetType)
-			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, infoLog); err != nil {
+			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, logger); err != nil {
 				if errors.Is(err, fs.ErrNotExist) {
 					continue
 				}
@@ -241,7 +241,7 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 			}
 			for _, dirEntry := range dirEntries {
 				if strings.HasPrefix(dirEntry.Name(), assetType) {
-					if err = ExecuteFile(ctx, db, schema+"/"+dirEntry.Name(), sqlAssets, replacements, infoLog); err != nil {
+					if err = ExecuteFile(ctx, db, schema+"/"+dirEntry.Name(), sqlAssets, replacements, logger); err != nil {
 						return fmt.Errorf("ExecuteFile failed for schema: %v, asset type: %v: %w", schema, assetType, err)
 					}
 				}

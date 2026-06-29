@@ -44,7 +44,7 @@ func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], va
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Import: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Import: ExtractJsonBody failed: %w", err), env.Logger, w)
 			return
 		}
 
@@ -52,7 +52,7 @@ func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], va
 		if len(valRepls) > 0 {
 			body, err = importReplaceValues(ctx, db, body, valRepls...)
 			if err != nil {
-				HandleError(ctx, fmt.Errorf("Import: importReplaceValues failed: %w", err), env.ErrorLog, w)
+				HandleError(ctx, fmt.Errorf("Import: importReplaceValues failed: %w", err), env.Logger, w)
 				return
 			}
 		}
@@ -60,7 +60,7 @@ func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], va
 		// unmarshal the body into a slice of inputs
 		inputs, err := DecodeJsonBody[[]inputT](body)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Import: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Import: DecodeJsonBody failed: %w", err), env.Logger, w)
 			return
 		}
 
@@ -86,7 +86,7 @@ func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], va
 		// begin tx
 		tx, err := db.Begin(ctx)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Import: db.Begin failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Import: db.Begin failed: %w", err), env.Logger, w)
 			return
 		}
 		defer tx.Rollback(ctx)
@@ -98,11 +98,11 @@ func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], va
 				// if it was user-fixable db error, e.g. a unique constraint violation, show the line number to user
 				dbErr := lyserr.Db{}
 				if errors.As(err, &dbErr) {
-					HandleDbError(ctx, i+1, dbErr.Stmt, fmt.Errorf("Import: store.InsertTx failed: %w", dbErr.Err), env.ErrorLog, w)
+					HandleDbError(ctx, i+1, dbErr.Stmt, fmt.Errorf("Import: store.InsertTx failed: %w", dbErr.Err), env.Logger, w)
 					return
 				}
 
-				HandleError(ctx, fmt.Errorf("Import: store.InsertTx failed on line %v: %w", i+1, err), env.ErrorLog, w)
+				HandleError(ctx, fmt.Errorf("Import: store.InsertTx failed on line %v: %w", i+1, err), env.Logger, w)
 				return
 			}
 		}
@@ -110,7 +110,7 @@ func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], va
 		// success: commit tx
 		err = tx.Commit(ctx)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Import: tx.Commit failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Import: tx.Commit failed: %w", err), env.Logger, w)
 			return
 		}
 

@@ -23,11 +23,10 @@ import (
 type NotificationHub struct {
 	closed             atomic.Bool
 	conns              map[int64][]*websocket.Conn // user_id → active sockets
-	errorLog           *slog.Logger
 	heartbeatPingIntvl time.Duration
 	heartbeatPongWait  time.Duration
 	heartbeatWriteWait time.Duration
-	infoLog            *slog.Logger
+	logger             *slog.Logger
 	maxUserConnections int
 	mu                 sync.RWMutex // protects conns
 	upgrader           websocket.Upgrader
@@ -53,7 +52,7 @@ const (
 // NewNotificationHub creates a new NotificationHub instance.
 // It acquires a database connection for listening to notifications and initializes the connection map.
 func NewNotificationHub(ctx context.Context, db *pgxpool.Pool, dbListenChannel string, maxUserConnections int,
-	allowedOrigin string, infoLog, errorLog *slog.Logger, options ...NotificationHubOptions) (hub *NotificationHub, err error) {
+	allowedOrigin string, logger *slog.Logger, options ...NotificationHubOptions) (hub *NotificationHub, err error) {
 
 	if allowedOrigin == "" {
 		return nil, fmt.Errorf("hub: allowedOrigin is required")
@@ -64,11 +63,8 @@ func NewNotificationHub(ctx context.Context, db *pgxpool.Pool, dbListenChannel s
 	if dbListenChannel == "" {
 		return nil, fmt.Errorf("hub: dbListenChannel is required")
 	}
-	if errorLog == nil {
-		return nil, fmt.Errorf("hub: errorLog is required")
-	}
-	if infoLog == nil {
-		return nil, fmt.Errorf("hub: infoLog is required")
+	if logger == nil {
+		return nil, fmt.Errorf("hub: logger is required")
 	}
 	if maxUserConnections < 1 {
 		return nil, fmt.Errorf("hub: maxUserConnections must be greater than 0")
@@ -119,11 +115,10 @@ func NewNotificationHub(ctx context.Context, db *pgxpool.Pool, dbListenChannel s
 
 	return &NotificationHub{
 		conns:              make(map[int64][]*websocket.Conn),
-		errorLog:           errorLog.With("component", "notification hub"),
 		heartbeatPingIntvl: opts.HeartbeatPingInterval,
 		heartbeatPongWait:  opts.HeartbeatPongWait,
 		heartbeatWriteWait: opts.HeartbeatWriteWait,
-		infoLog:            infoLog.With("component", "notification hub"),
+		logger:             logger.With("component", "notification hub"),
 		maxUserConnections: maxUserConnections,
 		upgrader:           upgrader,
 
@@ -143,10 +138,10 @@ func (h *NotificationHub) broadcast(userID int64, msg []byte, logFailures bool) 
 	h.mu.RUnlock()
 
 	for _, conn := range connsCopy {
-		h.infoLog.Debug("broadcasting message", "user_id", userID, "message", string(msg))
+		h.logger.Debug("broadcasting message", "user_id", userID, "message", string(msg))
 		if connErr := conn.WriteMessage(websocket.TextMessage, msg); connErr != nil {
 			if logFailures {
-				h.errorLog.Error("conn.WriteMessage failed", "user_id", userID, "error", connErr)
+				h.logger.Error("conn.WriteMessage failed", "user_id", userID, "error", connErr)
 			}
 			h.Unregister(userID, conn)
 			err = errors.Join(err, connErr)
@@ -239,7 +234,7 @@ func (h *NotificationHub) ListenAndBroadcast(ctx context.Context, selectFunc Not
 	defer func() {
 		_, unlistenErr := lisConn.Exec(context.Background(), "UNLISTEN "+pgx.Identifier{h.dbListenChannel}.Sanitize())
 		if unlistenErr != nil {
-			h.errorLog.Error("lisConn.Exec (UNLISTEN) failed", "channel", h.dbListenChannel, "error", unlistenErr)
+			h.logger.Error("lisConn.Exec (UNLISTEN) failed", "channel", h.dbListenChannel, "error", unlistenErr)
 		}
 	}()
 
@@ -261,14 +256,14 @@ func (h *NotificationHub) ListenAndBroadcast(ctx context.Context, selectFunc Not
 		// payload needs to be the notification ID int64 to be looked up by selectFunc
 		notId, err := strconv.ParseInt(not.Payload, 10, 64)
 		if err != nil {
-			h.errorLog.Error("strconv.ParseInt failed", "payload", not.Payload, "error", err)
+			h.logger.Error("strconv.ParseInt failed", "payload", not.Payload, "error", err)
 			continue
 		}
 
 		// select the notification details
 		userId, notType, message, err := selectFunc(ctx, h.db, notId)
 		if err != nil {
-			h.errorLog.Error("selectFunc failed", "notification_id", notId, "error", err)
+			h.logger.Error("selectFunc failed", "notification_id", notId, "error", err)
 			continue
 		}
 
@@ -279,13 +274,13 @@ func (h *NotificationHub) ListenAndBroadcast(ctx context.Context, selectFunc Not
 		}
 		msgBytes, err := json.Marshal(payload)
 		if err != nil {
-			h.errorLog.Error("json.Marshal failed", "payload", payload, "error", err)
+			h.logger.Error("json.Marshal failed", "payload", payload, "error", err)
 			continue
 		}
 
 		// broadcast the message to the user's active connections
 		if err := h.BroadcastE(userId, msgBytes); err != nil {
-			h.errorLog.Error("h.BroadcastE failed", "user_id", userId, "error", err)
+			h.logger.Error("h.BroadcastE failed", "user_id", userId, "error", err)
 		}
 
 	} // end for
@@ -295,7 +290,7 @@ func (h *NotificationHub) ListenAndBroadcast(ctx context.Context, selectFunc Not
 func (h *NotificationHub) Register(userID int64, c *websocket.Conn) (accepted bool) {
 
 	if c == nil {
-		h.errorLog.Error("connection cannot be nil")
+		h.logger.Error("connection cannot be nil")
 		return false
 	}
 
@@ -310,11 +305,11 @@ func (h *NotificationHub) Register(userID int64, c *websocket.Conn) (accepted bo
 	// reject if hub is closed
 	case h.closed.Load():
 		shouldClose = true
-		h.errorLog.Error("notification hub is closed")
+		h.logger.Error("notification hub is closed")
 
 	// reject if c is already registered for userID (shouldn't happen but just in case)
 	case slices.Contains(h.conns[userID], c):
-		h.errorLog.Error("connection already registered for user", "user_id", userID)
+		h.logger.Error("connection already registered for user", "user_id", userID)
 
 	// reject if userID already has maximum active connections
 	case len(h.conns[userID]) >= h.maxUserConnections:
@@ -323,12 +318,12 @@ func (h *NotificationHub) Register(userID int64, c *websocket.Conn) (accepted bo
 		// client should listen for this code to prevent endless reconnect loops
 		closeCode = 4429
 		closeMsg = "max connections reached"
-		h.errorLog.Error("maximum active connections reached for user", "user_id", userID)
+		h.logger.Error("maximum active connections reached for user", "user_id", userID)
 
 	// register new connection
 	default:
 		h.conns[userID] = append(h.conns[userID], c)
-		h.infoLog.Debug("registered connection", "user_id", userID)
+		h.logger.Debug("registered connection", "user_id", userID)
 		accepted = true
 	}
 
@@ -338,7 +333,7 @@ func (h *NotificationHub) Register(userID int64, c *websocket.Conn) (accepted bo
 		if closeCode != 0 || closeMsg != "" {
 			err := c.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(closeCode, closeMsg))
 			if err != nil {
-				h.errorLog.Error("c.WriteMessage failed", "user_id", userID, "error", err)
+				h.logger.Error("c.WriteMessage failed", "user_id", userID, "error", err)
 			}
 		}
 		_ = c.Close()
@@ -440,7 +435,7 @@ func (h *NotificationHub) Unregister(userID int64, c *websocket.Conn) {
 		// close conn
 		err := conn.Close()
 		if err != nil {
-			h.errorLog.Error("conn.Close failed", "user_id", userID, "error", err)
+			h.logger.Error("conn.Close failed", "user_id", userID, "error", err)
 		}
 
 		// remove conn from slice
@@ -451,7 +446,7 @@ func (h *NotificationHub) Unregister(userID int64, c *websocket.Conn) {
 			delete(h.conns, userID)
 		}
 
-		h.infoLog.Debug("unregistered connection", "user_id", userID)
+		h.logger.Debug("unregistered connection", "user_id", userID)
 		break
 	}
 }

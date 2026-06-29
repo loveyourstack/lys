@@ -170,7 +170,7 @@ func (appS *AppSessions) DeleteByUserId(userId int64) {
 }
 
 // FromRequest returns the session associated with the request, or an error if the session is invalid.
-func (appS *AppSessions) FromRequest(r *http.Request, infoLog *slog.Logger) (sess Session, err error) {
+func (appS *AppSessions) FromRequest(r *http.Request, logger *slog.Logger) (sess Session, err error) {
 
 	isWebSocket := IsWebSocket(r.Header)
 	token := ""
@@ -205,13 +205,13 @@ func (appS *AppSessions) FromRequest(r *http.Request, infoLog *slog.Logger) (ses
 
 	// make sure request IP matches session IP
 	if remoteHostIp != session.Ip {
-		infoLog.Debug(fmt.Sprintf("session IP mismatch: remoteHostIp=%s, sessionIp=%s", remoteHostIp, session.Ip))
+		logger.Debug(fmt.Sprintf("session IP mismatch: remoteHostIp=%s, sessionIp=%s", remoteHostIp, session.Ip))
 		return Session{}, lyserr.User{Message: "invalid token", StatusCode: http.StatusForbidden}
 	}
 
 	// http only: make sure request UserAgent matches session UserAgent
 	if !isWebSocket && r.UserAgent() != session.UserAgent {
-		infoLog.Debug(fmt.Sprintf("session UserAgent mismatch: requestUserAgent=%s, sessionUserAgent=%s", r.UserAgent(), session.UserAgent))
+		logger.Debug(fmt.Sprintf("session UserAgent mismatch: requestUserAgent=%s, sessionUserAgent=%s", r.UserAgent(), session.UserAgent))
 		return Session{}, lyserr.User{Message: "invalid token", StatusCode: http.StatusForbidden}
 	}
 

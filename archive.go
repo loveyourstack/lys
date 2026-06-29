@@ -35,14 +35,14 @@ func moveRecords[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc f
 		// get the id param and parse it into an idT
 		id, err := getIdFromReq[idT](r)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("%s: getIdFromReq failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("%s: getIdFromReq failed: %w", callingFunc, err), env.Logger, w)
 			return
 		}
 
 		// begin tx
 		tx, err := db.Begin(ctx)
 		if err != nil {
-			HandleInternalError(ctx, fmt.Errorf("%s: db.Begin failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleInternalError(ctx, fmt.Errorf("%s: db.Begin failed: %w", callingFunc, err), env.Logger, w)
 			return
 		}
 		defer tx.Rollback(ctx)
@@ -50,14 +50,14 @@ func moveRecords[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, moveFunc f
 		// try the operation
 		err = moveFunc(ctx, tx, id)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("%s: moveFunc failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("%s: moveFunc failed: %w", callingFunc, err), env.Logger, w)
 			return
 		}
 
 		// success: commit tx
 		err = tx.Commit(ctx)
 		if err != nil {
-			HandleInternalError(ctx, fmt.Errorf("%s: tx.Commit failed: %w", callingFunc, err), env.ErrorLog, w)
+			HandleInternalError(ctx, fmt.Errorf("%s: tx.Commit failed: %w", callingFunc, err), env.Logger, w)
 			return
 		}
 

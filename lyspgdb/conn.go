@@ -87,7 +87,7 @@ type ContextKey string
 
 // GetPoolWithCtxSetting returns a connection pool wherein each connection has a setting from ctx applied to it on acquisition
 // adapted from https://github.com/jackc/pgx/issues/288
-func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database, userConfig User, appName, settingName string, ctxKey ContextKey, errorLog *slog.Logger) (db *pgxpool.Pool, err error) {
+func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database, userConfig User, appName, settingName string, ctxKey ContextKey, logger *slog.Logger) (db *pgxpool.Pool, err error) {
 
 	cfg, err := GetConfig(dbConfig, userConfig, appName)
 	if err != nil {
@@ -117,7 +117,7 @@ func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database
 		// reset the setting before this connection is released to pool
 		_, err := conn.Exec(context.Background(), fmt.Sprintf("RESET %s;", pgx.Identifier{settingName}.Sanitize()))
 		if err != nil {
-			errorLog.Error("conn.Exec (reset setting) failed: " + err.Error())
+			logger.Error("conn.Exec (reset setting) failed: " + err.Error())
 			return false
 		}
 

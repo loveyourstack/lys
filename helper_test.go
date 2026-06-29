@@ -22,6 +22,7 @@ import (
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
 	"github.com/loveyourstack/lys/internal/stores/core/coreuuidtest"
 	"github.com/loveyourstack/lys/internal/stores/core/corevolumetest"
+	"github.com/loveyourstack/lys/lyslog"
 	"github.com/loveyourstack/lys/lyspg"
 	"github.com/loveyourstack/lys/lyspgdb"
 	"github.com/loveyourstack/lys/lysset"
@@ -38,7 +39,7 @@ func (srvApp *httpServerApplication) getRouter() http.Handler {
 
 	// define env struct needed for lys route handlers
 	apiEnv := Env{
-		ErrorLog:    srvApp.ErrorLog,
+		Logger:      srvApp.Logger,
 		Validate:    srvApp.Validate,
 		GetOptions:  srvApp.GetOptions,
 		PostOptions: srvApp.PostOptions,
@@ -150,8 +151,7 @@ func mustGetSrvApp(ctx context.Context, t testing.TB) *httpServerApplication {
 
 	app := &cmd.Application{
 		Config:   &conf,
-		InfoLog:  slog.New(slog.NewTextHandler(os.Stdout, nil)),
-		ErrorLog: slog.New(slog.NewTextHandler(os.Stderr, nil)),
+		Logger:   slog.New(lyslog.NewSplitStreamHandler(os.Stdout, os.Stderr, nil)),
 		Validate: validator.New(validator.WithRequiredStructEnabled()),
 	}
 

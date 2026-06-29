@@ -11,34 +11,34 @@ import (
 )
 
 // CheckDb checks the integrity of the database. It should be run after schema updates and also periodically
-func CheckDb(ctx context.Context, ownerDb *pgxpool.Pool, infoLog, errorLog *slog.Logger) (err error) {
+func CheckDb(ctx context.Context, ownerDb *pgxpool.Pool, logger *slog.Logger) (err error) {
 
 	// add any missing audit_update triggers
-	err = AddMissingAuditUpdateTriggers(ctx, ownerDb, infoLog)
+	err = AddMissingAuditUpdateTriggers(ctx, ownerDb, logger)
 	if err != nil {
 		return fmt.Errorf("AddMissingAuditUpdateTriggers failed: %w", err)
 	}
 
 	// add any missing updated_at triggers
-	err = AddMissingUpdatedAtTriggers(ctx, ownerDb, infoLog)
+	err = AddMissingUpdatedAtTriggers(ctx, ownerDb, logger)
 	if err != nil {
 		return fmt.Errorf("AddMissingUpdatedAtTriggers failed: %w", err)
 	}
 
 	// check for tables that have the t_audit_update trigger but are missing the last_user_update_by col
-	err = CheckMissingLastUserUpdateByCols(ctx, ownerDb, errorLog)
+	err = CheckMissingLastUserUpdateByCols(ctx, ownerDb, logger)
 	if err != nil {
 		return fmt.Errorf("CheckMissingLastUserUpdateByCols failed: %w", err)
 	}
 
 	// check for duplicate table shortnames
-	err = CheckDuplicateShortnames(ctx, ownerDb, errorLog)
+	err = CheckDuplicateShortnames(ctx, ownerDb, logger)
 	if err != nil {
 		return fmt.Errorf("CheckDuplicateShortnames failed: %w", err)
 	}
 
 	// check that _archived tables columns are consistent with their base table
-	err = CheckInconsistentArchivedCols(ctx, ownerDb, errorLog)
+	err = CheckInconsistentArchivedCols(ctx, ownerDb, logger)
 	if err != nil {
 		return fmt.Errorf("CheckInconsistentArchivedCols failed: %w", err)
 	}
@@ -46,7 +46,7 @@ func CheckDb(ctx context.Context, ownerDb *pgxpool.Pool, infoLog, errorLog *slog
 	return nil
 }
 
-func addMissingTriggers(ctx context.Context, ownerDb *pgxpool.Pool, viewName, triggerName, when, triggerFunc string, infoLog *slog.Logger) (err error) {
+func addMissingTriggers(ctx context.Context, ownerDb *pgxpool.Pool, viewName, triggerName, when, triggerFunc string, logger *slog.Logger) (err error) {
 
 	type missingTrigger struct {
 		TableSchema string `db:"table_schema"`
@@ -79,24 +79,24 @@ func addMissingTriggers(ctx context.Context, ownerDb *pgxpool.Pool, viewName, tr
 			return lyserr.Db{Err: fmt.Errorf("ownerDb.Exec failed on %s.%s: %w", item.TableSchema, item.TableName, err), Stmt: stmt}
 		}
 
-		infoLog.Info("created trigger", slog.String("name", triggerName), slog.String("schema", item.TableSchema), slog.String("table", item.TableName))
+		logger.Info("created trigger", slog.String("name", triggerName), slog.String("schema", item.TableSchema), slog.String("table", item.TableName))
 	}
 
 	return nil
 }
 
 // AddMissingAuditUpdateTriggers adds missing audit update triggers for all tables returned by v_missing_audit_update_trigger
-func AddMissingAuditUpdateTriggers(ctx context.Context, ownerDb *pgxpool.Pool, infoLog *slog.Logger) (err error) {
-	return addMissingTriggers(ctx, ownerDb, "v_missing_audit_update_trigger", "t_audit_update", "AFTER UPDATE", "audit_update_trigger", infoLog)
+func AddMissingAuditUpdateTriggers(ctx context.Context, ownerDb *pgxpool.Pool, logger *slog.Logger) (err error) {
+	return addMissingTriggers(ctx, ownerDb, "v_missing_audit_update_trigger", "t_audit_update", "AFTER UPDATE", "audit_update_trigger", logger)
 }
 
 // AddMissingUpdatedAtTriggers adds missing updated_at triggers for all tables returned by v_missing_updated_at_trigger
-func AddMissingUpdatedAtTriggers(ctx context.Context, ownerDb *pgxpool.Pool, infoLog *slog.Logger) (err error) {
-	return addMissingTriggers(ctx, ownerDb, "v_missing_updated_at_trigger", "t_set_updated_at", "BEFORE UPDATE", "set_updated_at", infoLog)
+func AddMissingUpdatedAtTriggers(ctx context.Context, ownerDb *pgxpool.Pool, logger *slog.Logger) (err error) {
+	return addMissingTriggers(ctx, ownerDb, "v_missing_updated_at_trigger", "t_set_updated_at", "BEFORE UPDATE", "set_updated_at", logger)
 }
 
 // CheckDuplicateShortnames checks for tables with the same shortname comment
-func CheckDuplicateShortnames(ctx context.Context, ownerDb *pgxpool.Pool, errorLog *slog.Logger) (err error) {
+func CheckDuplicateShortnames(ctx context.Context, ownerDb *pgxpool.Pool, logger *slog.Logger) (err error) {
 
 	type dupShortname struct {
 		Comment     string `db:"com"`
@@ -120,14 +120,14 @@ func CheckDuplicateShortnames(ctx context.Context, ownerDb *pgxpool.Pool, errorL
 	// list the dups
 	for _, item := range items {
 
-		errorLog.Warn("has duplicate shortname", slog.String("comment", item.Comment), slog.String("schema", item.TableSchema), slog.String("table", item.TableName))
+		logger.Error("has duplicate shortname", slog.String("comment", item.Comment), slog.String("schema", item.TableSchema), slog.String("table", item.TableName))
 	}
 
 	return nil
 }
 
 // CheckInconsistentArchivedCols checks for archived tables that do not have the same cols as their base tables
-func CheckInconsistentArchivedCols(ctx context.Context, ownerDb *pgxpool.Pool, errorLog *slog.Logger) (err error) {
+func CheckInconsistentArchivedCols(ctx context.Context, ownerDb *pgxpool.Pool, logger *slog.Logger) (err error) {
 
 	type inconsistentCol struct {
 		Info        string `db:"info"`
@@ -152,7 +152,7 @@ func CheckInconsistentArchivedCols(ctx context.Context, ownerDb *pgxpool.Pool, e
 	// list the inconsistencies
 	for _, item := range items {
 
-		errorLog.Warn("inconsistent archived cols", slog.String("info", item.Info), slog.String("schema", item.TableSchema), slog.String("table", item.TableName),
+		logger.Error("inconsistent archived cols", slog.String("info", item.Info), slog.String("schema", item.TableSchema), slog.String("table", item.TableName),
 			slog.String("column", item.ColumnName))
 	}
 
@@ -160,7 +160,7 @@ func CheckInconsistentArchivedCols(ctx context.Context, ownerDb *pgxpool.Pool, e
 }
 
 // CheckMissingLastUserUpdateByCols checks for tables that have the t_audit_update trigger but are missing the last_user_update_by col
-func CheckMissingLastUserUpdateByCols(ctx context.Context, ownerDb *pgxpool.Pool, errorLog *slog.Logger) (err error) {
+func CheckMissingLastUserUpdateByCols(ctx context.Context, ownerDb *pgxpool.Pool, logger *slog.Logger) (err error) {
 
 	type missingCol struct {
 		EventObjectSchema string `db:"event_object_schema"`
@@ -184,7 +184,7 @@ func CheckMissingLastUserUpdateByCols(ctx context.Context, ownerDb *pgxpool.Pool
 	for _, item := range items {
 
 		// report it missing
-		errorLog.Warn("has audit trigger but missing last_user_update_by col", slog.String("schema", item.EventObjectSchema), slog.String("table", item.EventObjectTable))
+		logger.Error("has audit trigger but missing last_user_update_by col", slog.String("schema", item.EventObjectSchema), slog.String("table", item.EventObjectTable))
 	}
 
 	return nil

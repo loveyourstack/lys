@@ -22,8 +22,8 @@ func CreateTestDbCmd(cliApp *cliapp.App) *cobra.Command {
 
 			// (re-)create test db
 			if err := lyspgdb.CreateLocalDb(cmd.Context(), ddl.SQLAssets, cliApp.Config.Db, cliApp.Config.DbSuperUser, cliApp.Config.DbOwnerUser, true, false,
-				nil, cliApp.InfoLog); err != nil {
-				cliApp.ErrorLog.Error("lyspgdb.CreateLocalDb failed: " + err.Error())
+				nil, cliApp.Logger); err != nil {
+				cliApp.Logger.Error("lyspgdb.CreateLocalDb failed: " + err.Error())
 				os.Exit(1)
 			}
 		},

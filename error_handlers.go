@@ -14,7 +14,7 @@ import (
 )
 
 // HandleInternalError returns a generic error message to the API user and logs the error
-func HandleInternalError(ctx context.Context, err error, errorLog *slog.Logger, w http.ResponseWriter) {
+func HandleInternalError(ctx context.Context, err error, logger *slog.Logger, w http.ResponseWriter) {
 
 	resp := StdResponse{
 		Status:         ReqFailed,
@@ -22,7 +22,7 @@ func HandleInternalError(ctx context.Context, err error, errorLog *slog.Logger, 
 	}
 	JsonResponse(resp, http.StatusInternalServerError, w)
 
-	logError(ctx, err, errorLog)
+	logError(ctx, err, logger)
 }
 
 // HandleUserError returns a helpful message to the API user, but does not log the error. If HTTP status is not provided, BadRequest is assumed.
@@ -40,7 +40,7 @@ func HandleUserError(err lyserr.User, w http.ResponseWriter) {
 }
 
 // HandleExtError returns the external message to the API user and logs the error
-func HandleExtError(ctx context.Context, extMessage string, err error, errorLog *slog.Logger, w http.ResponseWriter) {
+func HandleExtError(ctx context.Context, extMessage string, err error, logger *slog.Logger, w http.ResponseWriter) {
 
 	resp := StdResponse{
 		Status:         ReqFailed,
@@ -48,12 +48,12 @@ func HandleExtError(ctx context.Context, extMessage string, err error, errorLog 
 	}
 	JsonResponse(resp, http.StatusBadGateway, w) // BadGateway is used to indicate that the error was caused by a 3rd party API call
 
-	logError(ctx, err, errorLog)
+	logError(ctx, err, logger)
 }
 
 // HandleDbError returns a specific error message to the API user if the error is caused by a bad input, e.g. a check or uniqueness violation.
 // Otherwise it returns a generic error message to the API user and logs the specific error
-func HandleDbError(ctx context.Context, line int, stmt string, err error, errorLog *slog.Logger, w http.ResponseWriter) {
+func HandleDbError(ctx context.Context, line int, stmt string, err error, logger *slog.Logger, w http.ResponseWriter) {
 
 	// if an input line number is provided, include it in all messages
 	lineTxt := ""
@@ -114,11 +114,11 @@ func HandleDbError(ctx context.Context, line int, stmt string, err error, errorL
 	if line > 0 {
 		extra = append(extra, slog.Int("line", line))
 	}
-	logError(ctx, err, errorLog, extra...)
+	logError(ctx, err, logger, extra...)
 }
 
 // HandleError is the general method for handling API errors where err could contain wrapped errors of other types
-func HandleError(ctx context.Context, err error, errorLog *slog.Logger, w http.ResponseWriter) {
+func HandleError(ctx context.Context, err error, logger *slog.Logger, w http.ResponseWriter) {
 
 	// expected error: request canceled
 	// ctx.Err() checks context state directly
@@ -148,7 +148,7 @@ func HandleError(ctx context.Context, err error, errorLog *slog.Logger, w http.R
 	extErr := lyserr.Ext{}
 	if errors.As(err, &extErr) {
 		// pass err, not extErr, to keep full trace
-		HandleExtError(ctx, extErr.Message, err, errorLog, w)
+		HandleExtError(ctx, extErr.Message, err, logger, w)
 		return
 	}
 
@@ -156,19 +156,19 @@ func HandleError(ctx context.Context, err error, errorLog *slog.Logger, w http.R
 	dbErr := lyserr.Db{}
 	if errors.As(err, &dbErr) {
 		// pass err, not dbErr, to keep full trace
-		HandleDbError(ctx, dbErr.Line, dbErr.Stmt, err, errorLog, w)
+		HandleDbError(ctx, dbErr.Line, dbErr.Stmt, err, logger, w)
 		return
 	}
 
 	// unknown internal error
-	HandleInternalError(ctx, err, errorLog, w)
+	HandleInternalError(ctx, err, logger, w)
 }
 
 // logError is a helper function to log errors with user information and any extra attributes
-func logError(ctx context.Context, err error, errorLog *slog.Logger, extra ...slog.Attr) {
+func logError(ctx context.Context, err error, logger *slog.Logger, extra ...slog.Attr) {
 	args := []any{slog.String("user", GetUserNameFromCtx(ctx))}
 	for _, a := range extra {
 		args = append(args, a)
 	}
-	errorLog.Error(err.Error(), args...)
+	logger.Error(err.Error(), args...)
 }

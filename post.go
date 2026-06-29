@@ -24,14 +24,14 @@ func Post[inputT any, outputT any](env Env, store iPostable[inputT, outputT]) ht
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Post: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Post: ExtractJsonBody failed: %w", err), env.Logger, w)
 			return
 		}
 
 		// unmarshal the body
 		input, err := DecodeJsonBody[inputT](body)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Post: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Post: DecodeJsonBody failed: %w", err), env.Logger, w)
 			return
 		}
 
@@ -44,7 +44,7 @@ func Post[inputT any, outputT any](env Env, store iPostable[inputT, outputT]) ht
 		// try to insert the item into db
 		newVal, err := store.Insert(ctx, input)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Post: store.Insert failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Post: store.Insert failed: %w", err), env.Logger, w)
 			return
 		}
 

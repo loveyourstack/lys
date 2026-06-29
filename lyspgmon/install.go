@@ -17,7 +17,7 @@ const gSchemaName string = "lyspgmon"
 
 // Install creates the lyspgmon schema in the database if it is not already present, and (re)-adds functions and monitoring views in the lyspgmonddl folder
 // note that local permissions need to be granted to lyspgmon schema and objects after installation
-func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, infoLog *slog.Logger) (err error) {
+func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, logger *slog.Logger) (err error) {
 
 	// create schema if needed
 	err = createSchema(ctx, ownerDb, dbOwner)
@@ -37,7 +37,7 @@ func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, infoLog
 		}
 
 		// exec file into db
-		err = lyspgdb.ExecuteFile(ctx, ownerDb, path, lyspgmonddl.SQLAssets, nil, infoLog)
+		err = lyspgdb.ExecuteFile(ctx, ownerDb, path, lyspgmonddl.SQLAssets, nil, logger)
 		if err != nil {
 			return fmt.Errorf("lyspgdb.ExecuteFile failed for path '%s': %w", path, err)
 		}

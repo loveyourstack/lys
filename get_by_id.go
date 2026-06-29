@@ -22,14 +22,14 @@ func GetById[idT lyspg.PrimaryKeyType, outT any](env Env, store iGetableById[idT
 		// get the id param and parse it into an idT
 		id, err := getIdFromReq[idT](r)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("GetById: getIdFromReq failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("GetById: getIdFromReq failed: %w", err), env.Logger, w)
 			return
 		}
 
 		// select item from Db
 		item, err := store.SelectById(ctx, id)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("GetById: SelectById failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("GetById: SelectById failed: %w", err), env.Logger, w)
 			return
 		}
 

@@ -15,21 +15,21 @@ func ProcessSlice[T any](env Env, processFunc func(context.Context, []T) (int64,
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("ProcessSlice: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("ProcessSlice: ExtractJsonBody failed: %w", err), env.Logger, w)
 			return
 		}
 
 		// unmarshal the body
 		vals, err := DecodeJsonBody[[]T](body)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("ProcessSlice: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("ProcessSlice: DecodeJsonBody failed: %w", err), env.Logger, w)
 			return
 		}
 
 		// run the process func
 		respVal, err := processFunc(ctx, vals)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("ProcessSlice: processFunc failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("ProcessSlice: processFunc failed: %w", err), env.Logger, w)
 			return
 		}
 

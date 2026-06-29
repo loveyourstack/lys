@@ -25,21 +25,21 @@ func Put[idT lyspg.PrimaryKeyType, inputT any](env Env, store iPutable[idT, inpu
 		// get the id param and parse it into an idT
 		id, err := getIdFromReq[idT](r)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Put: getIdFromReq failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Put: getIdFromReq failed: %w", err), env.Logger, w)
 			return
 		}
 
 		// get req body
 		body, err := ExtractJsonBody(r, env.PostOptions.MaxBodySize)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Put: ExtractJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Put: ExtractJsonBody failed: %w", err), env.Logger, w)
 			return
 		}
 
 		// unmarshal the body
 		input, err := DecodeJsonBody[inputT](body)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Put: DecodeJsonBody failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Put: DecodeJsonBody failed: %w", err), env.Logger, w)
 			return
 		}
 
@@ -52,7 +52,7 @@ func Put[idT lyspg.PrimaryKeyType, inputT any](env Env, store iPutable[idT, inpu
 		// try to update the item in db
 		err = store.Update(ctx, input, id)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Put: store.Update failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Put: store.Update failed: %w", err), env.Logger, w)
 			return
 		}
 

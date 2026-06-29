@@ -34,7 +34,7 @@ func NotFound() http.HandlerFunc {
 // PgSleep creates an artifical longrunning query in the db which can be viewed using pg_stat_activity.
 // Pass cancelAfterSecs as 0 to not cancel the request.
 // Used for testing context cancelation
-func PgSleep(db lyspg.PoolOrTx, errorLog *slog.Logger, sleepSecs, cancelAfterSecs int) http.HandlerFunc {
+func PgSleep(db lyspg.PoolOrTx, logger *slog.Logger, sleepSecs, cancelAfterSecs int) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -46,13 +46,13 @@ func PgSleep(db lyspg.PoolOrTx, errorLog *slog.Logger, sleepSecs, cancelAfterSec
 
 			go func() {
 				<-ctx.Done()
-				errorLog.Info(fmt.Sprintf("canceling sleep after %d seconds", cancelAfterSecs))
+				logger.Info(fmt.Sprintf("canceling sleep after %d seconds", cancelAfterSecs))
 			}()
 		}
 
 		err := lyspg.Sleep(ctx, db, sleepSecs)
 		if err != nil {
-			HandleError(ctx, err, errorLog, w)
+			HandleError(ctx, err, logger, w)
 			return
 		}
 

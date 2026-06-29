@@ -22,14 +22,14 @@ func Delete[idT lyspg.PrimaryKeyType](env Env, store iDeletable[idT]) http.Handl
 		// get the id param and parse it into an idT
 		id, err := getIdFromReq[idT](r)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Delete: getIdFromReq failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Delete: getIdFromReq failed: %w", err), env.Logger, w)
 			return
 		}
 
 		// delete item from db
 		err = store.Delete(ctx, id)
 		if err != nil {
-			HandleError(ctx, fmt.Errorf("Delete: store.Delete failed: %w", err), env.ErrorLog, w)
+			HandleError(ctx, fmt.Errorf("Delete: store.Delete failed: %w", err), env.Logger, w)
 			return
 		}
 

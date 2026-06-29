@@ -23,11 +23,10 @@ func testLogger() *slog.Logger {
 func newTestHub() *NotificationHub {
 	return &NotificationHub{
 		conns:              make(map[int64][]*websocket.Conn),
-		errorLog:           testLogger(),
 		heartbeatPingIntvl: defaultHeartbeatPingIntvl,
 		heartbeatPongWait:  defaultHeartbeatPongWait,
 		heartbeatWriteWait: defaultHeartbeatWriteWait,
-		infoLog:            testLogger(),
+		logger:             testLogger(),
 		maxUserConnections: testMaxUserConnections,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(_ *http.Request) bool { return true },
@@ -292,8 +291,7 @@ func TestNewNotificationHubValidation(t *testing.T) {
 		allowedOrigin      string
 		channel            string
 		maxUserConnections int
-		infoLog            *slog.Logger
-		errorLog           *slog.Logger
+		logger             *slog.Logger
 		wantErr            string
 	}{
 		{
@@ -302,8 +300,7 @@ func TestNewNotificationHubValidation(t *testing.T) {
 			allowedOrigin:      "",
 			channel:            "chan_notifications",
 			maxUserConnections: testMaxUserConnections,
-			infoLog:            testLogger(),
-			errorLog:           testLogger(),
+			logger:             testLogger(),
 			wantErr:            "allowedOrigin is required",
 		},
 		{
@@ -312,8 +309,7 @@ func TestNewNotificationHubValidation(t *testing.T) {
 			allowedOrigin:      "*",
 			channel:            "chan_notifications",
 			maxUserConnections: testMaxUserConnections,
-			infoLog:            testLogger(),
-			errorLog:           testLogger(),
+			logger:             testLogger(),
 			wantErr:            "db is required",
 		},
 		{
@@ -322,8 +318,7 @@ func TestNewNotificationHubValidation(t *testing.T) {
 			allowedOrigin:      "*",
 			channel:            "",
 			maxUserConnections: testMaxUserConnections,
-			infoLog:            testLogger(),
-			errorLog:           testLogger(),
+			logger:             testLogger(),
 			wantErr:            "dbListenChannel is required",
 		},
 		{
@@ -332,8 +327,7 @@ func TestNewNotificationHubValidation(t *testing.T) {
 			allowedOrigin:      "*",
 			channel:            "chan_notifications",
 			maxUserConnections: 0,
-			infoLog:            testLogger(),
-			errorLog:           testLogger(),
+			logger:             testLogger(),
 			wantErr:            "maxUserConnections must be greater than 0",
 		},
 		{
@@ -342,36 +336,24 @@ func TestNewNotificationHubValidation(t *testing.T) {
 			allowedOrigin:      "*",
 			channel:            "chan_notifications",
 			maxUserConnections: -1,
-			infoLog:            testLogger(),
-			errorLog:           testLogger(),
+			logger:             testLogger(),
 			wantErr:            "maxUserConnections must be greater than 0",
 		},
 		{
-			name:               "nil infoLog",
+			name:               "nil logger",
 			db:                 &pgxpool.Pool{},
 			allowedOrigin:      "*",
 			channel:            "chan_notifications",
 			maxUserConnections: testMaxUserConnections,
-			infoLog:            nil,
-			errorLog:           testLogger(),
-			wantErr:            "infoLog is required",
-		},
-		{
-			name:               "nil errorLog",
-			db:                 &pgxpool.Pool{},
-			allowedOrigin:      "*",
-			channel:            "chan_notifications",
-			maxUserConnections: testMaxUserConnections,
-			infoLog:            testLogger(),
-			errorLog:           nil,
-			wantErr:            "errorLog is required",
+			logger:             nil,
+			wantErr:            "logger is required",
 		},
 	}
 
 	for _, tc := range tests {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			hub, err := NewNotificationHub(context.Background(), tc.db, tc.channel, tc.maxUserConnections, tc.allowedOrigin, tc.infoLog, tc.errorLog)
+			hub, err := NewNotificationHub(context.Background(), tc.db, tc.channel, tc.maxUserConnections, tc.allowedOrigin, tc.logger)
 			if err == nil {
 				t.Fatalf("expected error containing %q, got nil", tc.wantErr)
 			}

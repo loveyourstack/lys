@@ -14,7 +14,7 @@ import (
 
 // Env (environment) contains objects and options needed by API calls
 type Env struct {
-	ErrorLog    *slog.Logger
+	Logger      *slog.Logger
 	Validate    *validator.Validate
 	GetOptions  GetOptions
 	PostOptions PostOptions
