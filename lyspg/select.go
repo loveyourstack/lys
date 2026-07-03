@@ -99,10 +99,11 @@ func SelectT[T any](ctx context.Context, db PoolOrTx, selectStmt string, params 
 	return items, nil
 }
 
-// SelectUnique returns a single row using the value of a unique column such as id
-func SelectUnique[T any](ctx context.Context, db PoolOrTx, schema, view, column string, uniqueVal any) (item T, err error) {
+// SelectUniqueRowFields returns the requested fields of a single row using the value of a unique column such as id.
+// fields is a slice of column names to select. If you want all columns, use "*".
+func SelectUniqueRowFields[T any](ctx context.Context, db PoolOrTx, fields []string, schema, view, uniqueCol string, uniqueVal any) (item T, err error) {
 
-	stmt := fmt.Sprintf(`SELECT * FROM %s.%s WHERE %s = $1;`, schema, view, column)
+	stmt := fmt.Sprintf(`SELECT %s FROM %s.%s WHERE %s = $1;`, strings.Join(fields, ", "), schema, view, uniqueCol)
 
 	rows, _ := db.Query(ctx, stmt, uniqueVal)
 	item, err = pgx.CollectExactlyOneRow(rows, pgx.RowToStructByNameLax[T])
@@ -112,4 +113,9 @@ func SelectUnique[T any](ctx context.Context, db PoolOrTx, schema, view, column 
 
 	// success
 	return item, nil
+}
+
+// SelectUnique returns a single row using the value of a unique column such as id.
+func SelectUnique[T any](ctx context.Context, db PoolOrTx, schema, view, uniqueCol string, uniqueVal any) (item T, err error) {
+	return SelectUniqueRowFields[T](ctx, db, []string{"*"}, schema, view, uniqueCol, uniqueVal)
 }

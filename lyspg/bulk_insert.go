@@ -8,7 +8,7 @@ import (
 	"github.com/loveyourstack/lys/lysmeta"
 )
 
-// BulkInsert inserts multiple records using the postgres COPY protocol
+// BulkInsert inserts multiple records using the postgres COPY protocol.
 // T must be a struct with "db" tags
 func BulkInsert[T any](ctx context.Context, db PoolOrTx, schemaName, tableName string, inputs []T) (rowsAffected int64, err error) {
 
