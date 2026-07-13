@@ -27,7 +27,7 @@ type GetOpts[T any] struct {
 	// AdditionalFilterParamNames are param names that are not in the store's db tags, but should be allowed anyway. Must be handled by the store's Select func.
 	AdditionalFilterParamNames lysset.Set[string]
 
-	// GetLastSyncAt gets the last synced timestamp for external data.
+	// GetLastSyncAt gets the last synced timestamp for external data and returns it as a response header.
 	GetLastSyncAt func(ctx context.Context) (lastSyncAt lystype.Datetime, err error)
 
 	// SelectFunc, if passed, overrides the default store Select() func.
@@ -117,6 +117,17 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 			return
 		}
 
+		// if GetLastSyncAt func was passed, call it and add timestamp to resp headers
+		if getLastSyncAt != nil {
+			lastSyncAt, err := getLastSyncAt(ctx)
+			if err != nil {
+				// log error but don't fail the request
+				env.Logger.Error("Get: getLastSyncAt failed", "error", err)
+			} else {
+				w.Header().Set("LastSyncAt", lastSyncAt.Format(lystype.DatetimeFormat))
+			}
+		}
+
 		// output the required format
 		switch getReqModifiers.Format {
 
@@ -162,17 +173,6 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 					TotalCountIsEstimated: unpagedCount.IsEstimated,
 				},
 			}
-
-			// if GetLastSyncAt func was passed, call it and add timestamp to resp
-			if getLastSyncAt != nil {
-				lastSyncAt, err := getLastSyncAt(ctx)
-				if err != nil {
-					HandleError(ctx, fmt.Errorf("Get: getLastSyncAt failed: %w", err), env.Logger, w)
-					return
-				}
-				resp.LastSyncAt = &lastSyncAt
-			}
-
 			JsonResponse(resp, http.StatusOK, w)
 
 		default:
@@ -182,18 +182,18 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 	}
 }
 
-// iGetableWithLastSync is a store that can be used by GetWithLastSync
+// iGetableWithLastSync is a store that can be used by GetWithLastSync.
 type iGetableWithLastSync[T any] interface {
 	iGetable[T]
 	GetLastSyncAt(ctx context.Context) (lastSyncAt lystype.Datetime, err error)
 }
 
-// GetWithLastSync is a wrapper for Get which adds the lastSyncAt timestamp from the supplied func to the JSON response
+// GetWithLastSync is a wrapper for Get which adds the lastSyncAt timestamp from the supplied func to the response headers.
 func GetWithLastSync[T any](env Env, store iGetableWithLastSync[T]) http.HandlerFunc {
 	return Get(env, store, &GetOpts[T]{GetLastSyncAt: store.GetLastSyncAt})
 }
 
-// GetFunc is a wrapper for Get which allows passing an alternative Select func with the same signature
+// GetFunc is a wrapper for Get which allows passing an alternative Select func with the same signature.
 func GetFunc[T any](env Env, store iGetable[T], selectFunc func(ctx context.Context, params lyspg.SelectParams) (items []T, unpagedCount lyspg.TotalCount, err error)) http.HandlerFunc {
 	return Get(env, store, &GetOpts[T]{SelectFunc: selectFunc})
 }

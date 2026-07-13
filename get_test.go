@@ -2,11 +2,17 @@ package lys
 
 import (
 	"context"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"testing"
+	"time"
 
+	"github.com/loveyourstack/lys/internal/stores/core/coreparamtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretagtest"
 	"github.com/loveyourstack/lys/lysclient"
 	"github.com/loveyourstack/lys/lyspg"
+	"github.com/loveyourstack/lys/lystype"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -477,4 +483,77 @@ func TestGetJsonDefaultFormat(t *testing.T) {
 	resp := lysclient.MustGetItemResp(ctx, t, srvApp.getRouter(), targetUrl)
 	assert.NotNil(t, resp.GetMetadata, "default format is JSON with metadata")
 	assert.EqualValues(t, 1, len(resp.Data), "default format returns items")
+}
+
+func TestGetLastSyncAtHeaderAllFormats(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	apiEnv := Env{
+		Logger:      srvApp.Logger,
+		Validate:    srvApp.Validate,
+		GetOptions:  srvApp.GetOptions,
+		PostOptions: srvApp.PostOptions,
+	}
+
+	store := coreparamtest.Store{Db: srvApp.Db}
+	lastSyncAt := lystype.Datetime(time.Date(2026, 1, 2, 3, 4, 5, 0, time.FixedZone("UTC+1", 3600)))
+	expectedHeader := lastSyncAt.Format(lystype.DatetimeFormat)
+
+	callCount := 0
+	h := Get(apiEnv, store, &GetOpts[coreparamtest.Model]{
+		GetLastSyncAt: func(ctx context.Context) (lystype.Datetime, error) {
+			callCount++
+			return lastSyncAt, nil
+		},
+	})
+
+	// JSON
+	rr := httptest.NewRecorder()
+	req := mustCreateGetReq(t, "/param-test?xformat=json")
+	h.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code, "json request status")
+	assert.Equal(t, expectedHeader, rr.Result().Header.Get("LastSyncAt"), "json LastSyncAt header")
+
+	// CSV
+	_, csvHeaders := lysclient.MustGetFileWithHeaders(ctx, t, h, "/param-test?xformat=csv")
+	assert.Equal(t, expectedHeader, csvHeaders.Get("LastSyncAt"), "csv LastSyncAt header")
+
+	// Excel
+	_, excelHeaders := lysclient.MustGetFileWithHeaders(ctx, t, h, "/param-test?xformat=excel")
+	assert.Equal(t, expectedHeader, excelHeaders.Get("LastSyncAt"), "excel LastSyncAt header")
+
+	assert.EqualValues(t, 3, callCount, "GetLastSyncAt should be called once per request")
+}
+
+func TestGetLastSyncAtErrorNonFatal(t *testing.T) {
+	ctx := context.Background()
+	srvApp := mustGetSrvApp(ctx, t)
+	defer srvApp.Db.Close()
+
+	apiEnv := Env{
+		Logger:      srvApp.Logger,
+		Validate:    srvApp.Validate,
+		GetOptions:  srvApp.GetOptions,
+		PostOptions: srvApp.PostOptions,
+	}
+
+	store := coreparamtest.Store{Db: srvApp.Db}
+	h := Get(apiEnv, store, &GetOpts[coreparamtest.Model]{
+		GetLastSyncAt: func(ctx context.Context) (lystype.Datetime, error) {
+			return lystype.Datetime{}, fmt.Errorf("last sync lookup failed")
+		},
+	})
+
+	// Request still succeeds when LastSyncAt lookup fails.
+	resp := lysclient.MustGetItemResp(ctx, t, h, "/param-test?xformat=json")
+	assert.EqualValues(t, 2, len(resp.Data), "json request should still return data")
+
+	// Header is omitted on LastSyncAt lookup failure.
+	rr := httptest.NewRecorder()
+	req := mustCreateGetReq(t, "/param-test?xformat=json")
+	h.ServeHTTP(rr, req)
+	assert.Equal(t, http.StatusOK, rr.Code, "json request status with LastSyncAt error")
+	assert.Equal(t, "", rr.Result().Header.Get("LastSyncAt"), "LastSyncAt header should be omitted on error")
 }
