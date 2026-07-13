@@ -514,15 +514,15 @@ func TestGetLastSyncAtHeaderAllFormats(t *testing.T) {
 	req := mustCreateGetReq(t, "/param-test?xformat=json")
 	h.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code, "json request status")
-	assert.Equal(t, expectedHeader, rr.Result().Header.Get("LastSyncAt"), "json LastSyncAt header")
+	assert.Equal(t, expectedHeader, rr.Result().Header.Get("Last-Sync-At"), "json LastSyncAt header")
 
 	// CSV
 	_, csvHeaders := lysclient.MustGetFileWithHeaders(ctx, t, h, "/param-test?xformat=csv")
-	assert.Equal(t, expectedHeader, csvHeaders.Get("LastSyncAt"), "csv LastSyncAt header")
+	assert.Equal(t, expectedHeader, csvHeaders.Get("Last-Sync-At"), "csv LastSyncAt header")
 
 	// Excel
 	_, excelHeaders := lysclient.MustGetFileWithHeaders(ctx, t, h, "/param-test?xformat=excel")
-	assert.Equal(t, expectedHeader, excelHeaders.Get("LastSyncAt"), "excel LastSyncAt header")
+	assert.Equal(t, expectedHeader, excelHeaders.Get("Last-Sync-At"), "excel LastSyncAt header")
 
 	assert.EqualValues(t, 3, callCount, "GetLastSyncAt should be called once per request")
 }
@@ -555,5 +555,5 @@ func TestGetLastSyncAtErrorNonFatal(t *testing.T) {
 	req := mustCreateGetReq(t, "/param-test?xformat=json")
 	h.ServeHTTP(rr, req)
 	assert.Equal(t, http.StatusOK, rr.Code, "json request status with LastSyncAt error")
-	assert.Equal(t, "", rr.Result().Header.Get("LastSyncAt"), "LastSyncAt header should be omitted on error")
+	assert.Equal(t, "", rr.Result().Header.Get("Last-Sync-At"), "LastSyncAt header should be omitted on error")
 }

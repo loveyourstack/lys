@@ -124,7 +124,7 @@ func Get[T any](env Env, store iGetable[T], opts *GetOpts[T]) http.HandlerFunc {
 				// log error but don't fail the request
 				env.Logger.Error("Get: getLastSyncAt failed", "error", err)
 			} else {
-				w.Header().Set("LastSyncAt", lastSyncAt.Format(lystype.DatetimeFormat))
+				w.Header().Set("Last-Sync-At", lastSyncAt.Format(lystype.DatetimeFormat))
 			}
 		}
 
