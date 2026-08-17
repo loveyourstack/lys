@@ -267,19 +267,20 @@ func TestListenAndBroadcastValidation(t *testing.T) {
 		hub := newTestHub()
 		hub.closed.Store(true)
 
-		err := hub.ListenAndBroadcast(context.Background(), dummySelect)
-		if err == nil || !strings.Contains(err.Error(), "notification hub is closed") {
-			t.Fatalf("unexpected error: %v", err)
+		if err := hub.ListenAndBroadcast(context.Background(), dummySelect); err != nil {
+			t.Fatalf("expected nil error for closed hub, got: %v", err)
 		}
 	})
 
-	t.Run("missing listen conn", func(t *testing.T) {
+	t.Run("context already canceled", func(t *testing.T) {
 		hub := newTestHub()
 		hub.dbListenChannel = "chan_notifications"
 
-		err := hub.ListenAndBroadcast(context.Background(), dummySelect)
-		if err == nil || !strings.Contains(err.Error(), "dbListenConn is not initialized") {
-			t.Fatalf("unexpected error: %v", err)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+
+		if err := hub.ListenAndBroadcast(ctx, dummySelect); err != nil {
+			t.Fatalf("expected nil error for canceled context, got: %v", err)
 		}
 	})
 }

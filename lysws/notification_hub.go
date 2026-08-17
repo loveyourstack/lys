@@ -26,6 +26,7 @@ type NotificationHub struct {
 	heartbeatPingIntvl time.Duration
 	heartbeatPongWait  time.Duration
 	heartbeatWriteWait time.Duration
+	listenCancel       context.CancelFunc // cancels the active ListenAndBroadcast loop
 	logger             *slog.Logger
 	maxUserConnections int
 	mu                 sync.RWMutex // protects conns
@@ -33,8 +34,7 @@ type NotificationHub struct {
 
 	// database fields for LISTEN/UNLISTEN
 	db              *pgxpool.Pool
-	dbListenConn    *pgxpool.Conn // single connection acquired from pool for LISTEN/UNLISTEN
-	dbListenChannel string        // database channel to LISTEN on for notifications
+	dbListenChannel string // database channel to LISTEN on for notifications
 }
 
 type NotificationHubOptions struct {
@@ -100,12 +100,6 @@ func NewNotificationHub(ctx context.Context, db *pgxpool.Pool, dbListenChannel s
 		return nil, fmt.Errorf("heartbeatPingInterval must be less than heartbeatPongWait")
 	}
 
-	// acquire a single connection from the pool for listening
-	dbLisConn, err := db.Acquire(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("db.Acquire failed: %w", err)
-	}
-
 	// initialize the WebSocket upgrader with CORS check based on allowedOrigin
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool {
@@ -123,7 +117,6 @@ func NewNotificationHub(ctx context.Context, db *pgxpool.Pool, dbListenChannel s
 		upgrader:           upgrader,
 
 		db:              db,
-		dbListenConn:    dbLisConn,
 		dbListenChannel: dbListenChannel,
 	}, nil
 }
@@ -171,18 +164,16 @@ func (h *NotificationHub) Close() (err error) {
 
 	// snapshot all connections and clear conns map while holding the lock
 	h.mu.Lock()
+	if h.listenCancel != nil {
+		h.listenCancel()
+	}
+
 	all := make([]*websocket.Conn, 0)
 	for _, conns := range h.conns {
 		all = append(all, conns...)
 	}
 	h.conns = make(map[int64][]*websocket.Conn)
 	h.mu.Unlock()
-
-	// close the listen connection if it exists
-	if h.dbListenConn != nil {
-		h.dbListenConn.Release()
-		h.dbListenConn = nil
-	}
 
 	// close sockets outside the lock so slow network closes do not block remaining ops
 	for _, conn := range all {
@@ -213,28 +204,77 @@ func (h *NotificationHub) ListenAndBroadcast(ctx context.Context, selectFunc Not
 		return fmt.Errorf("selectFunc is required")
 	}
 
-	if h.closed.Load() {
-		return fmt.Errorf("notification hub is closed")
-	}
+	// create a cancellable context for the listen loop
+	listenCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
 
-	// snapshot the listen connection during lock to avoid panic if Close is called while ListenAndBroadcast is running
 	h.mu.Lock()
-	lisConn := h.dbListenConn
+	h.listenCancel = cancel
 	h.mu.Unlock()
 
-	if lisConn == nil {
-		return fmt.Errorf("dbListenConn is not initialized")
+	backoff := time.Second
+	const maxBackoff = 30 * time.Second
+	const healthyThreshold = maxBackoff // a connection that lasted at least this long counts as healthy
+
+	// loop to handle reconnection attempts with exponential backoff
+	for {
+
+		// exit if hub is closed or context is canceled
+		if h.closed.Load() || listenCtx.Err() != nil {
+			return nil
+		}
+
+		// acquire a fresh connection for this attempt
+		conn, err := h.db.Acquire(listenCtx)
+		if err != nil {
+			h.logger.Error("db.Acquire failed, retrying", "error", err)
+			if !sleepOrDone(listenCtx, backoff) {
+				return nil
+			}
+			backoff = min(backoff*2, maxBackoff)
+			continue
+		}
+
+		start := time.Now()
+
+		// listen for notifications on the acquired connection
+		err = h.listenOnce(listenCtx, conn, selectFunc)
+
+		// release the connection back to the pool
+		conn.Release()
+
+		// exit if hub is closed or context is canceled
+		if listenCtx.Err() != nil || h.closed.Load() {
+			return nil
+		}
+
+		h.logger.Info("listen connection lost, reconnecting", "error", err)
+
+		// reset backoff to 1 second if the connection lasted at least healthyThreshold duration
+		if time.Since(start) >= healthyThreshold {
+			backoff = time.Second
+		}
+
+		// wait for backoff duration or until context is canceled before retrying
+		if !sleepOrDone(listenCtx, backoff) {
+			return nil
+		}
+		backoff = min(backoff*2, maxBackoff)
 	}
+}
+
+// listenOnce listens for database notifications on the specified connection and broadcasts messages to users.
+func (h *NotificationHub) listenOnce(ctx context.Context, conn *pgxpool.Conn, selectFunc NotificationSelectFunc) (err error) {
 
 	// LISTEN to receive notifications on the dbListenChannel
-	_, err = lisConn.Exec(ctx, "LISTEN "+pgx.Identifier{h.dbListenChannel}.Sanitize())
+	_, err = conn.Exec(ctx, "LISTEN "+pgx.Identifier{h.dbListenChannel}.Sanitize())
 	if err != nil {
-		return fmt.Errorf("lisConn.Exec (LISTEN) failed on channel %s: %w", h.dbListenChannel, err)
+		return fmt.Errorf("conn.Exec (LISTEN) failed on channel %s: %w", h.dbListenChannel, err)
 	}
 	defer func() {
-		_, unlistenErr := lisConn.Exec(context.Background(), "UNLISTEN "+pgx.Identifier{h.dbListenChannel}.Sanitize())
+		_, unlistenErr := conn.Exec(context.Background(), "UNLISTEN "+pgx.Identifier{h.dbListenChannel}.Sanitize())
 		if unlistenErr != nil {
-			h.logger.Error("lisConn.Exec (UNLISTEN) failed", "channel", h.dbListenChannel, "error", unlistenErr)
+			h.logger.Error("conn.Exec (UNLISTEN) failed", "channel", h.dbListenChannel, "error", unlistenErr)
 		}
 	}()
 
@@ -245,12 +285,12 @@ func (h *NotificationHub) ListenAndBroadcast(ctx context.Context, selectFunc Not
 
 	// wait for notifications or context cancellation
 	for {
-		not, err := lisConn.Conn().WaitForNotification(ctx)
+		not, err := conn.Conn().WaitForNotification(ctx)
 		if err != nil {
 			if ctx.Err() != nil {
 				return nil
 			}
-			return fmt.Errorf("lisConn.Conn().WaitForNotification failed: %w", err)
+			return fmt.Errorf("conn.WaitForNotification failed: %w", err)
 		}
 
 		// payload needs to be the notification ID int64 to be looked up by selectFunc
@@ -406,6 +446,19 @@ func (h *NotificationHub) ServeUserSocket(ctx context.Context, w http.ResponseWr
 		if _, _, err := wsConn.ReadMessage(); err != nil {
 			return nil
 		}
+	}
+}
+
+// sleepOrDone waits for d or ctx cancellation, returning false if ctx was canceled first.
+func sleepOrDone(ctx context.Context, d time.Duration) bool {
+	timer := time.NewTimer(d)
+	defer timer.Stop()
+
+	select {
+	case <-ctx.Done():
+		return false
+	case <-timer.C:
+		return true
 	}
 }
 
