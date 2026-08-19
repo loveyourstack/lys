@@ -105,11 +105,14 @@ func StreamToDisk(uploadFiles []UploadFile, destPath string, userId int64, logge
 // If no suitable extension can be determined, it returns an empty string.
 func chooseStoredExtension(fileHeader *multipart.FileHeader, detectedMime string) string {
 
-	// first, try to get extension from original file name
+	// try to get extension from original file name
 	if fileHeader != nil {
 		ext := strings.TrimPrefix(filepath.Ext(fileHeader.Filename), ".")
 		if ext != "" {
-			if t := mime.TypeByExtension("." + ext); t != "" && strings.EqualFold(t, detectedMime) {
+
+			// check if the extension matches the detected MIME type
+			t, _, _ := mime.ParseMediaType(mime.TypeByExtension("." + ext))
+			if t != "" && strings.EqualFold(t, detectedMime) {
 				return "." + strings.ToLower(ext)
 			}
 		}
@@ -120,5 +123,6 @@ func chooseStoredExtension(fileHeader *multipart.FileHeader, detectedMime string
 	if err == nil && len(exts) > 0 {
 		return strings.ToLower(exts[0])
 	}
+
 	return ""
 }

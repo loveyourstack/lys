@@ -89,7 +89,7 @@ func (params *ExtractParams) validateAndProcess() (err error) {
 	if params.MaxSizePerFile <= 0 {
 		return lyserr.User{Message: "MaxSizePerFile must be greater than 0"}
 	}
-	params.maxSizePerFileWithOverhead = params.MaxSizePerFile + 1024 // add 1KB overhead for multipart form data
+	params.maxSizePerFileWithOverhead = params.MaxSizePerFile + 1024 // add 1 KB overhead for multipart form data
 
 	// maxBodyBytes: ensure it does not overflow int64.
 	if int64(params.calcMaxFiles) > math.MaxInt64/params.maxSizePerFileWithOverhead {
@@ -168,13 +168,13 @@ func ExtractFromRequest(r *http.Request, params ExtractParams) (uploadFiles []Up
 			// enforce max files limit
 			if len(uploadFiles) >= params.calcMaxFiles {
 				closeOpened()
-				return nil, lyserr.User{Message: fmt.Sprintf("too many files uploaded: %d, maximum allowed is %d", len(uploadFiles), params.calcMaxFiles)}
+				return nil, lyserr.User{Message: fmt.Sprintf("%d files uploaded but maximum allowed is %d", len(uploadFiles)+1, params.calcMaxFiles)}
 			}
 
 			// check file size against max
 			if fileHeader.Size > params.MaxSizePerFile {
 				closeOpened()
-				return nil, lyserr.User{Message: fmt.Sprintf("file %s exceeds the maximum allowed size of %d bytes", fileHeader.Filename, params.MaxSizePerFile)}
+				return nil, lyserr.User{Message: fmt.Sprintf("file %s exceeds the maximum allowed size of %s", fileHeader.Filename, lysstring.FormatBytes(params.MaxSizePerFile))}
 			}
 
 			// open file
@@ -194,7 +194,7 @@ func ExtractFromRequest(r *http.Request, params ExtractParams) (uploadFiles []Up
 			}
 
 			// detect MIME type and validate against allowed types
-			mimeType := http.DetectContentType(buffer[:n])
+			mimeType, _, _ := mime.ParseMediaType(http.DetectContentType(buffer[:n]))
 			if !params.normMimeTypes.Contains(strings.ToLower(mimeType)) {
 				file.Close()
 				closeOpened()
@@ -239,16 +239,16 @@ func ExtractFromRequest(r *http.Request, params ExtractParams) (uploadFiles []Up
 
 func validateImageDimensions(imgCfg image.Config, params ExtractParams) error {
 	if params.ImgMinWidthPx != nil && imgCfg.Width < *params.ImgMinWidthPx {
-		return lyserr.User{Message: fmt.Sprintf("image width %d px is less than the minimum allowed %d px", imgCfg.Width, *params.ImgMinWidthPx)}
+		return lyserr.User{Message: fmt.Sprintf("image width %dpx is less than the minimum allowed %dpx", imgCfg.Width, *params.ImgMinWidthPx)}
 	}
 	if params.ImgMaxWidthPx != nil && imgCfg.Width > *params.ImgMaxWidthPx {
-		return lyserr.User{Message: fmt.Sprintf("image width %d px exceeds the maximum allowed %d px", imgCfg.Width, *params.ImgMaxWidthPx)}
+		return lyserr.User{Message: fmt.Sprintf("image width %dpx exceeds the maximum allowed %dpx", imgCfg.Width, *params.ImgMaxWidthPx)}
 	}
 	if params.ImgMinHeightPx != nil && imgCfg.Height < *params.ImgMinHeightPx {
-		return lyserr.User{Message: fmt.Sprintf("image height %d px is less than the minimum allowed %d px", imgCfg.Height, *params.ImgMinHeightPx)}
+		return lyserr.User{Message: fmt.Sprintf("image height %dpx is less than the minimum allowed %dpx", imgCfg.Height, *params.ImgMinHeightPx)}
 	}
 	if params.ImgMaxHeightPx != nil && imgCfg.Height > *params.ImgMaxHeightPx {
-		return lyserr.User{Message: fmt.Sprintf("image height %d px exceeds the maximum allowed %d px", imgCfg.Height, *params.ImgMaxHeightPx)}
+		return lyserr.User{Message: fmt.Sprintf("image height %dpx exceeds the maximum allowed %dpx", imgCfg.Height, *params.ImgMaxHeightPx)}
 	}
 	return nil
 }

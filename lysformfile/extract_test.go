@@ -131,7 +131,7 @@ func TestExtractFromRequest_EnforcesMaxFiles(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for exceeding max file count")
 	}
-	if !strings.Contains(err.Error(), "too many files uploaded") {
+	if !strings.Contains(err.Error(), "maximum allowed is") {
 		t.Fatalf("expected too-many-files error, got: %v", err)
 	}
 }
@@ -306,7 +306,7 @@ func TestExtractFromRequest_ValidatesImageDimensions(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for image width below minimum")
 		}
-		if !strings.Contains(err.Error(), "image width 8 px is less than the minimum allowed 9 px") {
+		if !strings.Contains(err.Error(), "image width 8px is less than the minimum allowed 9px") {
 			t.Fatalf("expected width-too-small error, got: %v", err)
 		}
 	})
@@ -332,7 +332,7 @@ func TestExtractFromRequest_ValidatesImageDimensions(t *testing.T) {
 		if err == nil {
 			t.Fatal("expected error for image height above maximum")
 		}
-		if !strings.Contains(err.Error(), "image height 8 px exceeds the maximum allowed 7 px") {
+		if !strings.Contains(err.Error(), "image height 8px exceeds the maximum allowed 7px") {
 			t.Fatalf("expected height-too-large error, got: %v", err)
 		}
 	})
