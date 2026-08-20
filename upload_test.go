@@ -67,33 +67,6 @@ func newMultipartRequest(t *testing.T, parts map[string]struct {
 	return req
 }
 
-func TestValidateDestPath(t *testing.T) {
-	t.Run("accepts directory", func(t *testing.T) {
-		dir := t.TempDir()
-		if err := validateDestPath(dir); err != nil {
-			t.Fatalf("validateDestPath returned error for valid directory: %v", err)
-		}
-	})
-
-	t.Run("rejects empty path", func(t *testing.T) {
-		if err := validateDestPath(""); err == nil {
-			t.Fatal("expected error for empty destPath")
-		}
-	})
-
-	t.Run("rejects file path", func(t *testing.T) {
-		file, err := os.CreateTemp(t.TempDir(), "not-dir-*.txt")
-		if err != nil {
-			t.Fatalf("CreateTemp failed: %v", err)
-		}
-		defer file.Close()
-
-		if err := validateDestPath(file.Name()); err == nil {
-			t.Fatal("expected error when destPath is a file")
-		}
-	})
-}
-
 func TestUpload_HandlerSuccess(t *testing.T) {
 	dir := t.TempDir()
 	params := lysformfile.ExtractParams{

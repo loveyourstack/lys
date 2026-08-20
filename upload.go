@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysformfile"
@@ -26,13 +25,6 @@ func Upload(extractParams lysformfile.ExtractParams, destPath string, logger *sl
 		userId := GetUserIdFromCtx(ctx)
 		if userId == 0 {
 			HandleUserError(lyserr.User{Message: "user not authenticated", StatusCode: http.StatusForbidden}, w)
-			return
-		}
-
-		// validate destPath
-		err := validateDestPath(destPath)
-		if err != nil {
-			HandleError(ctx, fmt.Errorf("Upload: validateDestPath failed: %w", err), logger, w)
 			return
 		}
 
@@ -70,23 +62,4 @@ func Upload(extractParams lysformfile.ExtractParams, destPath string, logger *sl
 		}
 		JsonResponse(resp, http.StatusCreated, w)
 	}
-}
-
-func validateDestPath(destPath string) error {
-
-	if destPath == "" {
-		return lyserr.User{Message: "destPath is missing"}
-	}
-	fInfo, err := os.Stat(destPath)
-	if err != nil {
-		if os.IsNotExist(err) {
-			return lyserr.User{Message: "destPath does not exist"}
-		}
-		return fmt.Errorf("os.Stat failed: %w", err)
-	}
-	if !fInfo.IsDir() {
-		return lyserr.User{Message: "destPath is not a directory"}
-	}
-
-	return nil
 }

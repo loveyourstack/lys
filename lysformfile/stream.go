@@ -12,6 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/loveyourstack/lys/lysos"
 )
 
 // StreamFileResult represents the result of a single uploaded file streamed to disk.
@@ -28,6 +30,12 @@ type StreamResponse struct {
 }
 
 func StreamToDisk(uploadFiles []UploadFile, destPath string, userId int64, logger *slog.Logger) (uploadResp StreamResponse, err error) {
+
+	// validate destPath
+	err = lysos.ValidateDir(destPath, "Destination")
+	if err != nil {
+		return StreamResponse{}, fmt.Errorf("Upload: lysos.ValidateDir failed: %w", err)
+	}
 
 	savedFilePaths := []string{}
 
