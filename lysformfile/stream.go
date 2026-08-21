@@ -62,7 +62,7 @@ func StreamToDisk(uploadFiles []UploadFile, destPath string, userId int64, logge
 		}
 
 		// determine stored file extension based on MIME type and original file name
-		ext := chooseStoredExtension(fileHeader, mimeType)
+		ext := ChooseStoredExtension(fileHeader, mimeType)
 
 		// generate stored file name
 		storedFileName := fmt.Sprintf("%s-u%d-%s%s", time.Now().Format("20060102"), userId, hex.EncodeToString(rnd), ext)
@@ -111,7 +111,7 @@ func StreamToDisk(uploadFiles []UploadFile, destPath string, userId int64, logge
 // chooseStoredExtension determines the appropriate file extension for the stored file based on the detected MIME type and the original file name.
 // It returns the chosen extension, including the leading dot (e.g., ".jpg").
 // If no suitable extension can be determined, it returns an empty string.
-func chooseStoredExtension(fileHeader *multipart.FileHeader, detectedMime string) string {
+func ChooseStoredExtension(fileHeader *multipart.FileHeader, detectedMime string) string {
 
 	// try to get extension from original file name
 	if fileHeader != nil {

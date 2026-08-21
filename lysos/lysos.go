@@ -22,12 +22,12 @@ func ValidateDir(dirPath, errPrefix string) error {
 	fInfo, err := os.Stat(dirPath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return lyserr.User{Message: fmt.Sprintf("%s: path does not exist", errPrefix)}
+			return lyserr.User{Message: fmt.Sprintf("%s: path does not exist: %s", errPrefix, dirPath)}
 		}
 		return fmt.Errorf("%s: os.Stat failed: %w", errPrefix, err)
 	}
 	if !fInfo.IsDir() {
-		return lyserr.User{Message: fmt.Sprintf("%s: path is not a directory", errPrefix)}
+		return lyserr.User{Message: fmt.Sprintf("%s: path is not a directory: %s", errPrefix, dirPath)}
 	}
 
 	return nil
