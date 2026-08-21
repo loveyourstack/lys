@@ -26,6 +26,7 @@ type SessionInput struct {
 	GeoIpLocation         string     `json:"geo_ip_location" validate:"required"`
 	GivenName             string     `json:"given_name" validate:"required"`
 	Ip                    netip.Addr `json:"ip" validate:"required"`
+	ProfilePic            string     `json:"profile_pic"`
 	Roles                 []string   `json:"roles" validate:"required"`
 	UserAgent             string     `json:"user_agent" validate:"required"`
 	UserId                int64      `json:"user_id" validate:"required,gt=0"`
@@ -311,4 +312,17 @@ func (appS *AppSessions) Load(sessions []Session) (err error) {
 	}
 
 	return nil
+}
+
+// UpdateProfilePicByUserId updates the ProfilePic for all sessions belonging to the specified user ID.
+func (appS *AppSessions) UpdateProfilePicByUserId(userId int64, profilePic string) {
+	appS.mu.Lock()
+	defer appS.mu.Unlock()
+
+	for token, session := range appS.all {
+		if session.UserId == userId {
+			session.ProfilePic = profilePic
+			appS.all[token] = session
+		}
+	}
 }

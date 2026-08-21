@@ -307,6 +307,62 @@ func TestAppSessions_DeleteByUserId(t *testing.T) {
 	}
 }
 
+func TestAppSessions_UpdateProfilePicByUserId(t *testing.T) {
+	validate := validator.New()
+	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+
+	input1 := newDefaultSessionInput()
+	input1.AllowMultipleSessions = true
+	input1.Ip = netip.MustParseAddr("198.51.100.40")
+	input1.UserAgent = "ua-40"
+	input1.UserId = 40
+	input1.UserName = "user-40"
+
+	token1, err := appS.Add(input1)
+	if err != nil {
+		t.Fatalf("setup Add(user-40 first) failed: %v", err)
+	}
+	input2 := newDefaultSessionInput()
+	input2.AllowMultipleSessions = true
+	input2.Ip = netip.MustParseAddr("198.51.100.41")
+	input2.UserAgent = "ua-41"
+	input2.UserId = 40
+	input2.UserName = "user-40"
+
+	token2, err := appS.Add(input2)
+	if err != nil {
+		t.Fatalf("setup Add(user-40 second) failed: %v", err)
+	}
+	input3 := newDefaultSessionInput()
+	input3.Ip = netip.MustParseAddr("198.51.100.42")
+	input3.UserAgent = "ua-42"
+	input3.UserId = 41
+	input3.UserName = "user-41"
+
+	token3, err := appS.Add(input3)
+	if err != nil {
+		t.Fatalf("setup Add(user-41) failed: %v", err)
+	}
+
+	appS.UpdateProfilePicByUserId(40, "new-pic.png")
+
+	appS.mu.RLock()
+	sess1 := appS.all[token1]
+	sess2 := appS.all[token2]
+	sess3 := appS.all[token3]
+	appS.mu.RUnlock()
+
+	if sess1.ProfilePic != "new-pic.png" {
+		t.Fatalf("session 1 ProfilePic mismatch: got %q, want %q", sess1.ProfilePic, "new-pic.png")
+	}
+	if sess2.ProfilePic != "new-pic.png" {
+		t.Fatalf("session 2 ProfilePic mismatch: got %q, want %q", sess2.ProfilePic, "new-pic.png")
+	}
+	if sess3.ProfilePic != "" {
+		t.Fatalf("session 3 ProfilePic mismatch: got %q, want unchanged empty string", sess3.ProfilePic)
+	}
+}
+
 func TestAppSessions_DeleteByToken(t *testing.T) {
 	validate := validator.New()
 	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
