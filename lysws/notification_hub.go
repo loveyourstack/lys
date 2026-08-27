@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -193,6 +195,13 @@ func (h *NotificationHub) GetUserConns(userID int64) []*websocket.Conn {
 	return slices.Clone(h.conns[userID])
 }
 
+// isCannotConnectNow reports whether err is a pgconn.PgError with code CannotConnectNow (57P03),
+// which occurs when PostgreSQL is automatically restarting.
+func isCannotConnectNow(err error) bool {
+	pgErr, ok := errors.AsType[*pgconn.PgError](err)
+	return ok && pgErr.Code == pgerrcode.CannotConnectNow
+}
+
 // NotificationSelectFunc defines a function type for selecting notification details from the database.
 type NotificationSelectFunc func(ctx context.Context, db *pgxpool.Pool, notId int64) (userId int64, notType, message string, err error)
 
@@ -227,7 +236,14 @@ func (h *NotificationHub) ListenAndBroadcast(ctx context.Context, selectFunc Not
 		// acquire a fresh connection for this attempt
 		conn, err := h.db.Acquire(listenCtx)
 		if err != nil {
-			h.logger.Error("db.Acquire failed, retrying", "error", err)
+
+			// is pg is restarting, log as info. Otherwise, log as error
+			if isCannotConnectNow(err) {
+				h.logger.Info("db.Acquire failed: CannotConnectNow, retrying")
+			} else {
+				h.logger.Error("db.Acquire failed, retrying", "error", err)
+			}
+
 			if !sleepOrDone(listenCtx, backoff) {
 				return nil
 			}
@@ -274,8 +290,15 @@ func (h *NotificationHub) listenOnce(ctx context.Context, conn *pgxpool.Conn, se
 	defer func() {
 		_, unlistenErr := conn.Exec(context.Background(), "UNLISTEN "+pgx.Identifier{h.dbListenChannel}.Sanitize())
 		if unlistenErr != nil {
-			h.logger.Error("conn.Exec (UNLISTEN) failed", "channel", h.dbListenChannel, "error", unlistenErr)
+
+			// is pg is restarting, log as info. Otherwise, log as error
+			if isCannotConnectNow(unlistenErr) {
+				h.logger.Info("conn.Exec (UNLISTEN) failed: CannotConnectNow", "channel", h.dbListenChannel)
+			} else {
+				h.logger.Error("conn.Exec (UNLISTEN) failed", "channel", h.dbListenChannel, "error", unlistenErr)
+			}
 		}
+
 	}()
 
 	type messagePayload struct {
