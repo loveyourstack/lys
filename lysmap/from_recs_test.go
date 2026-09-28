@@ -97,7 +97,7 @@ func TestFromRecsEmbeddedFlattening(t *testing.T) {
 		Name string `json:"name"`
 	}
 
-	recs := []recS{{innerS: innerS{Code: "A"}, Name: "alpha"}}
+	recs := []recS{{Code: "A", Name: "alpha"}}
 
 	recsMap, err := FromRecs(recs)
 	assert.NoError(t, err)

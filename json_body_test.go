@@ -39,47 +39,67 @@ func TestDecodeJsonBodyFailure(t *testing.T) {
 		E netip.Addr   `json:"e"`
 	}
 
-	_, err := DecodeJsonBody[value](nil)
-	assert.EqualValues(t, "body is missing", err.Error(), "body missing")
+	t.Run("body missing", func(t *testing.T) {
+		_, err := DecodeJsonBody[value](nil)
+		assert.EqualValues(t, "body is missing", err.Error())
+	})
 
-	_, err = DecodeJsonBody[value]([]byte(""))
-	assert.EqualValues(t, "body is missing", err.Error(), "empty body")
+	t.Run("empty body", func(t *testing.T) {
+		_, err := DecodeJsonBody[value]([]byte(""))
+		assert.EqualValues(t, "body is missing", err.Error())
+	})
 
-	rawBody := []byte(`{"a:1}`)
-	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "request body contains badly-formed json", err.Error(), "malformed body")
+	t.Run("malformed body", func(t *testing.T) {
+		rawBody := []byte(`{"a:1}`)
+		_, err := DecodeJsonBody[value](rawBody)
+		assert.EqualValues(t, "body contains badly-formed json", err.Error())
+	})
 
-	rawBody = []byte(`{-
-		"a":1
-	}`)
-	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "json syntax error: line: 1", err.Error(), "syntax error")
+	t.Run("json syntax error", func(t *testing.T) {
+		rawBody := []byte(`{-
+			"a":1
+		}`)
+		_, err := DecodeJsonBody[value](rawBody)
+		assert.EqualValues(t, "json syntax error on line 1", err.Error())
+	})
 
-	rawBody = []byte(`{
-		"a":"1"
-	}`)
-	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "json type error: line: 2", err.Error(), "type error")
+	t.Run("json type error", func(t *testing.T) {
+		rawBody := []byte(`{
+			"a":"1"
+		}`)
+		_, err := DecodeJsonBody[value](rawBody)
+		assert.EqualValues(t, "json type error on line 2", err.Error())
+	})
 
-	rawBody = []byte(`{"x":1}`)
-	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "unknown field: x", err.Error(), "unknown field")
+	t.Run("unknown field", func(t *testing.T) {
+		rawBody := []byte(`{"x":1}`)
+		_, err := DecodeJsonBody[value](rawBody)
+		assert.EqualValues(t, "unknown field 'x' on line 1", err.Error())
+	})
 
-	rawBody = []byte(`{"e":"invalid-ip"}`)
-	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "failed to parse IP address: invalid-ip", err.Error(), "IP parse error")
+	t.Run("IP parse error", func(t *testing.T) {
+		rawBody := []byte(`{"e":"invalid-ip"}`)
+		_, err := DecodeJsonBody[value](rawBody)
+		assert.EqualValues(t, "failed to parse IP address 'invalid-ip' on line 1", err.Error())
+	})
 
-	rawBody = []byte(`{"c":"2024-01-aa"}`)
-	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "failed to parse a date or time: 2024-01-aa", err.Error(), "date parse error")
+	t.Run("date parse error", func(t *testing.T) {
+		rawBody := []byte(`{"c":"2024-01-aa"}`)
+		_, err := DecodeJsonBody[value](rawBody)
+		assert.EqualValues(t, "failed to parse date or time '2024-01-aa' on line 1", err.Error())
+	})
 
-	rawBody = []byte(`{"c":"2021-06-282"}`)
-	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "failed to parse a date or time: 2021-06-282: extra text: 2", err.Error(), "date parse error (extra text)")
+	t.Run("date parse error (extra text)", func(t *testing.T) {
+		rawBody := []byte(`{"c":"2021-06-282"}`)
+		_, err := DecodeJsonBody[value](rawBody)
+		assert.EqualValues(t, "failed to parse date or time '2021-06-282' on line 1", err.Error())
+	})
 
-	rawBody = []byte(`{"d":"22:61"}`)
-	_, err = DecodeJsonBody[value](rawBody)
-	assert.EqualValues(t, "failed to parse a date or time: 22:61: minute out of range", err.Error(), "time parse error (invalid minute)")
+	t.Run("time parse error (invalid minute)", func(t *testing.T) {
+		rawBody := []byte(`{"d":"22:61"}`)
+		_, err := DecodeJsonBody[value](rawBody)
+		assert.EqualValues(t, "failed to parse date or time '22:61' on line 1", err.Error())
+	})
 }
 
 func TestExtractJsonBodySuccess(t *testing.T) {
@@ -102,32 +122,48 @@ func TestExtractJsonBodySuccess(t *testing.T) {
 func TestExtractJsonBodyFailure(t *testing.T) {
 
 	// maxBodySize param missing
-	_, err := ExtractJsonBody(&http.Request{}, 0)
-	assert.EqualValues(t, "maxBodySize is zero", err.Error())
+	t.Run("maxBodySize param missing", func(t *testing.T) {
+		_, err := ExtractJsonBody(&http.Request{}, 0)
+		assert.EqualValues(t, "maxBodySize must be greater than 0", err.Error())
+	})
 
-	// json header not set
-	_, err = ExtractJsonBody(&http.Request{}, 1024*1024)
-	assert.EqualValues(t, "content type must be application/json", err.Error())
+	t.Run("json header not set", func(t *testing.T) {
+		_, err := ExtractJsonBody(&http.Request{}, 1024*1024)
+		assert.EqualValues(t, "content type must be application/json", err.Error())
+	})
 
-	// body missing
-	rawBody := []byte(``)
-	req, err := http.NewRequest("GET", "", bytes.NewReader(rawBody))
-	if err != nil {
-		t.Fatalf("http.NewRequest failed: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	_, err = ExtractJsonBody(req, 1024*1024)
-	assert.EqualValues(t, "request body missing", err.Error())
+	t.Run("body missing", func(t *testing.T) {
+		rawBody := []byte(``)
+		req, err := http.NewRequest("GET", "", bytes.NewReader(rawBody))
+		if err != nil {
+			t.Fatalf("http.NewRequest failed: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		_, err = ExtractJsonBody(req, 1024*1024)
+		assert.EqualValues(t, "request body missing", err.Error())
+	})
 
-	// invalid json
-	rawBody = []byte(`"a":"b",`)
-	req, err = http.NewRequest("GET", "", bytes.NewReader(rawBody))
-	if err != nil {
-		t.Fatalf("http.NewRequest failed: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	_, err = ExtractJsonBody(req, 1024*1024)
-	assert.EqualValues(t, "invalid json", err.Error())
+	t.Run("body exceeds maxBodySize", func(t *testing.T) {
+		rawBody := []byte(`{"a":1,"b":""}`)
+		req, err := http.NewRequest("GET", "", bytes.NewReader(rawBody))
+		if err != nil {
+			t.Fatalf("http.NewRequest failed: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		_, err = ExtractJsonBody(req, 1)
+		assert.EqualValues(t, "request body exceeds maxBodySize", err.Error())
+	})
+
+	t.Run("invalid json", func(t *testing.T) {
+		rawBody := []byte(`"a":"b",`)
+		req, err := http.NewRequest("GET", "", bytes.NewReader(rawBody))
+		if err != nil {
+			t.Fatalf("http.NewRequest failed: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		_, err = ExtractJsonBody(req, 1024*1024)
+		assert.EqualValues(t, "invalid json", err.Error())
+	})
 }
 
 func TestFindLineinJson(t *testing.T) {

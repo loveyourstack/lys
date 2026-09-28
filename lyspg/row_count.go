@@ -2,7 +2,7 @@ package lyspg
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 
 	"github.com/jackc/pgx/v5"

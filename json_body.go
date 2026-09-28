@@ -2,13 +2,15 @@ package lys
 
 import (
 	"bytes"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
-	"strconv"
+	"net/netip"
+	"reflect"
 	"strings"
 	"time"
 
@@ -17,73 +19,54 @@ import (
 
 // DecodeJsonBody decodes the supplied json body into dest and checks for a variety of error conditions.
 // Caller should check that body is valid JSON and should enforce a maximum body size (usually done in ExtractJsonBody).
-// Adapted from https://www.alexedwards.net/blog/how-to-properly-parse-a-json-request-body.
 func DecodeJsonBody[T any](body []byte) (dest T, err error) {
 
 	if len(body) == 0 {
 		return dest, lyserr.User{Message: "body is missing"}
 	}
 
-	dec := json.NewDecoder(bytes.NewReader(body))
-	dec.DisallowUnknownFields()
+	err = json.Unmarshal(body, &dest, json.RejectUnknownMembers(true))
+	if err != nil {
 
-	if err = dec.Decode(&dest); err != nil {
-
-		var syntaxErr *json.SyntaxError
-		var unmarshalTypeErr *json.UnmarshalTypeError
+		var syntaxErr *jsontext.SyntacticError
+		var semanticErr *json.SemanticError
 		var timeParseErr *time.ParseError
 
 		// return a useful user error where possible
 		switch {
 		case errors.Is(err, io.ErrUnexpectedEOF):
-			return dest, lyserr.User{Message: "request body contains badly-formed json"}
+			return dest, lyserr.User{Message: "body contains badly-formed json"}
 
 		case errors.As(err, &syntaxErr):
-			line := findLineinJson(body, int(syntaxErr.Offset))
-			return dest, lyserr.User{Message: "json syntax error: line: " + strconv.Itoa(line)}
+			line := findLineinJson(body, int(syntaxErr.ByteOffset))
+			return dest, lyserr.User{Message: fmt.Sprintf("json syntax error on line %d", line)}
 
-		case errors.As(err, &unmarshalTypeErr):
-			line := findLineinJson(body, int(unmarshalTypeErr.Offset))
-			return dest, lyserr.User{Message: "json type error: line: " + strconv.Itoa(line)}
+		// general semantic error
+		case errors.As(err, &semanticErr):
+			line := findLineinJson(body, int(semanticErr.ByteOffset))
 
-		case strings.HasPrefix(err.Error(), "json: unknown field "):
-			fieldName := strings.TrimPrefix(err.Error(), "json: unknown field ")
-			return dest, lyserr.User{Message: "unknown field: " + strings.Trim(fieldName, `"`)}
+			// try to narrow it down
+			switch {
 
-		case strings.HasSuffix(err.Error(), "unable to parse IP"):
-			if val, ok := parseWrappedValue(`ParseAddr("`, `")`, err.Error()); ok {
-				return dest, lyserr.User{Message: "failed to parse IP address: " + val}
-			}
-			return dest, lyserr.User{Message: "failed to parse IP address"}
+			// unknown field
+			case semanticErr.Err == json.ErrUnknownName:
+				return dest, lyserr.User{Message: fmt.Sprintf("unknown field '%s' on line %d", semanticErr.JSONPointer.LastToken(), line)}
 
-		case errors.As(err, &timeParseErr):
-			msg := timeParseErr.Error()
+			// date/time parse error
+			case errors.As(err, &timeParseErr):
+				return dest, lyserr.User{Message: fmt.Sprintf("failed to parse date or time '%s' on line %d", timeParseErr.Value, line)}
 
-			// cannot parse
-			if strings.Contains(msg, "cannot parse") {
-				if val, ok := parseWrappedValue(`parsing time "`, `" as `, msg); ok {
-					return dest, lyserr.User{Message: "failed to parse a date or time: " + val}
-				}
-			}
+			// IP address parse error
+			case semanticErr.GoType == reflect.TypeFor[netip.Addr]() && semanticErr.JSONKind == jsontext.KindString:
+				addr, _ := parseWrappedValue(`ParseAddr("`, `"): `, semanticErr.Err.Error())
+				return dest, lyserr.User{Message: fmt.Sprintf("failed to parse IP address '%s' on line %d", addr, line)}
 
-			// extra text
-			if strings.Contains(msg, "extra text") {
-				if _, after, ok := strings.Cut(msg, "parsing time "); ok {
-					return dest, lyserr.User{Message: "failed to parse a date or time: " + strings.ReplaceAll(after, `"`, "")}
-				}
+			default: // unknown semantic error: assume type error
+				return dest, lyserr.User{Message: fmt.Sprintf("json type error on line %d", line)}
 			}
 
-			// out of range
-			if strings.Contains(msg, "out of range") {
-				if _, after, ok := strings.Cut(msg, "parsing time "); ok {
-					return dest, lyserr.User{Message: "failed to parse a date or time: " + strings.ReplaceAll(after, `"`, "")}
-				}
-			}
-
-			return dest, lyserr.User{Message: "failed to parse a date or time: " + strings.ReplaceAll(msg, `"`, "")}
-
-		default:
-			return dest, fmt.Errorf("dec.Decode failed: %w", err)
+		default: // unknown unmarshal error
+			return dest, fmt.Errorf("json.Unmarshal failed: %w", err)
 		}
 	}
 
@@ -94,8 +77,8 @@ func DecodeJsonBody[T any](body []byte) (dest T, err error) {
 func ExtractJsonBody(r *http.Request, maxBodySize int64) (body []byte, err error) {
 
 	// check param
-	if maxBodySize == 0 {
-		return nil, fmt.Errorf("maxBodySize is zero")
+	if maxBodySize <= 0 {
+		return nil, fmt.Errorf("maxBodySize must be greater than 0")
 	}
 
 	// make sure Content-Type header is json
@@ -107,9 +90,14 @@ func ExtractJsonBody(r *http.Request, maxBodySize int64) (body []byte, err error
 	defer r.Body.Close()
 
 	// read req body
-	body, err = io.ReadAll(io.LimitReader(r.Body, maxBodySize))
+	body, err = io.ReadAll(io.LimitReader(r.Body, maxBodySize+1))
 	if err != nil {
 		return nil, fmt.Errorf("io.ReadAll failed: %w", err)
+	}
+
+	// ensure body does not exceed maximum allowed size
+	if int64(len(body)) > maxBodySize {
+		return nil, fmt.Errorf("request body exceeds maxBodySize")
 	}
 
 	// ensure there's a body
@@ -118,7 +106,7 @@ func ExtractJsonBody(r *http.Request, maxBodySize int64) (body []byte, err error
 	}
 
 	// ensure body is valid JSON
-	if !json.Valid(body) {
+	if !jsontext.Value(body).IsValid() {
 		return nil, ErrInvalidJson
 	}
 

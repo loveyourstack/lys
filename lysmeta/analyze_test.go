@@ -70,7 +70,7 @@ func TestAnalyzeValuesSuccess(t *testing.T) {
 		Age int
 	}
 
-	plan, err := AnalyzeValues(input{Name: "james", Embedded: Embedded{Enabled: true}, Age: 42})
+	plan, err := AnalyzeValues(input{Name: "james", Enabled: true, Age: 42})
 	require.NoError(t, err)
 	assert.True(t, plan.HasValues())
 	assert.EqualValues(t, 3, len(plan.Fields()))
@@ -122,7 +122,7 @@ func TestGetStructFieldsSuccess(t *testing.T) {
 	dob := lystype.Date(time.Date(1990, 5, 15, 0, 0, 0, 0, time.UTC))
 	ptr := new("def")
 
-	reflVal := reflect.ValueOf(input{ID: "abc", Ptr: ptr, Embedded: Embedded{Score: 1.5, DOB: dob}, HiddenTags: "skip"})
+	reflVal := reflect.ValueOf(input{ID: "abc", Ptr: ptr, Score: 1.5, DOB: dob, HiddenTags: "skip"})
 	fields := getStructFields(reflVal, true)
 
 	assert.EqualValues(t, 5, len(fields))

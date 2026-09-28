@@ -2,7 +2,7 @@ package lys
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -24,7 +24,7 @@ var discardLog = slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Le
 func decodeStdResponse(t *testing.T, w *httptest.ResponseRecorder) StdResponse {
 	t.Helper()
 	var resp StdResponse
-	require.NoError(t, json.NewDecoder(w.Body).Decode(&resp))
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &resp), json.RejectUnknownMembers(true))
 	return resp
 }
 

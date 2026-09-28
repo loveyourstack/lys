@@ -29,8 +29,6 @@ func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, delimi
 		return fmt.Errorf("writer is mandatory")
 	}
 
-	fmt.Println("a")
-
 	// convert items to []map[string]any
 	recsMap, err := lysmap.FromRecs(items)
 	if err != nil {

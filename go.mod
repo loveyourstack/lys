@@ -1,6 +1,6 @@
 module github.com/loveyourstack/lys
 
-go 1.26.2
+go 1.27.1
 
 require (
 	codeberg.org/tealeg/xlsx/v4 v4.1.0

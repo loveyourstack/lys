@@ -81,7 +81,7 @@ func TestImportParamsFailure(t *testing.T) {
 	testSA = append(testSA, inputTestS)
 
 	_, err := lysclient.PostSliceToValueTester[testS, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", testSA)
-	assert.EqualValues(t, "unknown field: Val", err.Error(), "unknown field")
+	assert.EqualValues(t, "unknown field 'Val' on line 1", err.Error(), "unknown field")
 
 	// no inputs (nil)
 	_, err = lysclient.PostSliceToValueTester[any, int64](ctx, srvApp.getRouter(), "POST", "/import-test/import", nil)

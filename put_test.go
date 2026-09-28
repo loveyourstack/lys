@@ -2,7 +2,7 @@ package lys
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"strconv"
 	"testing"
 
@@ -131,7 +131,7 @@ func TestPutFailure(t *testing.T) {
 		Val: "a",
 	}
 	_, err := lysclient.PostToValueTester[testS, string](ctx, srvApp.getRouter(), "PUT", targetUrl, inputTestS)
-	assert.EqualValues(t, "unknown field: Val", err.Error(), "unknown field")
+	assert.EqualValues(t, "unknown field 'Val' on line 1", err.Error(), "unknown field")
 
 	// nil input (fails on mandatory enum val)
 	_, err = lysclient.PostToValueTester[any, string](ctx, srvApp.getRouter(), "PUT", targetUrl, nil)

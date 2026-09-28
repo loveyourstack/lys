@@ -3,7 +3,7 @@ package lys
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"image"
 	"image/color"
 	"image/png"

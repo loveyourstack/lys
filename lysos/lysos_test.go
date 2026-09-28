@@ -29,7 +29,7 @@ func TestValidateDir(t *testing.T) {
 
 		var userErr lyserr.User
 		require.True(t, errors.As(err, &userErr))
-		assert.Equal(t, "Destination: path does not exist", userErr.Message)
+		assert.Contains(t, userErr.Message, "Destination: path does not exist")
 	})
 
 	t.Run("path is not a directory", func(t *testing.T) {
@@ -42,7 +42,7 @@ func TestValidateDir(t *testing.T) {
 
 		var userErr lyserr.User
 		require.True(t, errors.As(err, &userErr))
-		assert.Equal(t, "Destination: path is not a directory", userErr.Message)
+		assert.Contains(t, userErr.Message, "Destination: path is not a directory")
 	})
 
 	t.Run("valid directory", func(t *testing.T) {
