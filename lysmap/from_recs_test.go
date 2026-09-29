@@ -67,24 +67,100 @@ func TestFromRecsPointerRecordsSuccess(t *testing.T) {
 	assert.Equal(t, map[string]any{"id": 2, "note": nil}, recsMap[1])
 }
 
+func TestFromRecsEmptyJSONTagNameUsesFieldName(t *testing.T) {
+	type recS struct {
+		Name string `json:",omitzero"`
+	}
+
+	recMap, err := FromRecs([]recS{{Name: "ann"}})
+
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]any{"Name": "ann"}, recMap[0])
+}
+
+func TestFromRecsOmitEmptyNilValues(t *testing.T) {
+	type recS struct {
+		Pointer  *string `json:"pointer,omitempty"`
+		Any      any     `json:"any,omitempty"`
+		TypedNil any     `json:"typed_nil,omitempty"`
+	}
+
+	var pointer *string
+	var typedNil *string
+
+	recMap, err := FromRecs([]recS{{
+		Pointer:  pointer,
+		Any:      nil,
+		TypedNil: typedNil,
+	}})
+
+	assert.NoError(t, err)
+	assert.Empty(t, recMap[0])
+}
+
 func TestFromRecsOmitOptions(t *testing.T) {
 
+	t.Run("regular types", func(t *testing.T) {
+		type recS struct {
+			Name string       `json:"name,omitzero"`
+			DOB  lystype.Date `json:"dob,omitzero"`
+			City string       `json:"city"`
+		}
+
+		d := lystype.Date(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
+		recs := []recS{
+			{Name: "", DOB: lystype.Date{}, City: "x"},
+			{Name: "ann", DOB: d, City: "y"},
+		}
+
+		recsMap, err := FromRecs(recs)
+		assert.NoError(t, err)
+		assert.Equal(t, map[string]any{"city": "x"}, recsMap[0])
+		assert.Equal(t, map[string]any{"name": "ann", "dob": d, "city": "y"}, recsMap[1])
+	})
+
+	t.Run("nil and empty types", func(t *testing.T) {
+		type recS struct {
+			EmptySlice     []string          `json:"empty_slice,omitzero"`
+			NilSlice       []string          `json:"nil_slice,omitzero"`
+			EmptySliceOmit []string          `json:"empty_slice_omit,omitempty"`
+			EmptyMap       map[string]string `json:"empty_map,omitzero"`
+			NilMap         map[string]string `json:"nil_map,omitzero"`
+			ZeroArray      [1]int            `json:"zero_array,omitzero"`
+		}
+
+		recsMap, err := FromRecs([]recS{{
+			EmptySlice:     []string{},
+			NilSlice:       nil,
+			EmptySliceOmit: []string{},
+			EmptyMap:       map[string]string{},
+			NilMap:         nil,
+			ZeroArray:      [1]int{0},
+		}})
+
+		assert.NoError(t, err)
+		assert.Equal(t, map[string]any{
+			"empty_slice": []string{},
+			"empty_map":   map[string]string{},
+		}, recsMap[0])
+	})
+}
+
+type semanticValue int
+
+func (v semanticValue) IsZero() bool {
+	return v == 42
+}
+
+func TestFromRecsOmitZeroUsesIsZero(t *testing.T) {
 	type recS struct {
-		Name string       `json:"name,omitempty"`
-		DOB  lystype.Date `json:"dob,omitzero"`
-		City string       `json:"city"`
+		Value semanticValue `json:"value,omitzero"`
 	}
 
-	d := lystype.Date(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-	recs := []recS{
-		{Name: "", DOB: lystype.Date{}, City: "x"},
-		{Name: "ann", DOB: d, City: "y"},
-	}
+	recMap, err := FromRecs([]recS{{Value: 42}})
 
-	recsMap, err := FromRecs(recs)
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]any{"city": "x"}, recsMap[0])
-	assert.Equal(t, map[string]any{"name": "ann", "dob": d, "city": "y"}, recsMap[1])
+	assert.Empty(t, recMap[0])
 }
 
 func TestFromRecsEmbeddedFlattening(t *testing.T) {

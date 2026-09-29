@@ -174,7 +174,7 @@ func getModel(cols []lyspg.Column, parentCols []lyspg.Column, childFks []lyspg.F
 		goTableName := lysstring.Convert(fk.ChildTable, "_", "", lysstring.Title)
 
 		// add count line
-		colVal := fmt.Sprintf("    %sCount  int  `db:\"%s_count\" json:\"%s_count,omitempty\"`", goTableName, fk.ChildTable, fk.ChildTable)
+		colVal := fmt.Sprintf("    %sCount  int  `db:\"%s_count\" json:\"%s_count,omitzero\"`", goTableName, fk.ChildTable, fk.ChildTable)
 		colVals = append(colVals, colVal)
 	}
 

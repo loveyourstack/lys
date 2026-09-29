@@ -101,9 +101,9 @@ func TestGetDbName(t *testing.T) {
 
 func TestGetJsonKey(t *testing.T) {
 	assert.Equal(t, "FieldName", getJsonKey("", "FieldName"), "empty tag falls back to field name")
-	assert.Equal(t, "FieldName", getJsonKey(",omitempty", "FieldName"), "empty key with options falls back to field name")
+	assert.Equal(t, "FieldName", getJsonKey(",omitzero", "FieldName"), "empty key with options falls back to field name")
 	assert.Equal(t, "", getJsonKey("-", "FieldName"), "dash omits key")
-	assert.Equal(t, "custom", getJsonKey("custom,omitempty", "FieldName"), "explicit key is used")
+	assert.Equal(t, "custom", getJsonKey("custom,omitzero", "FieldName"), "explicit key is used")
 }
 
 func TestGetStructFieldsSuccess(t *testing.T) {

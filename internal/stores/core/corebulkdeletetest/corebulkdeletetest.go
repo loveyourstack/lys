@@ -14,11 +14,11 @@ const (
 )
 
 type Input struct {
-	CText string `db:"c_text" json:"c_text,omitempty"`
+	CText string `db:"c_text" json:"c_text,omitzero"`
 }
 
 type Model struct {
-	Id int64 `db:"id" json:"id,omitempty"`
+	Id int64 `db:"id" json:"id,omitzero"`
 	Input
 }
 

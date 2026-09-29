@@ -68,13 +68,11 @@ func TestGetSuccessFields(t *testing.T) {
 		t.Errorf("id: expected in response, but missing")
 	}
 
-	// omitempty - TODO not working after json/v2 upgrade: 0 is no longer considered empty
-	/*_, ok = item["c_int"]
+	// omitzero
+	_, ok = item["c_int"]
 	if ok {
 		t.Errorf("c_int: not expected in response, but present")
-	}*/
-
-	// omitzero
+	}
 	_, ok = item["c_date"]
 	if ok {
 		t.Errorf("c_date: not expected in response, but present")

@@ -19,7 +19,7 @@ type GetMetadata struct {
 type ItemSResp struct {
 	Status         string           `json:"status"`
 	Data           []map[string]any `json:"data"`
-	GetMetadata    *GetMetadata     `json:"metadata,omitempty"` // only used for GET many
+	GetMetadata    *GetMetadata     `json:"metadata,omitzero"` // only used for GET many
 	ErrDescription string           `json:"err_description"`
 }
 

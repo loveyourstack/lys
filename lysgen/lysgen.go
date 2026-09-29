@@ -15,17 +15,17 @@ func GetGoDataTypeFromPg(pgType string) (goType, omitStr string, err error) {
 	case "ARRAY":
 		return "[]string", "omitempty", nil // defaulting to string, change type manually as needed
 	case "bigint", "bigserial":
-		return "int64", "omitempty", nil
+		return "int64", "omitzero", nil
 	case "bit", "boolean":
-		return "bool", "omitempty", nil
+		return "bool", "omitzero", nil
 	case "character", "character varying", "text", "USER-DEFINED": // "USER-DEFINED" is enum or domain. Change as needed
-		return "string", "omitempty", nil
+		return "string", "omitzero", nil
 	case "date":
 		return "lystype.Date", "omitzero", nil
 	case "double precision", "money", "numeric", "real":
-		return "float64", "omitempty", nil
+		return "float64", "omitzero", nil
 	case "integer", "serial", "smallint", "smallserial":
-		return "int", "omitempty", nil
+		return "int", "omitzero", nil
 	case "time", "time without time zone":
 		return "lystype.Time", "omitzero", nil
 	case "timestamp", "timestamp with time zone":

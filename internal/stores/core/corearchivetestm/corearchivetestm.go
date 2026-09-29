@@ -5,12 +5,12 @@ import (
 )
 
 type Input struct {
-	CInt  *int64  `db:"c_int" json:"c_int,omitempty"`
-	CText *string `db:"c_text" json:"c_text,omitempty"`
+	CInt  *int64  `db:"c_int" json:"c_int,omitzero"`
+	CText *string `db:"c_text" json:"c_text,omitzero"`
 }
 
 type Model struct {
-	Id        int64            `db:"id" json:"id,omitempty"`
+	Id        int64            `db:"id" json:"id,omitzero"`
 	CreatedAt lystype.Datetime `db:"created_at" json:"created_at,omitzero"`
 	Input
 }

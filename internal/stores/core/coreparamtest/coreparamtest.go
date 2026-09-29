@@ -23,24 +23,24 @@ const (
 type Input struct {
 	CBool      bool              `db:"c_bool" json:"c_bool"`
 	CBoolN     *bool             `db:"c_booln" json:"c_booln"`
-	CInt       int64             `db:"c_int" json:"c_int,omitempty"`
-	CIntN      *int64            `db:"c_intn" json:"c_intn,omitempty"`
-	CDouble    float64           `db:"c_double" json:"c_double,omitempty"`
-	CDoubleN   *float64          `db:"c_doublen" json:"c_doublen,omitempty"`
+	CInt       int64             `db:"c_int" json:"c_int,omitzero"`
+	CIntN      *int64            `db:"c_intn" json:"c_intn,omitzero"`
+	CDouble    float64           `db:"c_double" json:"c_double,omitzero"`
+	CDoubleN   *float64          `db:"c_doublen" json:"c_doublen,omitzero"`
 	CDate      lystype.Date      `db:"c_date" json:"c_date,omitzero"`
-	CDateN     *lystype.Date     `db:"c_daten" json:"c_daten,omitempty"`
+	CDateN     *lystype.Date     `db:"c_daten" json:"c_daten,omitzero"`
 	CTime      lystype.Time      `db:"c_time" json:"c_time,omitzero"`
-	CTimeN     *lystype.Time     `db:"c_timen" json:"c_timen,omitempty"`
+	CTimeN     *lystype.Time     `db:"c_timen" json:"c_timen,omitzero"`
 	CDatetime  lystype.Datetime  `db:"c_datetime" json:"c_datetime,omitzero"`
-	CDatetimeN *lystype.Datetime `db:"c_datetimen" json:"c_datetimen,omitempty"`
-	CEnum      string            `db:"c_enum" json:"c_enum,omitempty"`
-	CEnumN     *string           `db:"c_enumn" json:"c_enumn,omitempty"`
-	CText      string            `db:"c_text" json:"c_text,omitempty"`
-	CTextN     *string           `db:"c_textn" json:"c_textn,omitempty"`
+	CDatetimeN *lystype.Datetime `db:"c_datetimen" json:"c_datetimen,omitzero"`
+	CEnum      string            `db:"c_enum" json:"c_enum,omitzero"`
+	CEnumN     *string           `db:"c_enumn" json:"c_enumn,omitzero"`
+	CText      string            `db:"c_text" json:"c_text,omitzero"`
+	CTextN     *string           `db:"c_textn" json:"c_textn,omitzero"`
 }
 
 type Model struct {
-	Id   int64     `db:"id" json:"id,omitempty"`
+	Id   int64     `db:"id" json:"id,omitzero"`
 	Iduu uuid.UUID `db:"id_uu" json:"id_uu,omitzero"`
 	Input
 }

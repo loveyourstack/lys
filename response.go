@@ -32,9 +32,9 @@ type GetMetadata struct {
 // StdResponse is the return type of all API routes
 type StdResponse struct {
 	Status         string       `json:"status"`
-	Data           any          `json:"data,omitempty"`
-	GetMetadata    *GetMetadata `json:"metadata,omitempty"` // only used for GET many
-	ErrDescription string       `json:"err_description,omitempty"`
+	Data           any          `json:"data,omitzero"`
+	GetMetadata    *GetMetadata `json:"metadata,omitzero"` // only used for GET many
+	ErrDescription string       `json:"err_description,omitzero"`
 }
 
 // FileResponse opens the supplied file and streams it to w as a file

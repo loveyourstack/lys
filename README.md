@@ -26,7 +26,7 @@ const (
 
 // columns required when creating or updating a record
 type Input struct {
-	Name string `db:"name" json:"name,omitempty" validate:"required"`
+	Name string `db:"name" json:"name,omitzero" validate:"required"`
 }
 
 // columns outputted when selecting a record. Note that Input is embedded

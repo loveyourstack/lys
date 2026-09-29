@@ -67,7 +67,13 @@ func structToMapByJSONTags(reflVal reflect.Value, out map[string]any) error {
 		}
 
 		// get json tag details
-		jsonTagName, omitEmpty, omitZero := parseJSONTag(fieldType.Tag.Get("json"))
+		jsonTag := fieldType.Tag.Get("json")
+		jsonTagName, omitEmpty, omitZero := parseJSONTag(jsonTag)
+
+		// use field name for json tag if the tag is empty but not omitted explicitly
+		if jsonTagName == "" && jsonTag != "" && !fieldType.Anonymous {
+			jsonTagName = fieldType.Name
+		}
 
 		// skip fields with json tag "-"
 		if jsonTagName == "-" {
@@ -102,7 +108,7 @@ func structToMapByJSONTags(reflVal reflect.Value, out map[string]any) error {
 		if omitEmpty && isEmptyValue(fieldVal) {
 			continue
 		}
-		if omitZero && fieldVal.IsZero() {
+		if omitZero && isZeroValue(fieldVal) {
 			continue
 		}
 
@@ -147,20 +153,52 @@ func valueForMap(v reflect.Value) any {
 }
 
 func isEmptyValue(v reflect.Value) bool {
+	if !v.IsValid() {
+		return true
+	}
+
+	// recursively unwrap pointers and interfaces to check if the underlying value is empty
 	switch v.Kind() {
+	case reflect.Interface, reflect.Pointer:
+		if v.IsNil() {
+			return true
+		}
+		return isEmptyValue(v.Elem())
+
 	case reflect.Array, reflect.Map, reflect.Slice, reflect.String:
 		return v.Len() == 0
-	case reflect.Bool:
-		return !v.Bool()
-	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return v.Int() == 0
-	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-		return v.Uint() == 0
-	case reflect.Float32, reflect.Float64:
-		return v.Float() == 0
-	case reflect.Interface, reflect.Pointer:
-		return v.IsNil()
 	}
 
 	return false
+}
+
+func isZeroValue(v reflect.Value) bool {
+	if !v.IsValid() {
+		return true
+	}
+
+	// An interface's zero value is nil. Inspect its dynamic value so
+	// custom IsZero methods are still found.
+	if v.Kind() == reflect.Interface {
+		if v.IsNil() {
+			return true
+		}
+		v = v.Elem()
+	}
+
+	// Do not invoke methods on nil pointers.
+	if v.Kind() == reflect.Pointer && v.IsNil() {
+		return true
+	}
+
+	// check for custom IsZero method on the value (e.g. lystype datetime custom types)
+	if method := v.MethodByName("IsZero"); method.IsValid() &&
+		method.Type().NumIn() == 0 &&
+		method.Type().NumOut() == 1 &&
+		method.Type().Out(0).Kind() == reflect.Bool {
+		return method.Call(nil)[0].Bool()
+	}
+
+	// supports structs, arrays, complex values, unsafe pointers, etc.
+	return v.IsZero()
 }

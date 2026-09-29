@@ -162,7 +162,7 @@ func getJsonKey(jsonTag, fieldName string) string {
 	// split json tag by comma
 	parts := strings.Split(jsonTag, ",")
 
-	// if json name is empty (e.g. ",omitempty"), return field name
+	// if json name is empty (e.g. ",omitzero"), return field name
 	if parts[0] == "" {
 		return fieldName
 	}

@@ -25,8 +25,8 @@ type Input struct {
 
 type Model struct {
 	Id               int64  `db:"id" json:"id"`
-	CreatedBy        string `db:"created_by" json:"created_by,omitempty"`                   // assigned in Insert func
-	LastUserUpdateBy string `db:"last_user_update_by" json:"last_user_update_by,omitempty"` // assigned in Update funcs
+	CreatedBy        string `db:"created_by" json:"created_by,omitzero"`                   // assigned in Insert func
+	LastUserUpdateBy string `db:"last_user_update_by" json:"last_user_update_by,omitzero"` // assigned in Update funcs
 	Input
 }
 
