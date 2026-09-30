@@ -44,13 +44,14 @@ func DecodeJsonBody[T any](body []byte) (dest T, err error) {
 		// general semantic error
 		case errors.As(err, &semanticErr):
 			line := findLineinJson(body, int(semanticErr.ByteOffset))
+			key := semanticErr.JSONPointer.LastToken()
 
 			// try to narrow it down
 			switch {
 
 			// unknown field
 			case semanticErr.Err == json.ErrUnknownName:
-				return dest, lyserr.User{Message: fmt.Sprintf("unknown field '%s' on line %d", semanticErr.JSONPointer.LastToken(), line)}
+				return dest, lyserr.User{Message: fmt.Sprintf("unknown field '%s' on line %d", key, line)}
 
 			// date/time parse error
 			case errors.As(err, &timeParseErr):
@@ -62,7 +63,7 @@ func DecodeJsonBody[T any](body []byte) (dest T, err error) {
 				return dest, lyserr.User{Message: fmt.Sprintf("failed to parse IP address '%s' on line %d", addr, line)}
 
 			default: // unknown semantic error: assume type error
-				return dest, lyserr.User{Message: fmt.Sprintf("json type error on line %d", line)}
+				return dest, lyserr.User{Message: fmt.Sprintf("json type error on field '%s' on line %d", key, line)}
 			}
 
 		default: // unknown unmarshal error

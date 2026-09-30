@@ -68,7 +68,7 @@ func TestDecodeJsonBodyFailure(t *testing.T) {
 			"a":"1"
 		}`)
 		_, err := DecodeJsonBody[value](rawBody)
-		assert.EqualValues(t, "json type error on line 2", err.Error())
+		assert.EqualValues(t, "json type error on field 'a' on line 2", err.Error())
 	})
 
 	t.Run("unknown field", func(t *testing.T) {
