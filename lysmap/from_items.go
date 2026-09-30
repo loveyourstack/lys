@@ -6,26 +6,26 @@ import (
 	"strings"
 )
 
-// FromRecs converts a slice of recs (structs from db) to map[string]any using reflection.
+// FromItems converts a slice of items (structs from db) to map[string]any using reflection.
 // It only includes fields with a json tag and uses the json tag name as the map key.
 // Embedded structs with no json tag are flattened recursively.
 // Values are written with their native Go types.
-func FromRecs[T any](recs []T) (recsMap []map[string]any, err error) {
+func FromItems[T any](items []T) (itemMap []map[string]any, err error) {
 
 	// ensure T is struct or pointer to struct
-	if len(recs) > 0 && !isStructOrPtrToStruct(reflect.ValueOf(recs[0])) {
+	if len(items) > 0 && !isStructOrPtrToStruct(reflect.ValueOf(items[0])) {
 		return nil, fmt.Errorf("T must be a struct or pointer to struct")
 	}
 
-	recsMap = make([]map[string]any, len(recs))
+	itemMap = make([]map[string]any, len(items))
 
-	for i, rec := range recs {
+	for i, rec := range items {
 		reflVal := reflect.ValueOf(rec)
 
 		// dereference pointer if needed
 		if reflVal.Kind() == reflect.Pointer {
 			if reflVal.IsNil() {
-				return nil, fmt.Errorf("recs[%d] is nil", i)
+				return nil, fmt.Errorf("items[%d] is nil", i)
 			}
 			reflVal = reflVal.Elem()
 		}
@@ -33,13 +33,13 @@ func FromRecs[T any](recs []T) (recsMap []map[string]any, err error) {
 		rowMap := make(map[string]any)
 		err := structToMapByJSONTags(reflVal, rowMap)
 		if err != nil {
-			return nil, fmt.Errorf("structToMapByJSONTags failed for recs[%d]: %w", i, err)
+			return nil, fmt.Errorf("structToMapByJSONTags failed for items[%d]: %w", i, err)
 		}
 
-		recsMap[i] = rowMap
+		itemMap[i] = rowMap
 	}
 
-	return recsMap, nil
+	return itemMap, nil
 }
 
 func isStructOrPtrToStruct(reflVal reflect.Value) bool {

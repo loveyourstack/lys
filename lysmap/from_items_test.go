@@ -8,78 +8,78 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFromRecsSuccess(t *testing.T) {
+func TestFromItemsSuccess(t *testing.T) {
 
-	t.Run("with recs", func(t *testing.T) {
-		type recS struct {
+	t.Run("with items", func(t *testing.T) {
+		type itemS struct {
 			ID        int    `json:"id"`
 			Name      string `json:"name"`
 			Excluded  string `json:"-"`
 			NoJsonTag string
 		}
 
-		recs := []recS{
+		items := []itemS{
 			{ID: 1, Name: "one", Excluded: "excluded1", NoJsonTag: "nojsontag1"},
 			{ID: 2, Name: "two", Excluded: "excluded2", NoJsonTag: "nojsontag2"},
 		}
 
-		recsMap, err := FromRecs(recs)
-		assert.NoError(t, err, "FromRecs should not error")
-		assert.Len(t, recsMap, 2, "recsMap length")
+		itemMap, err := FromItems(items)
+		assert.NoError(t, err, "FromItems should not error")
+		assert.Len(t, itemMap, 2, "itemMap length")
 
 		expected0 := map[string]any{"id": 1, "name": "one"}
 		expected1 := map[string]any{"id": 2, "name": "two"}
 
-		assert.Equal(t, expected0, recsMap[0], "record 0")
-		assert.Equal(t, expected1, recsMap[1], "record 1")
+		assert.Equal(t, expected0, itemMap[0], "item 0")
+		assert.Equal(t, expected1, itemMap[1], "item 1")
 	})
 
-	t.Run("empty recs", func(t *testing.T) {
-		type recS struct {
+	t.Run("empty items", func(t *testing.T) {
+		type itemS struct {
 			ID   int    `json:"id"`
 			Name string `json:"name"`
 		}
 
-		recs := []recS{}
+		items := []itemS{}
 
-		_, err := FromRecs(recs)
+		_, err := FromItems(items)
 		assert.NoError(t, err)
 	})
 }
 
-func TestFromRecsPointerRecordsSuccess(t *testing.T) {
+func TestFromItemsPointerSuccess(t *testing.T) {
 
-	type recS struct {
+	type itemS struct {
 		ID   int     `json:"id"`
 		Note *string `json:"note"`
 	}
 
 	note := "hello"
-	recs := []*recS{
+	items := []*itemS{
 		{ID: 1, Note: &note},
 		{ID: 2, Note: nil},
 	}
 
-	recsMap, err := FromRecs(recs)
+	itemsMap, err := FromItems(items)
 	assert.NoError(t, err)
-	assert.Len(t, recsMap, 2)
-	assert.Equal(t, map[string]any{"id": 1, "note": "hello"}, recsMap[0])
-	assert.Equal(t, map[string]any{"id": 2, "note": nil}, recsMap[1])
+	assert.Len(t, itemsMap, 2)
+	assert.Equal(t, map[string]any{"id": 1, "note": "hello"}, itemsMap[0])
+	assert.Equal(t, map[string]any{"id": 2, "note": nil}, itemsMap[1])
 }
 
-func TestFromRecsEmptyJSONTagNameUsesFieldName(t *testing.T) {
-	type recS struct {
+func TestFromItemsEmptyJSONTagNameUsesFieldName(t *testing.T) {
+	type itemS struct {
 		Name string `json:",omitzero"`
 	}
 
-	recMap, err := FromRecs([]recS{{Name: "ann"}})
+	itemMap, err := FromItems([]itemS{{Name: "ann"}})
 
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]any{"Name": "ann"}, recMap[0])
+	assert.Equal(t, map[string]any{"Name": "ann"}, itemMap[0])
 }
 
-func TestFromRecsOmitEmptyNilValues(t *testing.T) {
-	type recS struct {
+func TestFromItemsOmitEmptyNilValues(t *testing.T) {
+	type itemS struct {
 		Pointer  *string `json:"pointer,omitempty"`
 		Any      any     `json:"any,omitempty"`
 		TypedNil any     `json:"typed_nil,omitempty"`
@@ -88,39 +88,39 @@ func TestFromRecsOmitEmptyNilValues(t *testing.T) {
 	var pointer *string
 	var typedNil *string
 
-	recMap, err := FromRecs([]recS{{
+	itemMap, err := FromItems([]itemS{{
 		Pointer:  pointer,
 		Any:      nil,
 		TypedNil: typedNil,
 	}})
 
 	assert.NoError(t, err)
-	assert.Empty(t, recMap[0])
+	assert.Empty(t, itemMap[0])
 }
 
-func TestFromRecsOmitOptions(t *testing.T) {
+func TestFromItemsOmitOptions(t *testing.T) {
 
 	t.Run("regular types", func(t *testing.T) {
-		type recS struct {
+		type itemS struct {
 			Name string       `json:"name,omitzero"`
 			DOB  lystype.Date `json:"dob,omitzero"`
 			City string       `json:"city"`
 		}
 
 		d := lystype.Date(time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC))
-		recs := []recS{
+		items := []itemS{
 			{Name: "", DOB: lystype.Date{}, City: "x"},
 			{Name: "ann", DOB: d, City: "y"},
 		}
 
-		recsMap, err := FromRecs(recs)
+		itemMap, err := FromItems(items)
 		assert.NoError(t, err)
-		assert.Equal(t, map[string]any{"city": "x"}, recsMap[0])
-		assert.Equal(t, map[string]any{"name": "ann", "dob": d, "city": "y"}, recsMap[1])
+		assert.Equal(t, map[string]any{"city": "x"}, itemMap[0])
+		assert.Equal(t, map[string]any{"name": "ann", "dob": d, "city": "y"}, itemMap[1])
 	})
 
 	t.Run("nil and empty types", func(t *testing.T) {
-		type recS struct {
+		type itemS struct {
 			EmptySlice     []string          `json:"empty_slice,omitzero"`
 			NilSlice       []string          `json:"nil_slice,omitzero"`
 			EmptySliceOmit []string          `json:"empty_slice_omit,omitempty"`
@@ -129,7 +129,7 @@ func TestFromRecsOmitOptions(t *testing.T) {
 			ZeroArray      [1]int            `json:"zero_array,omitzero"`
 		}
 
-		recsMap, err := FromRecs([]recS{{
+		itemMap, err := FromItems([]itemS{{
 			EmptySlice:     []string{},
 			NilSlice:       nil,
 			EmptySliceOmit: []string{},
@@ -142,7 +142,7 @@ func TestFromRecsOmitOptions(t *testing.T) {
 		assert.Equal(t, map[string]any{
 			"empty_slice": []string{},
 			"empty_map":   map[string]string{},
-		}, recsMap[0])
+		}, itemMap[0])
 	})
 }
 
@@ -152,66 +152,66 @@ func (v semanticValue) IsZero() bool {
 	return v == 42
 }
 
-func TestFromRecsOmitZeroUsesIsZero(t *testing.T) {
-	type recS struct {
+func TestFromItemsOmitZeroUsesIsZero(t *testing.T) {
+	type itemS struct {
 		Value semanticValue `json:"value,omitzero"`
 	}
 
-	recMap, err := FromRecs([]recS{{Value: 42}})
+	itemMap, err := FromItems([]itemS{{Value: 42}})
 
 	assert.NoError(t, err)
-	assert.Empty(t, recMap[0])
+	assert.Empty(t, itemMap[0])
 }
 
-func TestFromRecsEmbeddedFlattening(t *testing.T) {
+func TestFromItemsEmbeddedFlattening(t *testing.T) {
 
 	type innerS struct {
 		Code string `json:"code"`
 	}
-	type recS struct {
+	type itemS struct {
 		innerS
 		Name string `json:"name"`
 	}
 
-	recs := []recS{{Code: "A", Name: "alpha"}}
+	items := []itemS{{Code: "A", Name: "alpha"}}
 
-	recsMap, err := FromRecs(recs)
+	itemMap, err := FromItems(items)
 	assert.NoError(t, err)
-	assert.Equal(t, map[string]any{"code": "A", "name": "alpha"}, recsMap[0])
+	assert.Equal(t, map[string]any{"code": "A", "name": "alpha"}, itemMap[0])
 }
 
-func TestFromRecsKeepsNativeCustomType(t *testing.T) {
+func TestFromItemsKeepsNativeCustomType(t *testing.T) {
 
-	type recS struct {
+	type itemS struct {
 		Start lystype.Date `json:"start"`
 	}
 
 	d := lystype.Date(time.Date(2026, 4, 23, 0, 0, 0, 0, time.UTC))
-	recs := []recS{{Start: d}}
+	items := []itemS{{Start: d}}
 
-	recsMap, err := FromRecs(recs)
+	itemMap, err := FromItems(items)
 	assert.NoError(t, err)
 
-	val, ok := recsMap[0]["start"].(lystype.Date)
+	val, ok := itemMap[0]["start"].(lystype.Date)
 	assert.True(t, ok)
 	assert.Equal(t, d, val)
 }
 
-func TestFromRecsFirstElementTypeFailure(t *testing.T) {
-	recs := []int{1, 2, 3}
+func TestFromItemsFirstElementTypeFailure(t *testing.T) {
+	items := []int{1, 2, 3}
 
-	_, err := FromRecs(recs)
+	_, err := FromItems(items)
 	assert.EqualError(t, err, "T must be a struct or pointer to struct")
 }
 
-func TestFromRecsNilPointerFailure(t *testing.T) {
+func TestFromItemsNilPointerFailure(t *testing.T) {
 
-	type recS struct {
+	type itemS struct {
 		ID int `json:"id"`
 	}
 
-	recs := []*recS{{ID: 1}, nil}
+	items := []*itemS{{ID: 1}, nil}
 
-	_, err := FromRecs(recs)
-	assert.EqualError(t, err, "recs[1] is nil")
+	_, err := FromItems(items)
+	assert.EqualError(t, err, "items[1] is nil")
 }

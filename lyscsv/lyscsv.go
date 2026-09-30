@@ -30,9 +30,9 @@ func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, delimi
 	}
 
 	// convert items to []map[string]any
-	recsMap, err := lysmap.FromRecs(items)
+	recsMap, err := lysmap.FromItems(items)
 	if err != nil {
-		return fmt.Errorf("lysmap.FromRecs failed: %w", err)
+		return fmt.Errorf("lysmap.FromItems failed: %w", err)
 	}
 
 	// get [][]string
@@ -85,10 +85,10 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, 
 	return nil
 }
 
-func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type) (data [][]string, err error) {
+func getStrData(itemMap []map[string]any, jsonTagTypeMap map[string]reflect.Type) (data [][]string, err error) {
 
 	// return 1 row per record, plus 1 for the header row
-	data = make([][]string, len(recsMap)+1)
+	data = make([][]string, len(itemMap)+1)
 
 	// get sorted keys
 	keys := maps.Keys(jsonTagTypeMap)
@@ -99,8 +99,8 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type
 
 	// add data
 
-	// for each record
-	for i := range recsMap {
+	// for each item
+	for i := range itemMap {
 
 		// add a row with 1 column per key
 		row := make([]string, len(keys))
@@ -108,7 +108,7 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type
 		// for each key
 		for j, key := range keys {
 
-			val := recsMap[i][key]
+			val := itemMap[i][key]
 
 			// use jsonTagTypeMap to call the appropriate formatting func for each type
 			// to allow for optional fields, skip values that cannot be asserted rather than returning an error
@@ -172,7 +172,7 @@ func getStrData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type
 
 		data[i+1] = row
 
-	} // next record
+	} // next item
 
 	return data, nil
 }

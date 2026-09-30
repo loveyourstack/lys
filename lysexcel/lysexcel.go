@@ -28,13 +28,13 @@ func WriteItems[T any](items []T, jsonTagTypeMap map[string]reflect.Type, sheetN
 	}
 
 	// convert items to []map[string]any
-	recsMap, err := lysmap.FromRecs(items)
+	itemMap, err := lysmap.FromItems(items)
 	if err != nil {
-		return fmt.Errorf("lysmap.FromRecs failed: %w", err)
+		return fmt.Errorf("lysmap.FromItems failed: %w", err)
 	}
 
 	// write to Excel file in memory, return workbook
-	wb, sh, err := writeData(recsMap, jsonTagTypeMap, sheetName)
+	wb, sh, err := writeData(itemMap, jsonTagTypeMap, sheetName)
 	if err != nil {
 		return fmt.Errorf("writeData failed: %w", err)
 	}
@@ -77,7 +77,7 @@ func WriteItemsToFile[T any](items []T, jsonTagTypeMap map[string]reflect.Type, 
 	return nil
 }
 
-func writeData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type, sheetName string) (wb *xlsx.File, sh *xlsx.Sheet, err error) {
+func writeData(itemMap []map[string]any, jsonTagTypeMap map[string]reflect.Type, sheetName string) (wb *xlsx.File, sh *xlsx.Sheet, err error) {
 
 	if sheetName == "" {
 		sheetName = "data"
@@ -110,8 +110,8 @@ func writeData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type,
 
 	// add data
 
-	// for each record
-	for i := range recsMap {
+	// for each item
+	for i := range itemMap {
 
 		// add a row
 		row := sh.AddRow()
@@ -122,7 +122,7 @@ func writeData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type,
 			// add a cell
 			cell := row.AddCell()
 
-			val := recsMap[i][key]
+			val := itemMap[i][key]
 
 			// use jsonTagTypeMap to call the appropriate cell.SetType func for each type
 			// to allow for optional fields, skip values that cannot be asserted rather than returning an error
@@ -173,7 +173,7 @@ func writeData(recsMap []map[string]any, jsonTagTypeMap map[string]reflect.Type,
 
 		} // next key
 
-	} // next record
+	} // next item
 
 	return wb, sh, nil
 }
