@@ -1,6 +1,6 @@
 
-CREATE OR REPLACE FUNCTION core.setfunc (
-	_p_text text,
+CREATE OR REPLACE FUNCTION core.f_setfunc (
+  _p_text text,
   _p_int int,
   _p_inta int[]
 )

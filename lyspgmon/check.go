@@ -87,12 +87,12 @@ func addMissingTriggers(ctx context.Context, ownerDb *pgxpool.Pool, viewName, tr
 
 // AddMissingAuditUpdateTriggers adds missing audit update triggers for all tables returned by v_missing_audit_update_trigger
 func AddMissingAuditUpdateTriggers(ctx context.Context, ownerDb *pgxpool.Pool, logger *slog.Logger) (err error) {
-	return addMissingTriggers(ctx, ownerDb, "v_missing_audit_update_trigger", "t_audit_update", "AFTER UPDATE", "audit_update_trigger", logger)
+	return addMissingTriggers(ctx, ownerDb, "v_missing_audit_update_trigger", "t_audit_update", "AFTER UPDATE", "tf_audit_update", logger)
 }
 
 // AddMissingUpdatedAtTriggers adds missing updated_at triggers for all tables returned by v_missing_updated_at_trigger
 func AddMissingUpdatedAtTriggers(ctx context.Context, ownerDb *pgxpool.Pool, logger *slog.Logger) (err error) {
-	return addMissingTriggers(ctx, ownerDb, "v_missing_updated_at_trigger", "t_set_updated_at", "BEFORE UPDATE", "set_updated_at", logger)
+	return addMissingTriggers(ctx, ownerDb, "v_missing_updated_at_trigger", "t_set_updated_at", "BEFORE UPDATE", "tf_set_updated_at", logger)
 }
 
 // CheckDuplicateShortnames checks for tables with the same shortname comment

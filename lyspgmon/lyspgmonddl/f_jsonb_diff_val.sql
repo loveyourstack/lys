@@ -1,6 +1,6 @@
 
 -- from https://stackoverflow.com/questions/36041784/postgresql-compare-two-jsonb-objects
-CREATE OR REPLACE FUNCTION lyspgmon.jsonb_diff_val(val1 JSONB, val2 JSONB)
+CREATE OR REPLACE FUNCTION lyspgmon.f_jsonb_diff_val(val1 JSONB, val2 JSONB)
 RETURNS JSONB AS $$
 DECLARE
   result JSONB;

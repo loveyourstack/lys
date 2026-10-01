@@ -15,7 +15,7 @@ import (
 const (
 	name           string = "Core setfunc"
 	schemaName     string = "core"
-	setFuncName    string = "setfunc"
+	setFuncName    string = "f_setfunc"
 	defaultOrderBy string = "text_val, int_val"
 )
 

@@ -1,5 +1,5 @@
 
-CREATE OR REPLACE FUNCTION lyspgmon.remove_jsonb_fields(p_row jsonb)
+CREATE OR REPLACE FUNCTION lyspgmon.f_remove_jsonb_fields(p_row jsonb)
   RETURNS jsonb AS
 $BODY$
 DECLARE

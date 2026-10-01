@@ -1,5 +1,5 @@
 
-CREATE OR REPLACE FUNCTION lyspgmon.set_updated_at()
+CREATE OR REPLACE FUNCTION lyspgmon.tf_set_updated_at()
   RETURNS trigger AS
 $BODY$
 BEGIN
