@@ -184,8 +184,8 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 		}
 	}
 
-	// add trigger funcs, then normal funcs
-	funcTypes := []string{"tf_", "f_"}
+	// add trigger funcs, regular funcs and procedures
+	funcTypes := []string{"tf_", "f_", "p_"}
 	for _, funcType := range funcTypes {
 		for _, schema := range schemaCreationOrder {
 			dirEntries, err := sqlAssets.ReadDir("" + schema)

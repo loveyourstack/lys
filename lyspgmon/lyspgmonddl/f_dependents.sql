@@ -9,6 +9,13 @@ RETURNS TABLE (
 LANGUAGE SQL
 BEGIN ATOMIC
 
+/*
+    note re: functions and procedures
+    
+    this function will only track dependencies for functions and procedures if they are written using SQL-standard form (BEGIN ATOMIC)
+    if they are written with plpgsql, the content is created dynamically and cannot be tracked by this function
+*/
+
 WITH RECURSIVE target AS (
   SELECT c.oid AS relation_oid
   FROM pg_catalog.pg_class AS c
