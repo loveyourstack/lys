@@ -9,7 +9,9 @@ import (
 	"log/slog"
 	"strings"
 
+	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -184,37 +186,10 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 		}
 	}
 
-	// add trigger funcs, regular funcs and procedures
-	funcTypes := []string{"tf_", "f_", "p_"}
-	for _, funcType := range funcTypes {
-		for _, schema := range schemaCreationOrder {
-			dirEntries, err := sqlAssets.ReadDir("" + schema)
-			if err != nil {
-				return fmt.Errorf("sqlAssets.ReadDir failed for schema: %v: %w", schema, err)
-			}
-			for _, dirEntry := range dirEntries {
-				if strings.HasPrefix(dirEntry.Name(), funcType) {
-					if err = ExecuteFile(ctx, db, schema+"/"+dirEntry.Name(), sqlAssets, replacements, logger); err != nil {
-						return fmt.Errorf("ExecuteFile failed for schema: %v, func type: %v: %w", schema, funcType, err)
-					}
-				}
-			}
-		}
-	}
-
-	// add views
-	assetTypes = []string{"views", "materialized_views", "views_post_mv"}
-	for _, assetType := range assetTypes {
-		for _, schema := range schemaCreationOrder {
-
-			assetPath := fmt.Sprintf("%s/%s_%s.sql", schema, schema, assetType)
-			if err = ExecuteFile(ctx, db, assetPath, sqlAssets, replacements, logger); err != nil {
-				if errors.Is(err, fs.ErrNotExist) {
-					continue
-				}
-				return fmt.Errorf("ExecuteFile failed for schema: %v, asset type: %v: %w", schema, assetType, err)
-			}
-		}
+	// funcs and views: can interdepend, so process together
+	// note: they are added in schemaCreationOrder. Any inter-schema dependencies must point backwards, not forwards
+	if err = addFuncsAndViews(ctx, db, sqlAssets, schemaCreationOrder, replacements, logger); err != nil {
+		return fmt.Errorf("addFuncsAndViews failed: %w", err)
 	}
 
 	// add live then test data, if any
@@ -250,4 +225,93 @@ func PopulateDb(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schem
 	}
 
 	return nil
+}
+
+// addFuncsAndViews attempts to add all functions and views for each schema, handling interdependencies by deferring execution of files that fail due to missing dependencies.
+func addFuncsAndViews(ctx context.Context, db *pgxpool.Pool, sqlAssets embed.FS, schemaCreationOrder []string, replacements []FileReplacement,
+	logger *slog.Logger) error {
+
+	for _, schema := range schemaCreationOrder {
+
+		filePaths := []string{}
+
+		// get files from /funcs, if any
+		funcFilePaths, err := getSqlFilePathsfromDir(sqlAssets, schema+"/funcs")
+		if err != nil {
+			return fmt.Errorf("getSqlFilePathsfromDir failed for schema: %v, funcs: %w", schema, err)
+		}
+		filePaths = append(filePaths, funcFilePaths...)
+
+		// get files from /views, if any
+		viewFilePaths, err := getSqlFilePathsfromDir(sqlAssets, schema+"/views")
+		if err != nil {
+			return fmt.Errorf("getSqlFilePathsfromDir failed for schema: %v, views: %w", schema, err)
+		}
+		filePaths = append(filePaths, viewFilePaths...)
+
+		// loop until all files are executed or no progress can be made
+		pending := filePaths
+		for len(pending) > 0 {
+
+			var deferred []string
+			progress := false
+
+			// attempt to execute each pending file, deferring those that fail due to missing dependencies
+			for _, f := range pending {
+
+				err := ExecuteFile(ctx, db, f, sqlAssets, replacements, logger)
+				if err == nil {
+					progress = true
+					continue
+				}
+
+				var pgErr *pgconn.PgError
+				if errors.As(err, &pgErr) &&
+					(pgErr.Code == pgerrcode.UndefinedTable || pgErr.Code == pgerrcode.UndefinedFunction) {
+					deferred = append(deferred, f) // depends on a func/view not yet created
+					continue
+				}
+
+				return err // genuine error: fail fast
+
+			} // next pending file
+
+			if !progress {
+				return fmt.Errorf("unresolvable dependencies: %v", deferred)
+			}
+
+			pending = deferred
+
+		} // next attempt
+
+	} // next schema
+
+	return nil
+}
+
+// getFilePathsfromDir retrieves all file paths from the specified directory within the embedded filesystem.
+// If the directory does not exist, it returns an empty slice without error.
+func getSqlFilePathsfromDir(sqlAssets embed.FS, dir string) ([]string, error) {
+
+	filePaths := []string{}
+
+	dirEntries, err := sqlAssets.ReadDir(dir)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return filePaths, nil
+		}
+		return nil, fmt.Errorf("sqlAssets.ReadDir failed for dir: %v: %w", dir, err)
+	}
+
+	for _, dirEntry := range dirEntries {
+
+		// skip dirs or non SQL files (e.g. to allow READMEs)
+		if dirEntry.IsDir() || !strings.HasSuffix(dirEntry.Name(), ".sql") {
+			continue
+		}
+
+		filePaths = append(filePaths, dir+"/"+dirEntry.Name())
+	}
+
+	return filePaths, nil
 }
