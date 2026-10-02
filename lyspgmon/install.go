@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/fs"
 	"log/slog"
+	"slices"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -25,14 +26,26 @@ func Install(ctx context.Context, ownerDb *pgxpool.Pool, dbOwner string, logger 
 		return fmt.Errorf("createSchema failed: %w", err)
 	}
 
-	// execute all embedded funcs and views into db
+	// add base objects first
+	baseObjects := []string{
+		"audit_update.sql",
+		"f_raise.sql",
+	}
+	for _, baseObject := range baseObjects {
+		err = lyspgdb.ExecuteFile(ctx, ownerDb, baseObject, lyspgmonddl.SQLAssets, nil, logger)
+		if err != nil {
+			return fmt.Errorf("lyspgdb.ExecuteFile failed for base object '%s': %w", baseObject, err)
+		}
+	}
+
+	// execute remaining embedded funcs and views into db
 	err = fs.WalkDir(lyspgmonddl.SQLAssets, ".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return fmt.Errorf("unknown file err: %w", err)
 		}
 
-		// skip non-sql files
-		if !strings.HasSuffix(d.Name(), ".sql") {
+		// skip non-sql files and sql files already added
+		if !strings.HasSuffix(d.Name(), ".sql") || slices.Contains(baseObjects, d.Name()) {
 			return nil
 		}
 
