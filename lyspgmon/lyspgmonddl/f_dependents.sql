@@ -6,7 +6,9 @@ RETURNS TABLE (
   "schema" text,
   name text,
   type text,
-  depth int
+  depth int,
+  drop_cmd text,
+  create_cmt text
 )
 LANGUAGE SQL
 BEGIN ATOMIC
@@ -98,7 +100,21 @@ candidates AS (
   WHERE NOT EXISTS (SELECT 1 FROM target t WHERE t.classid = nd.classid AND t.objid = nd.objid)
 )
 
-SELECT c.schema_name, c.object_name, c.object_type, min(c.depth)::int AS depth
+SELECT 
+  c.schema_name,
+  c.object_name,
+  c.object_type,
+  min(c.depth)::int AS depth,
+  CASE WHEN c.object_type = 'function' THEN 'DROP FUNCTION ' || c.schema_name || '.' || c.object_name || ';'
+    WHEN c.object_type = 'materialized view' THEN 'DROP MATERIALIZED VIEW ' || c.schema_name || '.' || c.object_name || ';'
+    WHEN c.object_type = 'view' THEN 'DROP VIEW ' || c.schema_name || '.' || c.object_name || ';'
+    ELSE ''
+  END AS drop_cmd,
+  CASE WHEN c.object_type = 'function' THEN '-- + ' || c.schema_name || '.' || c.object_name || ';'
+    WHEN c.object_type = 'materialized view' THEN '-- + ' || c.schema_name || '.' || c.object_name || ';'
+    WHEN c.object_type = 'view' THEN '-- + ' || c.schema_name || '.' || c.object_name || ';'
+    ELSE ''
+  END AS create_cmt
 FROM candidates AS c
 GROUP BY c.schema_name, c.object_name, c.object_type
 
@@ -107,7 +123,7 @@ UNION ALL
 -- no matching object: raise an error
 SELECT NULL, NULL,
   lyspgmon.f_raise(format('lyspgmon.f_dependents: no table, view or SQL function found for %I.%I', _schema, _name)),
-  NULL
+  NULL, NULL, NULL
 WHERE NOT EXISTS (SELECT 1 FROM target);
 
 END;
