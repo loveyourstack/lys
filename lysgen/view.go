@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/loveyourstack/lys/lysos"
 	"github.com/loveyourstack/lys/lyspg"
 )
 
@@ -95,9 +96,9 @@ func View(ctx context.Context, db *pgxpool.Pool, schema, table string) (res stri
 	res = strings.Join(resA, "\n") + ";"
 
 	// write to clipboard for convenience
-	err = WriteToClipboard(res)
+	err = lysos.WriteToClipboard(res)
 	if err != nil {
-		return "", fmt.Errorf("WriteToClipboard failed: %w", err)
+		return "", fmt.Errorf("lysos.WriteToClipboard failed: %w", err)
 	}
 
 	return "\n" + res + "\n", nil
