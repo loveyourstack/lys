@@ -10,18 +10,13 @@ import (
 	"github.com/loveyourstack/lys/lyspg"
 )
 
-type iArchiveable[idT lyspg.PrimaryKeyType] interface {
-	Archive(ctx context.Context, tx pgx.Tx, id idT) error
-	Restore(ctx context.Context, tx pgx.Tx, id idT) error
-}
-
 // Archive handles moving a record from the supplied store into its archived table
-func Archive[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, store iArchiveable[idT]) http.HandlerFunc {
+func Archive[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, store lyspg.Archiver[idT]) http.HandlerFunc {
 	return moveRecords(env, db, store.Archive, "Archive", DataArchived)
 }
 
 // Restore handles moving a record from the store's archived table back to the main table
-func Restore[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, store iArchiveable[idT]) http.HandlerFunc {
+func Restore[idT lyspg.PrimaryKeyType](env Env, db *pgxpool.Pool, store lyspg.Archiver[idT]) http.HandlerFunc {
 	return moveRecords(env, db, store.Restore, "Restore", DataRestored)
 }
 

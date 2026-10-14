@@ -1,22 +1,15 @@
 package lys
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/loveyourstack/lys/lyserr"
+	"github.com/loveyourstack/lys/lyspg"
 )
 
-// iPostable is a store that can be used by Post
-type iPostable[inputT any, outputT any] interface {
-	Insert(ctx context.Context, input inputT) (newVal outputT, err error)
-	Validate(validate *validator.Validate, input inputT) error
-}
-
 // Post handles creating a new item using the supplied store and returning an output (the new item or its ID) in the response
-func Post[inputT any, outputT any](env Env, store iPostable[inputT, outputT]) http.HandlerFunc {
+func Post[inputT any, outputT any](env Env, store lyspg.Inserter[inputT, outputT]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

@@ -11,6 +11,11 @@ import (
 
 // experimental
 
+type Archiver[idT PrimaryKeyType] interface {
+	Archive(ctx context.Context, tx pgx.Tx, id idT) error
+	Restore(ctx context.Context, tx pgx.Tx, id idT) error
+}
+
 var (
 	ArchivedTableSuffix = "_archived"
 	ArchivedTableCols   = []string{"archived_at", "archived_by_cascade"}

@@ -6,10 +6,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
 	"github.com/jackc/pgx/v5"
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysmeta"
 )
+
+type Updater[idT PrimaryKeyType, inputT any] interface {
+	Update(ctx context.Context, input inputT, id idT) error
+	Validate(validate *validator.Validate, input inputT) error
+}
 
 // getUpdateStmt returns an UPDATE statement using the supplied params
 func getUpdateStmt(schemaName, tableName, pkColName string, inputFields []string) string {

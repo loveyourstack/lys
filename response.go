@@ -8,6 +8,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+
+	"github.com/loveyourstack/lys/lysapi"
 )
 
 // response constants
@@ -23,18 +25,12 @@ const (
 	DataUpdated  string = "updated"
 )
 
-type GetMetadata struct {
-	Count                 int   `json:"count"`
-	TotalCount            int64 `json:"total_count"`
-	TotalCountIsEstimated bool  `json:"total_count_is_estimated"`
-}
-
 // StdResponse is the return type of all API routes
 type StdResponse struct {
-	Status         string       `json:"status"`
-	Data           any          `json:"data,omitzero"`
-	GetMetadata    *GetMetadata `json:"metadata,omitzero"` // only used for GET many
-	ErrDescription string       `json:"err_description,omitzero"`
+	Status         string                 `json:"status"`
+	Data           any                    `json:"data,omitzero"`
+	GetMetadata    *lysapi.SelectMetadata `json:"metadata,omitzero"` // only used for GET many
+	ErrDescription string                 `json:"err_description,omitzero"`
 }
 
 // FileResponse opens the supplied file and streams it to w as a file

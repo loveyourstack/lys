@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+option go_package = "github.com/loveyourstack/lys/internal/pb";
+
+package pb;
+
+message CoreTypeTestInput {
+  string c_text = 1;
+}
+
+message CoreTypeTest {
+  int64 id = 1;
+  
+  string c_text = 2;
+}

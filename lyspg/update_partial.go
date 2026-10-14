@@ -10,6 +10,15 @@ import (
 	"github.com/loveyourstack/lys/lysmeta"
 )
 
+type UpdatePartialer[idT PrimaryKeyType] interface {
+	UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id idT) error
+}
+
+type UpdatePartialSelecter[idT PrimaryKeyType, modelT any] interface {
+	SelectById(ctx context.Context, id idT) (item modelT, err error)
+	UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id idT) error
+}
+
 func getUpdatePartialStmtAndValues[pkT PrimaryKeyType](schemaName, tableName, pkColName string, jsonKeyDbNameMap map[string]string, assignmentsMap map[string]any,
 	pkVal pkT, extraDbCols []string, extraInputVals []any) (stmt string, inputVals []any, err error) {
 

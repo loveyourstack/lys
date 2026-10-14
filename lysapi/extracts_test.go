@@ -1,6 +1,7 @@
-package lys
+package lysapi
 
 import (
+	"net/http"
 	"net/url"
 	"testing"
 
@@ -8,6 +9,37 @@ import (
 	"github.com/loveyourstack/lys/lysset"
 	"github.com/stretchr/testify/assert"
 )
+
+func mustCreateGetReq(t testing.TB, targetUrl string) *http.Request {
+
+	req, err := http.NewRequest("GET", targetUrl, nil)
+	if err != nil {
+		t.Fatalf("http.NewRequest failed: %v", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	return req
+}
+
+func mustFillGetOptions(t testing.TB, input GetOptions) GetOptions {
+
+	getOptions, err := FillGetOptions(input)
+	if err != nil {
+		t.Fatalf("FillGetOptions failed: %v", err)
+	}
+
+	return getOptions
+}
+
+func mustExtractFilters(t testing.TB, urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames lysset.Set[string], setFuncUrlParamNames []string, getOptions GetOptions) []lyspg.Condition {
+
+	conds, err := ExtractFilters(urlValues, jsonKeyDbNameMap, additionalFilterParamNames, setFuncUrlParamNames, getOptions)
+	if err != nil {
+		t.Fatalf("ExtractFilters failed: %v", err)
+	}
+
+	return conds
+}
 
 func TestExtractFieldsSuccess(t *testing.T) {
 

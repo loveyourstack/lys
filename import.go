@@ -7,17 +7,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/loveyourstack/lys/lyserr"
+	"github.com/loveyourstack/lys/lyspg"
 )
-
-// iImportable is a store that can be used by Import
-type iImportable[inputT any] interface {
-	InsertTx(ctx context.Context, tx pgx.Tx, input inputT) (newId int64, err error)
-	Validate(validate *validator.Validate, input inputT) error
-}
 
 /*
 ImportValueRepl is a struct that can be used when the input contains a foreign key.
@@ -36,7 +29,7 @@ type ImportValueRepl struct {
 
 // Import handles creating multiple new items using the supplied store and returning the number of rows inserted
 // the supplied db is used for the MapFunc in valRepls
-func Import[inputT any](env Env, db *pgxpool.Pool, store iImportable[inputT], valRepls ...ImportValueRepl) http.HandlerFunc {
+func Import[inputT any](env Env, db *pgxpool.Pool, store lyspg.Importer[inputT], valRepls ...ImportValueRepl) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

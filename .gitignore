@@ -1,1 +1,4 @@
 /lys_config.toml
+
+/internal/pb/*
+!/internal/pb/README.md

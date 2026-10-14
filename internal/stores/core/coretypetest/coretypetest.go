@@ -27,6 +27,9 @@ var (
 	plan, inputPlan lysmeta.Plan
 )
 
+//var ModelToPbFunc = lysrpc.NewToPb[coretypetestm.Model, pb.CoreTypeTest]()
+//var InputFromPbFunc = lysrpc.NewFromPb[coretypetestm.Input, pb.CoreTypeTestInput]()
+
 func init() {
 	var err error
 	plan, err = lysmeta.Analyze(coretypetestm.Model{})

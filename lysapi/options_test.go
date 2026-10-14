@@ -1,4 +1,4 @@
-package lys
+package lysapi
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFillGetOptionsDefaults(t *testing.T) {
+func TestFillGetDefaults(t *testing.T) {
 	opts, err := FillGetOptions(GetOptions{})
 	assert.NoError(t, err)
 
@@ -23,7 +23,7 @@ func TestFillGetOptionsDefaults(t *testing.T) {
 	assert.Equal(t, defaultCsvDelimiter, opts.CsvDelimiter)
 }
 
-func TestFillGetOptionsCustomValues(t *testing.T) {
+func TestFillGetCustomValues(t *testing.T) {
 	input := GetOptions{
 		FormatParamName:        "fmt",
 		FieldsParamName:        "flds",
@@ -55,7 +55,7 @@ func TestFillGetOptionsCustomValues(t *testing.T) {
 	assert.Equal(t, input.CsvDelimiter, opts.CsvDelimiter)
 }
 
-func TestFillGetOptionsDuplicateParamNames(t *testing.T) {
+func TestFillGetDuplicateParamNames(t *testing.T) {
 	// two param names the same
 	_, err := FillGetOptions(GetOptions{
 		FormatParamName: "xpage",
@@ -64,7 +64,7 @@ func TestFillGetOptionsDuplicateParamNames(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestFillGetOptionsDuplicateSeparator(t *testing.T) {
+func TestFillGetDuplicateSeparator(t *testing.T) {
 	// separator collides with a param name
 	_, err := FillGetOptions(GetOptions{
 		FormatParamName:        "xformat",
@@ -73,7 +73,7 @@ func TestFillGetOptionsDuplicateSeparator(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestFillGetOptionsPartialDefaults(t *testing.T) {
+func TestFillGetPartialDefaults(t *testing.T) {
 	// only some fields set: unset fields should get defaults, set fields should be preserved
 	opts, err := FillGetOptions(GetOptions{
 		DefaultPerPage: 5,

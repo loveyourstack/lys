@@ -9,6 +9,10 @@ import (
 	"github.com/loveyourstack/lys/lyserr"
 )
 
+type Deleter[idT PrimaryKeyType] interface {
+	Delete(ctx context.Context, id idT) error
+}
+
 // DeleteByValue deletes from the supplied database table using the value of any column
 // must delete at least 1 row
 func DeleteByValue(ctx context.Context, db PoolOrTx, schemaName, tableName, columnName string, val any) error {

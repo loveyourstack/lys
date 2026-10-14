@@ -4,7 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"os"
 	"testing"
 
@@ -22,16 +21,15 @@ import (
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
 	"github.com/loveyourstack/lys/internal/stores/core/coreuuidtest"
 	"github.com/loveyourstack/lys/internal/stores/core/corevolumetest"
+	"github.com/loveyourstack/lys/lysapi"
 	"github.com/loveyourstack/lys/lyslog"
-	"github.com/loveyourstack/lys/lyspg"
 	"github.com/loveyourstack/lys/lyspgdb"
-	"github.com/loveyourstack/lys/lysset"
 )
 
 type httpServerApplication struct {
 	*cmd.Application
-	GetOptions  GetOptions
-	PostOptions PostOptions
+	GetOptions  lysapi.GetOptions
+	PostOptions lysapi.PostOptions
 }
 
 // getRouter returns a mux providing the HTTP server's routes
@@ -158,11 +156,11 @@ func mustGetSrvApp(ctx context.Context, t testing.TB) *httpServerApplication {
 	// create http server app
 	srvApp := &httpServerApplication{
 		Application: app,
-		PostOptions: FillPostOptions(PostOptions{}), // use defaults
+		PostOptions: lysapi.FillPostOptions(lysapi.PostOptions{}), // use defaults
 	}
 
 	var err error
-	srvApp.GetOptions, err = FillGetOptions(GetOptions{})
+	srvApp.GetOptions, err = lysapi.FillGetOptions(lysapi.GetOptions{})
 	if err != nil {
 		t.Fatalf("FillGetOptions failed: %v", err)
 	}
@@ -189,24 +187,4 @@ func mustCreateGetReq(t testing.TB, targetUrl string) *http.Request {
 	req.Header.Set("Content-Type", "application/json")
 
 	return req
-}
-
-func mustFillGetOptions(t testing.TB, input GetOptions) GetOptions {
-
-	getOptions, err := FillGetOptions(input)
-	if err != nil {
-		t.Fatalf("FillGetOptions failed: %v", err)
-	}
-
-	return getOptions
-}
-
-func mustExtractFilters(t testing.TB, urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames lysset.Set[string], setFuncUrlParamNames []string, getOptions GetOptions) []lyspg.Condition {
-
-	conds, err := ExtractFilters(urlValues, jsonKeyDbNameMap, additionalFilterParamNames, setFuncUrlParamNames, getOptions)
-	if err != nil {
-		t.Fatalf("ExtractFilters failed: %v", err)
-	}
-
-	return conds
 }

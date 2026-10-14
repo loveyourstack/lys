@@ -6,9 +6,26 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/go-playground/validator/v10"
+	"github.com/jackc/pgx/v5"
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lysmeta"
 )
+
+type Inserter[inputT any, outputT any] interface {
+	Insert(ctx context.Context, input inputT) (newVal outputT, err error)
+	Validate(validate *validator.Validate, input inputT) error
+}
+
+type InsertSelecter[inputT any, modelT any] interface {
+	InsertSelect(ctx context.Context, input inputT) (modelT, error)
+	Validate(validate *validator.Validate, input inputT) error
+}
+
+type Importer[inputT any] interface {
+	InsertTx(ctx context.Context, tx pgx.Tx, input inputT) (newId int64, err error)
+	Validate(validate *validator.Validate, input inputT) error
+}
 
 // getInsertStmt returns an INSERT statement using the supplied params
 func getInsertStmt(schemaName, tableName, pkColName string, inputFields []string) string {

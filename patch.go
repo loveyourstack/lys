@@ -1,7 +1,6 @@
 package lys
 
 import (
-	"context"
 	"encoding/json/v2"
 	"fmt"
 	"net/http"
@@ -9,13 +8,8 @@ import (
 	"github.com/loveyourstack/lys/lyspg"
 )
 
-// iPatchable is a store that can be used by Patch.
-type iPatchable[idT lyspg.PrimaryKeyType] interface {
-	UpdatePartial(ctx context.Context, assignmentsMap map[string]any, id idT) error
-}
-
 // Patch handles changing some of an item's fields using the supplied store.
-func Patch[idT lyspg.PrimaryKeyType](env Env, store iPatchable[idT]) http.HandlerFunc {
+func Patch[idT lyspg.PrimaryKeyType](env Env, store lyspg.UpdatePartialer[idT]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

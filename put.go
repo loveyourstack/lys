@@ -1,23 +1,15 @@
 package lys
 
 import (
-	"context"
 	"fmt"
 	"net/http"
 
-	"github.com/go-playground/validator/v10"
 	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lyspg"
 )
 
-// iPutable is a store that can be used by Put.
-type iPutable[idT lyspg.PrimaryKeyType, inputT any] interface {
-	Update(ctx context.Context, input inputT, id idT) error
-	Validate(validate *validator.Validate, input inputT) error
-}
-
 // Put handles changing an item using the supplied store.
-func Put[idT lyspg.PrimaryKeyType, inputT any](env Env, store iPutable[idT, inputT]) http.HandlerFunc {
+func Put[idT lyspg.PrimaryKeyType, inputT any](env Env, store lyspg.Updater[idT, inputT]) http.HandlerFunc {
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

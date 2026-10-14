@@ -9,6 +9,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/loveyourstack/lys/lysapi"
 	"github.com/loveyourstack/lys/lyspg"
 )
 
@@ -16,8 +17,8 @@ import (
 type Env struct {
 	Logger      *slog.Logger
 	Validate    *validator.Validate
-	GetOptions  GetOptions
-	PostOptions PostOptions
+	GetOptions  lysapi.GetOptions
+	PostOptions lysapi.PostOptions
 }
 
 // RouteAdderFunc is a function returning a subrouter

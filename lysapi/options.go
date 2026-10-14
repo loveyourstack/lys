@@ -1,4 +1,4 @@
-package lys
+package lysapi
 
 import (
 	"fmt"
@@ -26,7 +26,7 @@ const (
 	defaultMaxImportRecs int   = 1000
 )
 
-// GetOptions contains the options used when processing GET requests, such as paging param names and default values.
+// GetOptions contains the options used when processing GET or List requests, such as paging param names and default values.
 // Since the json field names are used as filters, param names should be chosen which will never appear as json field names. This is the reason for the "x" prefix in the default param names.
 type GetOptions struct {
 

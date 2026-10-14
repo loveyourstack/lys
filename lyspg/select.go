@@ -7,7 +7,24 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/loveyourstack/lys/lyserr"
+	"github.com/loveyourstack/lys/lysmeta"
+	"github.com/loveyourstack/lys/lystype"
 )
+
+type Selecter[T any] interface {
+	GetName() string // file output: for setting filename
+	GetPlan() lysmeta.Plan
+	Select(ctx context.Context, params SelectParams) (items []T, unpagedCount TotalCount, err error)
+}
+
+type SelecterWithLastSync[T any] interface {
+	Selecter[T]
+	GetLastSyncAt(ctx context.Context) (lastSyncAt lystype.Datetime, err error)
+}
+
+type SelecterById[idT PrimaryKeyType, outT any] interface {
+	SelectById(ctx context.Context, id idT) (item outT, err error)
+}
 
 // Select returns multiple rows from the db according to the params supplied
 func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, viewName, defaultOrderBy string, allFields []string,
