@@ -13,6 +13,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Update performs a partial update on a model identified by its ID using the provided field mask and input message. It returns the updated protobuf model.
@@ -123,6 +124,28 @@ func protoValueToAny(fd protoreflect.FieldDescriptor, v protoreflect.Value) (any
 
 	// if the field is not a list, just return its value as-is
 	if !fd.IsList() {
+		switch fd.Kind() {
+
+		// enum: convert to its string value
+		case protoreflect.EnumKind:
+			ev := fd.Enum().Values().ByNumber(v.Enum())
+			if ev == nil {
+				return nil, fmt.Errorf("unknown enum value: %d", v.Enum())
+			}
+			return string(ev.Name()), nil
+
+		case protoreflect.MessageKind:
+
+			// timestamp: convert to Go time.Time
+			if isTimestamp(fd) {
+				ts, ok := v.Message().Interface().(*timestamppb.Timestamp)
+				if !ok {
+					return nil, errors.New("invalid timestamp value")
+				}
+				return ts.AsTime(), nil
+			}
+		}
+
 		return v.Interface(), nil
 	}
 

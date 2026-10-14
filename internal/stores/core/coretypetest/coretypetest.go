@@ -27,9 +27,6 @@ var (
 	plan, inputPlan lysmeta.Plan
 )
 
-//var ModelToPbFunc = lysrpc.NewToPb[coretypetestm.Model, pb.CoreTypeTest]()
-//var InputFromPbFunc = lysrpc.NewFromPb[coretypetestm.Input, pb.CoreTypeTestInput]()
-
 func init() {
 	var err error
 	plan, err = lysmeta.Analyze(coretypetestm.Model{})
@@ -56,6 +53,10 @@ func (s Store) GetPlan() lysmeta.Plan {
 
 func (s Store) Insert(ctx context.Context, input coretypetestm.Input) (newId int64, err error) {
 	return lyspg.Insert[coretypetestm.Input, int64](ctx, s.Db, schemaName, tableName, pkColName, input)
+}
+
+func (s Store) InsertSelect(ctx context.Context, input coretypetestm.Input) (item coretypetestm.Model, err error) {
+	return lyspg.InsertSelect[coretypetestm.Input, coretypetestm.Model](ctx, s.Db, schemaName, tableName, viewName, pkColName, input)
 }
 
 func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []coretypetestm.Model, unpagedCount lyspg.TotalCount, err error) {

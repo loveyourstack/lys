@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+option go_package = "github.com/loveyourstack/lys/internal/pb";
+
+package pb;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+
+import "internal/myapp/svcproto/common.proto";
+import "internal/stores/core/coretypetest/coretypetest.proto";
+
+message ListCoreTypeTestResp { 
+  repeated CoreTypeTest data = 1;
+  optional GetMetadata  metadata = 2;
+}
+
+message UpdateCoreTypeTestReq {
+  int64                     id = 1;
+  CoreTypeTestInput         input = 2;
+  google.protobuf.FieldMask field_mask = 3;
+}
+
+service CoreTypeTestSvc {
+  rpc List(ListReq)                 returns (ListCoreTypeTestResp);
+  rpc Get(GetByIdReq)               returns (CoreTypeTest);
+  rpc Create(CoreTypeTestInput)     returns (CoreTypeTest);
+  rpc Update(UpdateCoreTypeTestReq) returns (CoreTypeTest);
+  rpc Delete(DeleteByIdReq)         returns (google.protobuf.Empty);
+}

@@ -503,7 +503,11 @@ func TestExtractSortsFailure(t *testing.T) {
 	}
 	sortReqParamName := "xsort"
 
+	// empty param value
+	_, err := ExtractSorts(sortReqParamName, ",", jsonKeyDbNameMap)
+	assert.EqualValues(t, "xsort has an empty field", err.Error())
+
 	// invalid param value
-	_, err := ExtractSorts(sortReqParamName, "c", jsonKeyDbNameMap)
+	_, err = ExtractSorts(sortReqParamName, "c", jsonKeyDbNameMap)
 	assert.EqualValues(t, "xsort has invalid field: c", err.Error())
 }

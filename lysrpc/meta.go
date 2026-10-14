@@ -6,12 +6,22 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+	"github.com/loveyourstack/lys/lystype"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 var timeType = reflect.TypeFor[time.Time]()
+var uuidType = reflect.TypeFor[uuid.UUID]()
+
+// lystypeLayouts lists the lystype time types, which are carried as proto strings in their json layout
+var lystypeLayouts = map[reflect.Type]string{
+	reflect.TypeFor[lystype.Date]():     lystype.DateFormat,
+	reflect.TypeFor[lystype.Time]():     lystype.TimeFormat,
+	reflect.TypeFor[lystype.Datetime](): lystype.DatetimeFormat,
+}
 
 const timestampFullName protoreflect.FullName = "google.protobuf.Timestamp"
 
@@ -56,14 +66,14 @@ func buildPbFieldMaps(pbDesc protoreflect.MessageDescriptor, goT reflect.Type, r
 		name := string(fd.Name())
 		idx, ok := goIdx[name]
 		if !ok {
-			panic(fmt.Sprintf("lysp: proto field %s.%s has no json field in %s", pbDesc.Name(), name, goT))
+			panic(fmt.Sprintf("proto field %s.%s has no json field in %s", pbDesc.Name(), name, goT))
 		}
 		if fd.IsMap() {
-			panic(fmt.Sprintf("lysp: proto field %s.%s: maps are not supported", pbDesc.Name(), name))
+			panic(fmt.Sprintf("proto field %s.%s: maps are not supported", pbDesc.Name(), name))
 		}
 		ft := goT.FieldByIndex(idx).Type
 		if err := checkFieldCompat(fd, ft); err != nil {
-			panic(fmt.Sprintf("lysp: proto field %s.%s vs %s: %s", pbDesc.Name(), name, goT, err))
+			panic(fmt.Sprintf("proto field %s.%s vs %s: %s", pbDesc.Name(), name, goT, err))
 		}
 		used[name] = true
 		maps = append(maps, pbFieldMap{fd: fd, idx: idx})
@@ -72,7 +82,7 @@ func buildPbFieldMaps(pbDesc protoreflect.MessageDescriptor, goT reflect.Type, r
 	if requireAllGoFields {
 		for name := range goIdx {
 			if !used[name] {
-				panic(fmt.Sprintf("lysp: %s field %q has no proto field in %s", goT, name, pbDesc.Name()))
+				panic(fmt.Sprintf("%s field %q has no proto field in %s", goT, name, pbDesc.Name()))
 			}
 		}
 	}
@@ -84,6 +94,10 @@ func checkFieldCompat(fd protoreflect.FieldDescriptor, ft reflect.Type) error {
 		if ft.Kind() != reflect.Slice {
 			return fmt.Errorf("repeated field requires a slice, got %s", ft)
 		}
+		ft = ft.Elem()
+	}
+	// nullable model fields are pointers
+	if ft.Kind() == reflect.Pointer {
 		ft = ft.Elem()
 	}
 	k := ft.Kind()
@@ -104,6 +118,11 @@ func checkFieldCompat(fd protoreflect.FieldDescriptor, ft reflect.Type) error {
 	case protoreflect.StringKind, protoreflect.EnumKind:
 		if k == reflect.String {
 			return nil
+		}
+		if fd.Kind() == protoreflect.StringKind {
+			if _, ok := lystypeLayouts[ft]; ok || ft == uuidType {
+				return nil
+			}
 		}
 	case protoreflect.FloatKind, protoreflect.DoubleKind:
 		if k == reflect.Float32 || k == reflect.Float64 {
@@ -144,11 +163,13 @@ func pbToGoField(msg protoreflect.Message, fd protoreflect.FieldDescriptor, dst 
 		}
 		return
 	}
+
 	list := msg.Get(fd).List()
-	if list.Len() == 0 {
-		return
-	}
+
+	// set non-nil even when empty, so it's written as '{}' not NULL
+	// note: this will make NULLable slice fields non-nil even when empty
 	sl := reflect.MakeSlice(dst.Type(), list.Len(), list.Len())
+
 	for i := range list.Len() {
 		pbToGoValue(fd, list.Get(i), sl.Index(i))
 	}
@@ -156,6 +177,13 @@ func pbToGoField(msg protoreflect.Message, fd protoreflect.FieldDescriptor, dst 
 }
 
 func goToPbValue(fd protoreflect.FieldDescriptor, v reflect.Value) (protoreflect.Value, bool) {
+	// nil pointers are left unset
+	if v.Kind() == reflect.Pointer {
+		if v.IsNil() {
+			return protoreflect.Value{}, false
+		}
+		v = v.Elem()
+	}
 	switch fd.Kind() {
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
 		return protoreflect.ValueOfInt32(int32(v.Int())), true
@@ -168,6 +196,22 @@ func goToPbValue(fd protoreflect.FieldDescriptor, v reflect.Value) (protoreflect
 	case protoreflect.BoolKind:
 		return protoreflect.ValueOfBool(v.Bool()), true
 	case protoreflect.StringKind:
+		if layout, ok := lystypeLayouts[v.Type()]; ok {
+			// zero times are left unset
+			t := v.Convert(timeType).Interface().(time.Time)
+			if t.IsZero() {
+				return protoreflect.Value{}, false
+			}
+			return protoreflect.ValueOfString(t.Format(layout)), true
+		}
+		if v.Type() == uuidType {
+			// zero uuids are left unset
+			u := v.Interface().(uuid.UUID)
+			if u == uuid.Nil {
+				return protoreflect.Value{}, false
+			}
+			return protoreflect.ValueOfString(u.String()), true
+		}
 		return protoreflect.ValueOfString(v.String()), true
 	case protoreflect.EnumKind:
 		// enum value names are used as-is; an empty or unknown name is left unset
@@ -190,6 +234,12 @@ func goToPbValue(fd protoreflect.FieldDescriptor, v reflect.Value) (protoreflect
 }
 
 func pbToGoValue(fd protoreflect.FieldDescriptor, pv protoreflect.Value, dst reflect.Value) {
+	if dst.Kind() == reflect.Pointer {
+		p := reflect.New(dst.Type().Elem())
+		pbToGoValue(fd, pv, p.Elem())
+		dst.Set(p)
+		return
+	}
 	switch fd.Kind() {
 	case protoreflect.Int32Kind, protoreflect.Int64Kind, protoreflect.Sint32Kind, protoreflect.Sint64Kind,
 		protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind:
@@ -199,6 +249,20 @@ func pbToGoValue(fd protoreflect.FieldDescriptor, pv protoreflect.Value, dst ref
 	case protoreflect.BoolKind:
 		dst.SetBool(pv.Bool())
 	case protoreflect.StringKind:
+		if layout, ok := lystypeLayouts[dst.Type()]; ok {
+			// an unparseable time is left as the zero value
+			if t, err := time.Parse(layout, pv.String()); err == nil {
+				dst.Set(reflect.ValueOf(t).Convert(dst.Type()))
+			}
+			return
+		}
+		if dst.Type() == uuidType {
+			// an unparseable uuid is left as the zero value
+			if u, err := uuid.Parse(pv.String()); err == nil {
+				dst.Set(reflect.ValueOf(u))
+			}
+			return
+		}
 		dst.SetString(pv.String())
 	case protoreflect.EnumKind:
 		if ev := fd.Enum().Values().ByNumber(pv.Enum()); ev != nil {

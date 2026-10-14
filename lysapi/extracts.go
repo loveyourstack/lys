@@ -322,6 +322,10 @@ func ExtractSorts(sortParamName, sortVal string, jsonKeyDbNameMap map[string]str
 
 		for v := range sortVals {
 
+			if v == "" {
+				return nil, lyserr.User{Message: sortParamName + " has an empty field"}
+			}
+
 			fieldName := ""
 			sortDesc := ""
 			if v[:1] == "-" {

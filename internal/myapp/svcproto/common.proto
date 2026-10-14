@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+option go_package = "github.com/loveyourstack/lys/internal/pb";
+
+package pb;
+
+message DeleteByIdReq { int64 id = 1; }
+
+message GetByIdReq { int64 id = 1; }
+
+message GetMetadata {
+	int32   count = 1;
+	int64   total_count = 2;
+	bool    total_count_is_estimated = 3;
+}
+
+message EmptyReq {}
+
+message ListReq {
+    repeated string     fields = 1;
+    int32               page = 2;
+    int32               per_page = 3;
+    repeated string     sorts = 4;
+    map<string, string> filters = 5;
+}
