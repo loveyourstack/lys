@@ -47,6 +47,9 @@ func (s Store) Delete(ctx context.Context, id int64) error {
 func (s Store) GetName() string {
 	return name
 }
+func (s Store) GetInputPlan() lysmeta.Plan {
+	return inputPlan
+}
 func (s Store) GetPlan() lysmeta.Plan {
 	return plan
 }

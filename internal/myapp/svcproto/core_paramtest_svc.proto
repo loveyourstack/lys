@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option go_package = "github.com/loveyourstack/lys/internal/pb";
+
+package pb;
+
+import "internal/myapp/svcproto/common.proto";
+import "internal/stores/core/coreparamtest/coreparamtest.proto";
+
+message ListCoreParamTestResp { 
+  repeated CoreParamTest data = 1;
+  optional GetMetadata  metadata = 2;
+}
+
+service CoreParamTestSvc {
+  rpc List(ListReq)     returns (ListCoreParamTestResp);
+  rpc Get(GetByIdReq)   returns (CoreParamTest);
+}

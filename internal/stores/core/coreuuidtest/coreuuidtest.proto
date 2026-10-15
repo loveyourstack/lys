@@ -1,0 +1,20 @@
+syntax = "proto3";
+
+option go_package = "github.com/loveyourstack/lys/internal/pb";
+
+package pb;
+
+import "google/protobuf/timestamp.proto";
+
+message CoreUuidTestInput {
+  int64 c_int = 1;
+  string c_text = 2;
+}
+
+message CoreUuidTest {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+
+  int64 c_int = 3;
+  string c_text = 4;
+}

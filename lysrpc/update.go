@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/loveyourstack/lys/lyserr"
@@ -42,6 +43,9 @@ func Update[idT lyspg.PrimaryKeyType, inputT proto.Message, modelT any, pbModelT
 	if err != nil {
 		if userErr, ok := errors.AsType[lyserr.User](err); ok {
 			return nil, status.Error(codes.InvalidArgument, userErr.Error())
+		}
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, status.Error(codes.NotFound, "id not found")
 		}
 		return nil, fmt.Errorf("store.UpdatePartial failed: %w", err)
 	}
@@ -172,6 +176,14 @@ func protoValueToAny(fd protoreflect.FieldDescriptor, v protoreflect.Value) (any
 				return string(ev.Name())
 			}
 			return ""
+		}), nil
+	case protoreflect.MessageKind:
+		if !isTimestamp(fd) {
+			return nil, fmt.Errorf("repeated %s fields are not supported", fd.Message().FullName())
+		}
+		return protoListToSlice(l, func(v protoreflect.Value) time.Time {
+			ts, _ := v.Message().Interface().(*timestamppb.Timestamp)
+			return ts.AsTime()
 		}), nil
 	default:
 		return nil, fmt.Errorf("repeated %s fields are not supported", fd.Kind())

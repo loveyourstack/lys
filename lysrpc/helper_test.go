@@ -8,16 +8,21 @@ import (
 	"testing"
 
 	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	"github.com/loveyourstack/lys/internal/cmd"
 	"github.com/loveyourstack/lys/internal/myapp"
 	"github.com/loveyourstack/lys/internal/pb"
+	"github.com/loveyourstack/lys/internal/stores/core/coreparamtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
+	"github.com/loveyourstack/lys/internal/stores/core/coreuuidtest"
 	"github.com/loveyourstack/lys/lysapi"
 	"github.com/loveyourstack/lys/lyslog"
 	"github.com/loveyourstack/lys/lyspgdb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -100,12 +105,78 @@ func (s *coreTypeTestServer) Update(ctx context.Context, req *pb.UpdateCoreTypeT
 	return Update(ctx, req.Input, req.FieldMask, req.Id, s.jsonKeyDbNameMap, s.store, CoreTTModelToPbFunc)
 }
 
-func toPbMetadata(m lysapi.SelectMetadata, itemCount int) *pb.GetMetadata {
-	return &pb.GetMetadata{
-		Count:                 int32(itemCount),
-		TotalCount:            m.TotalCount,
-		TotalCountIsEstimated: m.TotalCountIsEstimated,
+var CoreUTModelToPbFunc = NewToPb[coreuuidtest.Model, pb.CoreUuidTest]()
+var CoreUTInputToPbFunc = NewToPb[coreuuidtest.Input, pb.CoreUuidTestInput]()
+
+var CoreUTModelFromPbFunc = NewFromPb[coreuuidtest.Model, pb.CoreUuidTest]()
+var CoreUTInputFromPbFunc = NewFromPb[coreuuidtest.Input, pb.CoreUuidTestInput]()
+
+type coreUuidTestServer struct {
+	pb.UnimplementedCoreUuidTestSvcServer
+	*gRpcServerApplication
+
+	store            coreuuidtest.Store
+	jsonKeyDbNameMap map[string]string
+}
+
+func (s *coreUuidTestServer) Create(ctx context.Context, req *pb.CoreUuidTestInput) (*pb.CoreUuidTest, error) {
+	return Create(ctx, req, s.store, CoreUTInputFromPbFunc, CoreUTModelToPbFunc)
+}
+
+func (s *coreUuidTestServer) Delete(ctx context.Context, req *pb.DeleteByUuidReq) (*emptypb.Empty, error) {
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid uuid")
 	}
+	return Delete(ctx, id, s.store)
+}
+
+func (s *coreUuidTestServer) Get(ctx context.Context, req *pb.GetByUuidReq) (*pb.CoreUuidTest, error) {
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid uuid")
+	}
+	return GetById(ctx, id, s.store, CoreUTModelToPbFunc)
+}
+
+func (s *coreUuidTestServer) List(ctx context.Context, req *pb.ListReq) (*pb.ListCoreUuidTestResp, error) {
+	return List(ctx, s.store, req, s.GetOptions, CoreUTModelToPbFunc,
+		func(data []*pb.CoreUuidTest, meta lysapi.SelectMetadata) *pb.ListCoreUuidTestResp {
+			return &pb.ListCoreUuidTestResp{Data: data, Metadata: toPbMetadata(meta, len(data))}
+		})
+}
+
+func (s *coreUuidTestServer) Update(ctx context.Context, req *pb.UpdateCoreUuidTestReq) (*pb.CoreUuidTest, error) {
+	id, err := uuid.Parse(req.Id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid uuid")
+	}
+	return Update(ctx, req.Input, req.FieldMask, id, s.jsonKeyDbNameMap, s.store, CoreUTModelToPbFunc)
+}
+
+var CorePTModelToPbFunc = NewToPb[coreparamtest.Model, pb.CoreParamTest]()
+var CorePTInputToPbFunc = NewToPb[coreparamtest.Input, pb.CoreParamTestInput]()
+
+var CorePTModelFromPbFunc = NewFromPb[coreparamtest.Model, pb.CoreParamTest]()
+var CorePTInputFromPbFunc = NewFromPb[coreparamtest.Input, pb.CoreParamTestInput]()
+
+type coreParamTestServer struct {
+	pb.UnimplementedCoreParamTestSvcServer
+	*gRpcServerApplication
+
+	store            coreparamtest.Store
+	jsonKeyDbNameMap map[string]string
+}
+
+func (s *coreParamTestServer) Get(ctx context.Context, req *pb.GetByIdReq) (*pb.CoreParamTest, error) {
+	return GetById(ctx, req.Id, s.store, CorePTModelToPbFunc)
+}
+
+func (s *coreParamTestServer) List(ctx context.Context, req *pb.ListReq) (*pb.ListCoreParamTestResp, error) {
+	return List(ctx, s.store, req, s.GetOptions, CorePTModelToPbFunc,
+		func(data []*pb.CoreParamTest, meta lysapi.SelectMetadata) *pb.ListCoreParamTestResp {
+			return &pb.ListCoreParamTestResp{Data: data, Metadata: toPbMetadata(meta, len(data))}
+		})
 }
 
 // mustGetRpcConn creates and returns a gRPC ClientConn connected to an in-memory gRPC server for testing.
@@ -120,9 +191,20 @@ func mustGetRpcConn(ctx context.Context, t testing.TB) *grpc.ClientConn {
 	srv := grpc.NewServer()
 
 	// register services
+
 	ttStore := coretypetest.Store{Db: app.Db}
 	pb.RegisterCoreTypeTestSvcServer(srv, &coreTypeTestServer{gRpcServerApplication: app, store: ttStore,
 		jsonKeyDbNameMap: ttStore.GetPlan().JsonKeyDbNameMap(),
+	})
+
+	utStore := coreuuidtest.Store{Db: app.Db}
+	pb.RegisterCoreUuidTestSvcServer(srv, &coreUuidTestServer{gRpcServerApplication: app, store: utStore,
+		jsonKeyDbNameMap: utStore.GetPlan().JsonKeyDbNameMap(),
+	})
+
+	ptStore := coreparamtest.Store{Db: app.Db}
+	pb.RegisterCoreParamTestSvcServer(srv, &coreParamTestServer{gRpcServerApplication: app, store: ptStore,
+		jsonKeyDbNameMap: ptStore.GetPlan().JsonKeyDbNameMap(),
 	})
 
 	go srv.Serve(lis)
@@ -141,4 +223,12 @@ func mustGetRpcConn(ctx context.Context, t testing.TB) *grpc.ClientConn {
 	})
 
 	return conn
+}
+
+func toPbMetadata(m lysapi.SelectMetadata, itemCount int) *pb.GetMetadata {
+	return &pb.GetMetadata{
+		Count:                 int32(itemCount),
+		TotalCount:            m.TotalCount,
+		TotalCountIsEstimated: m.TotalCountIsEstimated,
+	}
 }

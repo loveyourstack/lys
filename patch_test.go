@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/loveyourstack/lys/internal/stores/core/coretrackingtest"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/internal/stores/core/coreuuidtest"
@@ -83,15 +84,20 @@ func TestPatchUuid(t *testing.T) {
 	srvApp := mustGetSrvApp(ctx, t)
 	defer srvApp.Db.Close()
 
-	targetUrl := "/uuid-test/0707b293-b39c-4ae6-8ab9-a92b592e9568"
+	input := coreuuidtest.Input{CInt: 1, CText: "a"}
+	newId := lysclient.MustPostToValue[coreuuidtest.Input, uuid.UUID](ctx, t, srvApp.getRouter(), "POST", "/uuid-test", input)
 
 	assignmentsMap := make(map[string]any)
-	assignmentsMap["c_int"] = int64(4)
+	assignmentsMap["c_int"] = int64(2)
+	assignmentsMap["c_text"] = "b"
+
+	targetUrl := "/uuid-test/" + newId.String()
 
 	_ = lysclient.MustPostToValue[map[string]any, string](ctx, t, srvApp.getRouter(), "PATCH", targetUrl, assignmentsMap)
 	item := lysclient.MustDoToValue[coreuuidtest.Model](ctx, t, srvApp.getRouter(), "GET", targetUrl)
 
-	assert.Equal(t, int64(4), item.CInt, "CInt")
+	assert.Equal(t, int64(2), item.CInt, "CInt")
+	assert.Equal(t, "b", item.CText, "CText")
 }
 
 func TestPatchWithExtras(t *testing.T) {

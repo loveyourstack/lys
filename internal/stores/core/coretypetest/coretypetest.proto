@@ -4,6 +4,8 @@ option go_package = "github.com/loveyourstack/lys/internal/pb";
 
 package pb;
 
+import "google/protobuf/timestamp.proto";
+
 message CoreTypeTestInput {
   bool c_bool = 1;
   optional bool c_booln = 2;
@@ -17,16 +19,18 @@ message CoreTypeTestInput {
   double c_numeric = 10;
   optional double c_numericn = 11;
   repeated double c_numerica = 12;
-  // lystype date, time, and datetime values are encoded using their JSON string formats.
+
+  // lystype date and time values are encoded using their JSON string formats.
   string c_date = 13;
   optional string c_daten = 14;
   repeated string c_datea = 15;
   string c_time = 16;
   optional string c_timen = 17;
   repeated string c_timea = 18;
-  string c_datetime = 19;
-  optional string c_datetimen = 20;
-  repeated string c_datetimea = 21;
+  
+  google.protobuf.Timestamp c_datetime = 19;
+  optional google.protobuf.Timestamp c_datetimen = 20;
+  repeated google.protobuf.Timestamp c_datetimea = 21;
   string c_enum = 22;
   optional string c_enumn = 23;
   repeated string c_enuma = 24;

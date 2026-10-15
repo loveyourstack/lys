@@ -40,7 +40,7 @@ INSERT INTO core.tracking_test (c_editable, created_by, last_user_update_by) VAL
 ;
 
 INSERT INTO core.type_test (c_bool, c_boola, c_int, c_inta, c_double, c_doublea, c_numeric, c_numerica, c_date, c_datea, c_time, c_timea, c_datetime, c_datetimea, c_enum, c_enuma, c_text, c_texta) VALUES (
-	true, '{true,false}',
+  true, '{true,false}',
   1, '{1,2}',
   1.1, '{1.1,2.1}',
   1.11, '{1.11,2.11}',
@@ -53,8 +53,7 @@ INSERT INTO core.type_test (c_bool, c_boola, c_int, c_inta, c_double, c_doublea,
 
 INSERT INTO core.uuid_test (id, c_int, c_text) VALUES
   ('b872908f-68ca-4c87-96dd-98a9b97470f0', 1, 'a'), -- for get tests
-  ('4bfc505c-c316-4385-af4f-63160e7326d9', 2, 'b'), -- for put tests
-  ('0707b293-b39c-4ae6-8ab9-a92b592e9568', 3, 'c') -- for patch tests
+  ('4bfc505c-c316-4385-af4f-63160e7326d9', 2, 'b') -- for put tests
 ;
 
 INSERT INTO core.value_map_test (c_text, c_int) VALUES

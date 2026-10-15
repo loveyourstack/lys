@@ -6,7 +6,11 @@ package pb;
 
 message DeleteByIdReq { int64 id = 1; }
 
+message DeleteByUuidReq { string id = 1; }
+
 message GetByIdReq { int64 id = 1; }
+
+message GetByUuidReq { string id = 1; }
 
 message GetMetadata {
 	int32   count = 1;

@@ -64,6 +64,10 @@ func (s Store) Insert(ctx context.Context, input Input) (newId uuid.UUID, err er
 	return lyspg.Insert[Input, uuid.UUID](ctx, s.Db, schemaName, tableName, pkColName, input)
 }
 
+func (s Store) InsertSelect(ctx context.Context, input Input) (item Model, err error) {
+	return lyspg.InsertSelect[Input, Model](ctx, s.Db, schemaName, tableName, viewName, pkColName, input)
+}
+
 func (s Store) Select(ctx context.Context, params lyspg.SelectParams) (items []Model, unpagedCount lyspg.TotalCount, err error) {
 	return lyspg.Select[Model](ctx, s.Db, schemaName, tableName, viewName, defaultOrderBy, plan.DbNames(), params)
 }

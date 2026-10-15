@@ -19,9 +19,7 @@ func TestCreateEmptySuccess(t *testing.T) {
 
 	input := coretypetestm.GetEmptyInput()
 	item, err := ttClient.Create(ctx, CoreTTInputToPbFunc(input))
-	if err != nil {
-		t.Fatalf("ttClient.Create failed: %v", err)
-	}
+	assert.NoError(t, err)
 
 	// check nullable fields are nil
 	assert.Nil(t, item.CBooln, "CBoolN")
@@ -46,14 +44,10 @@ func TestPostFilledSuccess(t *testing.T) {
 	ttClient := pb.NewCoreTypeTestSvcClient(conn)
 
 	input, err := coretypetestm.GetFilledInput()
-	if err != nil {
-		t.Fatalf("coretypetestm.GetFilledInput failed: %v", err)
-	}
+	assert.NoError(t, err)
 
 	item, err := ttClient.Create(ctx, CoreTTInputToPbFunc(input))
-	if err != nil {
-		t.Fatalf("ttClient.Create failed: %v", err)
-	}
+	assert.NoError(t, err)
 
 	coretypetestm.TestFilledInput(t, CoreTTModelFromPbFunc(item).Input)
 }

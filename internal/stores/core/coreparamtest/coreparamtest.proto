@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+option go_package = "github.com/loveyourstack/lys/internal/pb";
+
+package pb;
+
+import "google/protobuf/timestamp.proto";
+
+message CoreParamTestInput {
+  bool c_bool = 1;
+  optional bool c_booln = 2;
+  int64 c_int = 3;
+  optional int64 c_intn = 4;
+  double c_double = 5;
+  optional double c_doublen = 6;
+  string c_date = 7;
+  optional string c_daten = 8;
+  string c_time = 9;
+  optional string c_timen = 10;
+  google.protobuf.Timestamp c_datetime = 11;
+  optional google.protobuf.Timestamp c_datetimen = 12;
+  string c_enum = 13;
+  optional string c_enumn = 14;
+  string c_text = 15;
+  optional string c_textn = 16;
+}
+
+message CoreParamTest {
+  int64 id = 1;
+  string id_uu = 2;
+  
+  bool c_bool = 3;
+  optional bool c_booln = 4;
+  int64 c_int = 5;
+  optional int64 c_intn = 6;
+  double c_double = 7;
+  optional double c_doublen = 8;
+  string c_date = 9;
+  optional string c_daten = 10;
+  string c_time = 11;
+  optional string c_timen = 12;
+  string c_datetime = 13;
+  optional string c_datetimen = 14;
+  string c_enum = 15;
+  optional string c_enumn = 16;
+  string c_text = 17;
+  optional string c_textn = 18;
+}
