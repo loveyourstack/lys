@@ -38,13 +38,20 @@ func ExtractGetRequestModifiers(r *http.Request, params ExtractGetRequestModifie
 	}
 
 	// filters (become WHERE clause conditions)
-	getReqModifiers.Conditions, err = lysapi.ExtractFilters(r.URL.Query(), params.JsonKeyDbNameMap, params.AdditionalFilterParamNames, params.SetFuncUrlParamNames, params.GetOptions)
+	query := r.URL.Query()
+	filterValues := make([]lysapi.FilterValue, 0, len(query))
+	for key, values := range query {
+		for _, value := range values {
+			filterValues = append(filterValues, lysapi.FilterValue{Key: key, Value: value})
+		}
+	}
+	getReqModifiers.Conditions, err = lysapi.ExtractFilters(filterValues, params.JsonKeyDbNameMap, params.AdditionalFilterParamNames, params.SetFuncUrlParamNames, params.GetOptions)
 	if err != nil {
 		return GetReqModifiers{}, fmt.Errorf("ExtractFilters failed: %w", err)
 	}
 
 	// setFunc params (if setFunc is used, are passed as param values)
-	getReqModifiers.SetFuncParamValues, err = lysapi.ExtractSetFuncParamValues(r, params.SetFuncUrlParamNames)
+	getReqModifiers.SetFuncParamValues, err = lysapi.ExtractSetFuncParamValues(r.FormValue, params.SetFuncUrlParamNames)
 	if err != nil {
 		return GetReqModifiers{}, fmt.Errorf("ExtractSetFuncParamValues failed: %w", err)
 	}

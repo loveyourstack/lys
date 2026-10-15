@@ -2,8 +2,6 @@ package lysapi
 
 import (
 	"fmt"
-	"net/http"
-	"net/url"
 	"slices"
 	"strconv"
 	"strings"
@@ -83,17 +81,23 @@ func ExtractFields(fieldsParamName, fieldsVal string, dbNames lysset.Set[string]
 	return fields, nil
 }
 
-// ExtractFilters returns a slice of conditions parsed from the request's params
-// to get urlValues from a request: r.Url.Query()
-func ExtractFilters(urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames lysset.Set[string],
-	setFuncUrlParamNames []string, getOptions GetOptions) (conds []lyspg.Condition, err error) {
+// FilterValue contains one filter field and its value.
+type FilterValue struct {
+	Key   string
+	Value string
+}
+
+// ExtractFilters returns a slice of conditions parsed from the supplied filters.
+func ExtractFilters(filterValues []FilterValue, jsonKeyDbNameMap map[string]string, additionalFilterParamNames lysset.Set[string],
+	setFuncParamNames []string, getOptions GetOptions) (conds []lyspg.Condition, err error) {
 
 	// define special param names which have another purpose and may not be used as filter keys
 	specialParams := lysset.New(getOptions.FormatParamName, getOptions.FieldsParamName, getOptions.PageParamName, getOptions.PerPageParamName, getOptions.SortParamName)
-	specialParams.AddAll(setFuncUrlParamNames...)
+	specialParams.AddAll(setFuncParamNames...)
 
-	// for each Url value
-	for key, vals := range urlValues {
+	// for each filter value
+	for _, filter := range filterValues {
+		key := filter.Key
 
 		// skip if this is a special param
 		if specialParams.Contains(key) {
@@ -115,18 +119,14 @@ func ExtractFilters(urlValues url.Values, jsonKeyDbNameMap map[string]string, ad
 			dbName = dbVal
 		}
 
-		// if same param is sent more than once, treat each one as a separate filter param
-		for _, val := range vals {
-
-			// check for empty value, e.g. "&x" or "&x="
-			if val == "" {
-				return nil, lyserr.User{Message: "empty value in filter field: " + key}
-			}
-
-			// create condition from this filter
-			cond := processFilterParam(dbName, val, getOptions)
-			conds = append(conds, cond)
+		// check for empty value, e.g. "&x" or "&x="
+		if filter.Value == "" {
+			return nil, lyserr.User{Message: "empty value in filter field: " + key}
 		}
+
+		// create condition from this filter
+		cond := processFilterParam(dbName, filter.Value, getOptions)
+		conds = append(conds, cond)
 	}
 
 	return conds, nil
@@ -349,19 +349,19 @@ func ExtractSorts(sortParamName, sortVal string, jsonKeyDbNameMap map[string]str
 	return sortCols, nil
 }
 
-// ExtractSetFuncParamValues returns the values to be passed to the SQL setFunc
-// each param is currently treated as mandatory
-func ExtractSetFuncParamValues(r *http.Request, setFuncUrlParamNames []string) (setFuncUrlParamValues []any, err error) {
+// ExtractSetFuncParamValues returns the values to be passed to the SQL setFunc.
+// Each param is currently treated as mandatory.
+func ExtractSetFuncParamValues(getValue func(string) string, setFuncParamNames []string) (setFuncParamValues []any, err error) {
 
-	for _, paramName := range setFuncUrlParamNames {
+	for _, paramName := range setFuncParamNames {
 
-		paramValue := r.FormValue(paramName)
+		paramValue := getValue(paramName)
 		if paramValue == "" {
 			return nil, lyserr.User{Message: fmt.Sprintf("setFunc param name '%s' is missing", paramName)}
 		}
 
-		setFuncUrlParamValues = append(setFuncUrlParamValues, paramValue)
+		setFuncParamValues = append(setFuncParamValues, paramValue)
 	}
 
-	return setFuncUrlParamValues, nil
+	return setFuncParamValues, nil
 }

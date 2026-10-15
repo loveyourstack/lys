@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
 	"strings"
 
 	"github.com/loveyourstack/lys/lysapi"
@@ -110,13 +109,13 @@ func rpcSelect[T any](ctx context.Context, store lyspg.Selecter[T], req iListReq
 
 	// parse filters, if set
 
-	// convert req map to url.Values for so lys library func can be used
-	values := url.Values{}
-	for k, v := range req.GetFilters() {
-		values.Set(k, v)
+	filters := req.GetFilters()
+	filterValues := make([]lysapi.FilterValue, 0, len(filters))
+	for key, value := range filters {
+		filterValues = append(filterValues, lysapi.FilterValue{Key: key, Value: value})
 	}
 
-	conds, err := lysapi.ExtractFilters(values, jsonKeyDbNameMap, nil, nil, getOptions)
+	conds, err := lysapi.ExtractFilters(filterValues, jsonKeyDbNameMap, nil, nil, getOptions)
 	if err != nil {
 		if userErr, ok := errors.AsType[lyserr.User](err); ok {
 			return nil, lyspg.TotalCount{}, status.Error(codes.InvalidArgument, userErr.Error())

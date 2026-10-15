@@ -1,7 +1,6 @@
 package lysapi
 
 import (
-	"net/http"
 	"net/url"
 	"testing"
 
@@ -9,17 +8,6 @@ import (
 	"github.com/loveyourstack/lys/lysset"
 	"github.com/stretchr/testify/assert"
 )
-
-func mustCreateGetReq(t testing.TB, targetUrl string) *http.Request {
-
-	req, err := http.NewRequest("GET", targetUrl, nil)
-	if err != nil {
-		t.Fatalf("http.NewRequest failed: %v", err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-
-	return req
-}
 
 func mustFillGetOptions(t testing.TB, input GetOptions) GetOptions {
 
@@ -33,7 +21,14 @@ func mustFillGetOptions(t testing.TB, input GetOptions) GetOptions {
 
 func mustExtractFilters(t testing.TB, urlValues url.Values, jsonKeyDbNameMap map[string]string, additionalFilterParamNames lysset.Set[string], setFuncUrlParamNames []string, getOptions GetOptions) []lyspg.Condition {
 
-	conds, err := ExtractFilters(urlValues, jsonKeyDbNameMap, additionalFilterParamNames, setFuncUrlParamNames, getOptions)
+	filterValues := make([]FilterValue, 0, len(urlValues))
+	for key, values := range urlValues {
+		for _, value := range values {
+			filterValues = append(filterValues, FilterValue{Key: key, Value: value})
+		}
+	}
+
+	conds, err := ExtractFilters(filterValues, jsonKeyDbNameMap, additionalFilterParamNames, setFuncUrlParamNames, getOptions)
 	if err != nil {
 		t.Fatalf("ExtractFilters failed: %v", err)
 	}
@@ -336,15 +331,11 @@ func TestExtractFiltersFailure(t *testing.T) {
 	getOptions := mustFillGetOptions(t, GetOptions{})
 
 	// invalid param key
-	urlValues := url.Values{}
-	urlValues.Add("d", "1")
-	_, err := ExtractFilters(urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	_, err := ExtractFilters([]FilterValue{{Key: "d", Value: "1"}}, jsonKeyDbNameMap, nil, nil, getOptions)
 	assert.EqualValues(t, "invalid filter field: d", err.Error())
 
 	// empty param value
-	urlValues = url.Values{}
-	urlValues.Add("a", "")
-	_, err = ExtractFilters(urlValues, jsonKeyDbNameMap, nil, nil, getOptions)
+	_, err = ExtractFilters([]FilterValue{{Key: "a", Value: ""}}, jsonKeyDbNameMap, nil, nil, getOptions)
 	assert.EqualValues(t, "empty value in filter field: a", err.Error())
 }
 
@@ -439,8 +430,10 @@ func TestExtractSetFuncParamValuesSuccess(t *testing.T) {
 
 	setFuncParamNames := []string{"x", "y"}
 
-	r := mustCreateGetReq(t, "/test?x=1&y=2")
-	setFuncParamValues, err := ExtractSetFuncParamValues(r, setFuncParamNames)
+	values := map[string]string{"x": "1", "y": "2"}
+	setFuncParamValues, err := ExtractSetFuncParamValues(func(name string) string {
+		return values[name]
+	}, setFuncParamNames)
 	if err != nil {
 		t.Errorf("ExtractSetFuncParamValues failed: %v", err)
 	}
@@ -452,8 +445,10 @@ func TestExtractSetFuncParamValuesFailure(t *testing.T) {
 	setFuncParamNames := []string{"x", "y"}
 
 	// missing a value
-	r := mustCreateGetReq(t, "/test?x=1")
-	_, err := ExtractSetFuncParamValues(r, setFuncParamNames)
+	values := map[string]string{"x": "1"}
+	_, err := ExtractSetFuncParamValues(func(name string) string {
+		return values[name]
+	}, setFuncParamNames)
 	assert.EqualValues(t, "setFunc param name 'y' is missing", err.Error())
 }
 
