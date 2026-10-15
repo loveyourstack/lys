@@ -39,8 +39,8 @@ message CoreParamTest {
   optional string c_daten = 10;
   string c_time = 11;
   optional string c_timen = 12;
-  string c_datetime = 13;
-  optional string c_datetimen = 14;
+  google.protobuf.Timestamp c_datetime = 13;
+  optional google.protobuf.Timestamp c_datetimen = 14;
   string c_enum = 15;
   optional string c_enumn = 16;
   string c_text = 17;

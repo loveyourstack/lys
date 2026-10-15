@@ -278,12 +278,15 @@ func TestFilledInput(t testing.TB, item Input) {
 	assert.EqualValues(t, lystype.Time(t2), *item.CTimeN, "CTimeN")
 	assert.EqualValues(t, []lystype.Time{lystype.Time(t1), lystype.Time(t2)}, item.CTimeA, "CTimeA")
 
-	// datetime
+	// datetime: compare time instants (don't try to compare locations)
 	dt1 := mustParseTime(t, lystype.DatetimeFormat, "2001-02-03 12:01:00+01")
 	dt2 := mustParseTime(t, lystype.DatetimeFormat, "2002-03-04 12:02:00+01")
-	assert.EqualValues(t, lystype.Datetime(dt1), item.CDatetime, "CDatetime")
-	assert.EqualValues(t, lystype.Datetime(dt2), *item.CDatetimeN, "CDatetimeN")
-	assert.EqualValues(t, []lystype.Datetime{lystype.Datetime(dt1), lystype.Datetime(dt2)}, item.CDatetimeA, "CDatetimeA")
+	assert.True(t, dt1.Equal(time.Time(item.CDatetime)), "CDatetime")
+	assert.True(t, dt2.Equal(time.Time(*item.CDatetimeN)), "CDatetimeN")
+	if assert.Len(t, item.CDatetimeA, 2, "CDatetimeA") {
+		assert.True(t, dt1.Equal(time.Time(item.CDatetimeA[0])), "CDatetimeA[0]")
+		assert.True(t, dt2.Equal(time.Time(item.CDatetimeA[1])), "CDatetimeA[1]")
+	}
 
 	// enum
 	assert.EqualValues(t, "Monday", item.CEnum, "CEnum")

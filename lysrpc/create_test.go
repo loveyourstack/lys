@@ -32,7 +32,7 @@ func TestCreateEmptySuccess(t *testing.T) {
 	// default lystype zeroable date types are empty string using RPC, not the zero values
 	assert.EqualValues(t, "", item.CDate, "CDate")
 	assert.EqualValues(t, "00:00", item.CTime, "CTime")
-	assert.EqualValues(t, "", item.CDatetime, "CDatetime")
+	assert.Nil(t, item.CDatetime, "CDatetime")
 }
 
 func TestPostFilledSuccess(t *testing.T) {

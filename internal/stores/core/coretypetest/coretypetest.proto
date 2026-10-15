@@ -61,9 +61,9 @@ message CoreTypeTest {
   string c_time = 18;
   optional string c_timen = 19;
   repeated string c_timea = 20;
-  string c_datetime = 21;
-  optional string c_datetimen = 22;
-  repeated string c_datetimea = 23;
+  google.protobuf.Timestamp c_datetime = 21;
+  optional google.protobuf.Timestamp c_datetimen = 22;
+  repeated google.protobuf.Timestamp c_datetimea = 23;
   string c_enum = 24;
   optional string c_enumn = 25;
   repeated string c_enuma = 26;

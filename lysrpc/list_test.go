@@ -68,7 +68,7 @@ func TestListSuccessFields(t *testing.T) {
 	if item.CTime != "" {
 		t.Errorf("c_time: not expected in response, but present")
 	}
-	if item.CDatetime != "" {
+	if item.CDatetime != nil {
 		t.Errorf("c_datetime: not expected in response, but present")
 	}
 }

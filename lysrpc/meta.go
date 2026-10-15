@@ -18,9 +18,8 @@ var uuidType = reflect.TypeFor[uuid.UUID]()
 
 // lystypeLayouts lists the lystype time types, which are carried as proto strings in their json layout
 var lystypeLayouts = map[reflect.Type]string{
-	reflect.TypeFor[lystype.Date]():     lystype.DateFormat,
-	reflect.TypeFor[lystype.Time]():     lystype.TimeFormat,
-	reflect.TypeFor[lystype.Datetime](): lystype.DatetimeFormat,
+	reflect.TypeFor[lystype.Date](): lystype.DateFormat,
+	reflect.TypeFor[lystype.Time](): lystype.TimeFormat,
 }
 
 const timestampFullName protoreflect.FullName = "google.protobuf.Timestamp"
@@ -29,6 +28,27 @@ const timestampFullName protoreflect.FullName = "google.protobuf.Timestamp"
 type pbFieldMap struct {
 	fd  protoreflect.FieldDescriptor
 	idx []int
+}
+
+// fieldByIndex retrieves the nested struct field specified by the index path.
+// If allocate is true, it will allocate any nil pointers along the path.
+func fieldByIndex(v reflect.Value, index []int, allocate bool) (reflect.Value, bool) {
+	for _, i := range index {
+		for v.Kind() == reflect.Pointer {
+			if v.IsNil() {
+				if !allocate || !v.CanSet() {
+					return reflect.Value{}, false
+				}
+				v.Set(reflect.New(v.Type().Elem()))
+			}
+			v = v.Elem()
+		}
+		if v.Kind() != reflect.Struct {
+			return reflect.Value{}, false
+		}
+		v = v.Field(i)
+	}
+	return v, true
 }
 
 // jsonFieldIndexes returns the index path of each exported struct field by json name. Embedded structs are flattened
@@ -89,26 +109,60 @@ func buildPbFieldMaps(pbDesc protoreflect.MessageDescriptor, goT reflect.Type, r
 	return maps
 }
 
+func isSignedInteger(k reflect.Kind) bool {
+	return k >= reflect.Int && k <= reflect.Int64
+}
+
+func isUnsignedInteger(k reflect.Kind) bool {
+	return k >= reflect.Uint && k <= reflect.Uint64
+}
+
+// checkFieldCompat returns an error if the field's proto type is incompatible with its Go type.
 func checkFieldCompat(fd protoreflect.FieldDescriptor, ft reflect.Type) error {
+
+	// repeated fields must be slices in Go
 	if fd.IsList() {
 		if ft.Kind() != reflect.Slice {
 			return fmt.Errorf("repeated field requires a slice, got %s", ft)
 		}
 		ft = ft.Elem()
+
+		// repeated field elements must not be pointers
+		// protobuf repeated fields cannot represent null elements, so the list would be compacted
+		if ft.Kind() == reflect.Pointer {
+			return fmt.Errorf("repeated field elements cannot be pointers, got %s", ft)
+		}
 	}
+
 	// nullable model fields are pointers
 	if ft.Kind() == reflect.Pointer {
 		ft = ft.Elem()
 	}
+
 	k := ft.Kind()
 	switch fd.Kind() {
-	case protoreflect.Int32Kind, protoreflect.Int64Kind, protoreflect.Sint32Kind, protoreflect.Sint64Kind,
-		protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind:
-		if k >= reflect.Int && k <= reflect.Int64 {
+	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
+		if isSignedInteger(k) && ft.Bits() == 32 {
 			return nil
 		}
-	case protoreflect.Uint32Kind, protoreflect.Uint64Kind, protoreflect.Fixed32Kind, protoreflect.Fixed64Kind:
-		if k >= reflect.Uint && k <= reflect.Uint64 {
+	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
+		if isSignedInteger(k) && ft.Bits() == 64 {
+			return nil
+		}
+	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
+		if isUnsignedInteger(k) && ft.Bits() == 32 {
+			return nil
+		}
+	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
+		if isUnsignedInteger(k) && ft.Bits() == 64 {
+			return nil
+		}
+	case protoreflect.FloatKind:
+		if k == reflect.Float32 {
+			return nil
+		}
+	case protoreflect.DoubleKind:
+		if k == reflect.Float64 {
 			return nil
 		}
 	case protoreflect.BoolKind:
@@ -124,10 +178,6 @@ func checkFieldCompat(fd protoreflect.FieldDescriptor, ft reflect.Type) error {
 				return nil
 			}
 		}
-	case protoreflect.FloatKind, protoreflect.DoubleKind:
-		if k == reflect.Float32 || k == reflect.Float64 {
-			return nil
-		}
 	case protoreflect.MessageKind:
 		if isTimestamp(fd) && ft.ConvertibleTo(timeType) {
 			return nil
@@ -138,6 +188,7 @@ func checkFieldCompat(fd protoreflect.FieldDescriptor, ft reflect.Type) error {
 
 // goToPbField sets the proto field from the Go value, handling both scalar and repeated fields
 func goToPbField(msg protoreflect.Message, fd protoreflect.FieldDescriptor, v reflect.Value) {
+
 	if !fd.IsList() {
 		if pv, ok := goToPbValue(fd, v); ok {
 			msg.Set(fd, pv)
@@ -176,7 +227,9 @@ func pbToGoField(msg protoreflect.Message, fd protoreflect.FieldDescriptor, dst 
 	dst.Set(sl)
 }
 
+// goToPbValue converts a Go value to a proto value, returning the proto value and a boolean indicating if it should be set.
 func goToPbValue(fd protoreflect.FieldDescriptor, v reflect.Value) (protoreflect.Value, bool) {
+
 	// nil pointers are left unset
 	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
@@ -184,18 +237,26 @@ func goToPbValue(fd protoreflect.FieldDescriptor, v reflect.Value) (protoreflect
 		}
 		v = v.Elem()
 	}
+
 	switch fd.Kind() {
+
 	case protoreflect.Int32Kind, protoreflect.Sint32Kind, protoreflect.Sfixed32Kind:
 		return protoreflect.ValueOfInt32(int32(v.Int())), true
+
 	case protoreflect.Int64Kind, protoreflect.Sint64Kind, protoreflect.Sfixed64Kind:
 		return protoreflect.ValueOfInt64(v.Int()), true
+
 	case protoreflect.Uint32Kind, protoreflect.Fixed32Kind:
 		return protoreflect.ValueOfUint32(uint32(v.Uint())), true
+
 	case protoreflect.Uint64Kind, protoreflect.Fixed64Kind:
 		return protoreflect.ValueOfUint64(v.Uint()), true
+
 	case protoreflect.BoolKind:
 		return protoreflect.ValueOfBool(v.Bool()), true
+
 	case protoreflect.StringKind:
+
 		if layout, ok := lystypeLayouts[v.Type()]; ok {
 			// zero times are left unset
 			t := v.Convert(timeType).Interface().(time.Time)
@@ -204,6 +265,7 @@ func goToPbValue(fd protoreflect.FieldDescriptor, v reflect.Value) (protoreflect
 			}
 			return protoreflect.ValueOfString(t.Format(layout)), true
 		}
+
 		if v.Type() == uuidType {
 			// zero uuids are left unset
 			u := v.Interface().(uuid.UUID)
@@ -212,42 +274,56 @@ func goToPbValue(fd protoreflect.FieldDescriptor, v reflect.Value) (protoreflect
 			}
 			return protoreflect.ValueOfString(u.String()), true
 		}
+
 		return protoreflect.ValueOfString(v.String()), true
+
 	case protoreflect.EnumKind:
 		// enum value names are used as-is; an empty or unknown name is left unset
 		ev := fd.Enum().Values().ByName(protoreflect.Name(v.String()))
 		if ev == nil {
 			return protoreflect.Value{}, false
 		}
+
 		return protoreflect.ValueOfEnum(ev.Number()), true
+
 	case protoreflect.FloatKind:
 		return protoreflect.ValueOfFloat32(float32(v.Float())), true
+
 	case protoreflect.DoubleKind:
 		return protoreflect.ValueOfFloat64(v.Float()), true
+
 	default: // timestamp: zero times are left unset
 		t := v.Convert(timeType).Interface().(time.Time)
 		if t.IsZero() {
 			return protoreflect.Value{}, false
 		}
+
 		return protoreflect.ValueOfMessage(timestamppb.New(t).ProtoReflect()), true
 	}
 }
 
+// pbToGoValue converts a proto value to a Go value, setting the destination reflect.Value accordingly.
 func pbToGoValue(fd protoreflect.FieldDescriptor, pv protoreflect.Value, dst reflect.Value) {
+
 	if dst.Kind() == reflect.Pointer {
 		p := reflect.New(dst.Type().Elem())
 		pbToGoValue(fd, pv, p.Elem())
 		dst.Set(p)
 		return
 	}
+
 	switch fd.Kind() {
+
 	case protoreflect.Int32Kind, protoreflect.Int64Kind, protoreflect.Sint32Kind, protoreflect.Sint64Kind,
 		protoreflect.Sfixed32Kind, protoreflect.Sfixed64Kind:
 		dst.SetInt(pv.Int())
+
 	case protoreflect.Uint32Kind, protoreflect.Uint64Kind, protoreflect.Fixed32Kind, protoreflect.Fixed64Kind:
 		dst.SetUint(pv.Uint())
+
 	case protoreflect.BoolKind:
 		dst.SetBool(pv.Bool())
+
 	case protoreflect.StringKind:
 		if layout, ok := lystypeLayouts[dst.Type()]; ok {
 			// an unparseable time is left as the zero value
@@ -264,12 +340,15 @@ func pbToGoValue(fd protoreflect.FieldDescriptor, pv protoreflect.Value, dst ref
 			return
 		}
 		dst.SetString(pv.String())
+
 	case protoreflect.EnumKind:
 		if ev := fd.Enum().Values().ByNumber(pv.Enum()); ev != nil {
 			dst.SetString(string(ev.Name()))
 		}
+
 	case protoreflect.FloatKind, protoreflect.DoubleKind:
 		dst.SetFloat(pv.Float())
+
 	default: // timestamp
 		ts := pv.Message().Interface().(*timestamppb.Timestamp)
 		dst.Set(reflect.ValueOf(ts.AsTime()).Convert(dst.Type()))
@@ -292,7 +371,13 @@ func NewToPb[modelT any, pbT any, pbPtrT interface {
 		msg := out.ProtoReflect()
 		mv := reflect.ValueOf(m)
 		for _, fm := range maps {
-			goToPbField(msg, fm.fd, mv.FieldByIndex(fm.idx))
+
+			// do not allocate a missing embedded model pointer; leave its proto fields unset
+			field, ok := fieldByIndex(mv, fm.idx, false)
+			if !ok {
+				continue
+			}
+			goToPbField(msg, fm.fd, field)
 		}
 		return out
 	}
@@ -313,7 +398,13 @@ func NewFromPb[inputT any, pbT any, pbPtrT interface {
 		iv := reflect.ValueOf(&in).Elem()
 		msg := p.ProtoReflect()
 		for _, fm := range maps {
-			pbToGoField(msg, fm.fd, iv.FieldByIndex(fm.idx))
+
+			// allocate embedded pointers in the output struct as needed
+			field, ok := fieldByIndex(iv, fm.idx, true)
+			if !ok {
+				panic(fmt.Sprintf("cannot set input field %q", fm.fd.Name()))
+			}
+			pbToGoField(msg, fm.fd, field)
 		}
 		return in
 	}
