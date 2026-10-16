@@ -184,17 +184,24 @@ func (appS *AppSessions) FromRequest(r *http.Request, logger *slog.Logger) (sess
 		}
 	} else {
 		// http: get token from req auth header
-		token, err = GetBearerToken(r.Header)
+		token, err = GetBearerToken(r.Header.Get("Authorization"))
 		if err != nil {
 			return Session{}, fmt.Errorf("GetBearerToken failed: %w", err)
 		}
 	}
 
 	// get IP
-	remoteHostIp, err := GetRemoteHostIP(r, appS.useXForwardedFor, appS.xForwardedForIdx)
+	remoteHostIp, err := GetIpAddrFromReq(r, appS.useXForwardedFor, appS.xForwardedForIdx)
 	if err != nil {
-		return Session{}, fmt.Errorf("GetRemoteHostIP failed: %w", err)
+		return Session{}, fmt.Errorf("GetIpAddrFromReq failed: %w", err)
 	}
+
+	// delegate to FromToken
+	return appS.FromToken(token, remoteHostIp, r.UserAgent(), isWebSocket, logger)
+}
+
+// FromToken returns the session associated with the token or an error if the session is invalid.
+func (appS *AppSessions) FromToken(token string, remoteHostIp netip.Addr, userAgent string, isWebSocket bool, logger *slog.Logger) (sess Session, err error) {
 
 	// find token in app sessions
 	appS.mu.RLock()
@@ -210,9 +217,9 @@ func (appS *AppSessions) FromRequest(r *http.Request, logger *slog.Logger) (sess
 		return Session{}, lyserr.User{Message: "invalid token", StatusCode: http.StatusForbidden}
 	}
 
-	// http only: make sure request UserAgent matches session UserAgent
-	if !isWebSocket && r.UserAgent() != session.UserAgent {
-		logger.Debug(fmt.Sprintf("session UserAgent mismatch: requestUserAgent=%s, sessionUserAgent=%s", r.UserAgent(), session.UserAgent))
+	// http/rpc only: make sure request UserAgent matches session UserAgent
+	if !isWebSocket && userAgent != session.UserAgent {
+		logger.Debug(fmt.Sprintf("session UserAgent mismatch: requestUserAgent=%s, sessionUserAgent=%s", userAgent, session.UserAgent))
 		return Session{}, lyserr.User{Message: "invalid token", StatusCode: http.StatusForbidden}
 	}
 
@@ -221,7 +228,7 @@ func (appS *AppSessions) FromRequest(r *http.Request, logger *slog.Logger) (sess
 		return Session{}, lyserr.User{Message: "session expired", StatusCode: http.StatusForbidden}
 	}
 
-	// session verified, http only: update LastAccessAt and ExpiresAt
+	// session verified, http/rpc only: update LastAccessAt and ExpiresAt
 	if !isWebSocket {
 		session.LastAccessAt = lystype.Datetime(time.Now())
 		session.ExpiresAt = lystype.Datetime(time.Now().Add(appS.sessionDuration))

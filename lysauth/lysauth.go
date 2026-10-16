@@ -10,42 +10,45 @@ import (
 	"github.com/loveyourstack/lys/lyserr"
 )
 
-// GetBearerToken returns the bearer token from the request's Authorization header.
-func GetBearerToken(header http.Header) (token string, err error) {
+// GetBearerToken returns the bearer token from the provided header string. For HTTP, pass the value of the "Authorization" header.
+func GetBearerToken(headerStr string) (token string, err error) {
 
-	authHeaderVal := header.Get("Authorization")
-
-	if authHeaderVal == "" {
-		return "", lyserr.User{Message: "Authorization header missing or empty", StatusCode: http.StatusForbidden}
+	if headerStr == "" {
+		return "", lyserr.User{Message: "Header missing or empty", StatusCode: http.StatusForbidden}
 	}
 
 	expectedPrefix := "Bearer "
-	if !strings.HasPrefix(authHeaderVal, expectedPrefix) {
-		return "", lyserr.User{Message: fmt.Sprintf("Authorization header value must start with '%s'", expectedPrefix), StatusCode: http.StatusForbidden}
+	if !strings.HasPrefix(headerStr, expectedPrefix) {
+		return "", lyserr.User{Message: fmt.Sprintf("Header value must start with '%s'", expectedPrefix), StatusCode: http.StatusForbidden}
 	}
 
 	expectedLen := len(expectedPrefix) + 1 // at least 1 character for token
-	if len(authHeaderVal) < expectedLen {
-		return "", lyserr.User{Message: fmt.Sprintf("Authorization header value too short, must be at least %d characters", expectedLen), StatusCode: http.StatusForbidden}
+	if len(headerStr) < expectedLen {
+		return "", lyserr.User{Message: fmt.Sprintf("Header value too short - must be at least %d characters", expectedLen), StatusCode: http.StatusForbidden}
 	}
 
-	token = authHeaderVal[len(expectedPrefix):]
+	token = headerStr[len(expectedPrefix):]
 
 	return token, nil
 }
 
-// GetRemoteHostIP returns the remote IP from either the request RemoteAddr, or the X-Forwarded-For header.
+// GetIpAddrFromReq is an HTTP request wrapper for GetIpAddr.
+func GetIpAddrFromReq(r *http.Request, useXForwardedFor bool, xForwardedForIdx int) (remoteHostIP netip.Addr, err error) {
+	return GetIpAddr(r.RemoteAddr, r.Header.Get("X-Forwarded-For"), useXForwardedFor, xForwardedForIdx)
+}
+
+// GetIpAddr returns the remote IP from either remoteAddr or xForwardedForHeader.
 // useXForwardedFor: set to true when using nginx reverse proxy or services like Cloudflare, since the remote IP will be in the X-Forwarded-For header instead of RemoteAddr.
 // xForwardedForIdx: if using X-Forwarded-For header, this specifies which IP to use from the header (0 for first, etc).
 // This is needed when there are multiple proxies and thus multiple IPs in the header.
-func GetRemoteHostIP(r *http.Request, useXForwardedFor bool, xForwardedForIdx int) (remoteHostIP netip.Addr, err error) {
+func GetIpAddr(remoteAddr, xForwardedForHeader string, useXForwardedFor bool, xForwardedForIdx int) (remoteHostIP netip.Addr, err error) {
 
 	if xForwardedForIdx < 0 {
 		return netip.Addr{}, fmt.Errorf("invalid xForwardedForIdx: %d", xForwardedForIdx)
 	}
 
 	// get host ip from RemoteAddr
-	ipStr, _, err := net.SplitHostPort(r.RemoteAddr)
+	ipStr, _, err := net.SplitHostPort(remoteAddr)
 	if err != nil {
 		return netip.Addr{}, fmt.Errorf("net.SplitHostPort failed: %w", err)
 	}
@@ -64,15 +67,14 @@ func GetRemoteHostIP(r *http.Request, useXForwardedFor bool, xForwardedForIdx in
 			return netip.Addr{}, fmt.Errorf("remote IP %s is not loopback, but useXForwardedFor is true", remoteHostIP)
 		}
 
-		xForwardedVal := r.Header.Get("X-Forwarded-For")
-		if xForwardedVal == "" {
+		if xForwardedForHeader == "" {
 			return netip.Addr{}, fmt.Errorf("X-Forwarded-For header is empty")
 		}
 
 		// assumes multiple X-Forwarded-For IPs are in the same header value, but split by comma
 
 		// split header by comma
-		xForwardedS := strings.Split(xForwardedVal, ",")
+		xForwardedS := strings.Split(xForwardedForHeader, ",")
 		if xForwardedForIdx > len(xForwardedS)-1 {
 			return netip.Addr{}, fmt.Errorf("idx %d requested from X-Forwarded-For header, but len is only %d", xForwardedForIdx, len(xForwardedS))
 		}

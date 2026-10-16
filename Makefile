@@ -15,6 +15,7 @@ genpb:
 		$(PROTO_FILES)
 
 # run all tests
+# to clear cache: go clean -testcache
 .PHONY: tests
 tests: genpb
 	go test -race ./...

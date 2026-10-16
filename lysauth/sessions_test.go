@@ -640,8 +640,8 @@ func TestAppSessions_FromRequest_XForwardedFor(t *testing.T) {
 		if err == nil {
 			t.Fatalf("FromRequest(non-loopback reverse proxy) expected error, got nil")
 		}
-		if !strings.Contains(err.Error(), "GetRemoteHostIP failed") {
-			t.Fatalf("FromRequest(non-loopback reverse proxy) error mismatch: got %q, want contains %q", err.Error(), "GetRemoteHostIP failed")
+		if !strings.Contains(err.Error(), "GetIpAddrFromReq failed") {
+			t.Fatalf("FromRequest(non-loopback reverse proxy) error mismatch: got %q, want contains %q", err.Error(), "GetIpAddrFromReq failed")
 		}
 		if !strings.Contains(err.Error(), "not loopback") {
 			t.Fatalf("FromRequest(non-loopback reverse proxy) error mismatch: got %q, want contains %q", err.Error(), "not loopback")
@@ -674,8 +674,8 @@ func TestAppSessions_FromRequest_XForwardedFor(t *testing.T) {
 		if err == nil {
 			t.Fatalf("FromRequest(X-Forwarded-For idx out of range) expected error, got nil")
 		}
-		if !strings.Contains(err.Error(), "GetRemoteHostIP failed") {
-			t.Fatalf("FromRequest(X-Forwarded-For idx out of range) error mismatch: got %q, want contains %q", err.Error(), "GetRemoteHostIP failed")
+		if !strings.Contains(err.Error(), "GetIpAddrFromReq failed") {
+			t.Fatalf("FromRequest(X-Forwarded-For idx out of range) error mismatch: got %q, want contains %q", err.Error(), "GetIpAddrFromReq failed")
 		}
 		if !strings.Contains(err.Error(), "idx 2 requested") {
 			t.Fatalf("FromRequest(X-Forwarded-For idx out of range) error mismatch: got %q, want contains %q", err.Error(), "idx 2 requested")
@@ -684,24 +684,14 @@ func TestAppSessions_FromRequest_XForwardedFor(t *testing.T) {
 }
 
 func TestAppSessions_FromRequestErrors(t *testing.T) {
-	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
-
+	appS := NewAppSessions(validator.New(), 10*time.Hour, false, 0)
 	sessionInput := newDefaultSessionInput()
 	sessionInput.Ip = netip.MustParseAddr("203.0.113.50")
-	sessionInput.Roles = []string{"Senior"}
 	sessionInput.UserAgent = "agent-2"
-	sessionInput.UserId = 300
-	sessionInput.UserName = "bob"
-	token, err := appS.Add(sessionInput)
-	if err != nil {
-		t.Fatalf("setup Add returned unexpected error: %v", err)
-	}
 
 	tests := []struct {
 		name        string
 		buildReq    func() *http.Request
-		mutate      func()
 		wantErr     string
 		wantUserErr bool
 	}{
@@ -709,8 +699,7 @@ func TestAppSessions_FromRequestErrors(t *testing.T) {
 			name: "missing auth header",
 			buildReq: func() *http.Request {
 				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
-				req.RemoteAddr = sessionInput.Ip.String() + ":9999"
-				req.Header.Set("User-Agent", sessionInput.UserAgent)
+				req.RemoteAddr = "203.0.113.50:9999"
 				return req
 			},
 			wantErr: "GetBearerToken failed",
@@ -719,7 +708,7 @@ func TestAppSessions_FromRequestErrors(t *testing.T) {
 			name: "token not found",
 			buildReq: func() *http.Request {
 				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
-				req.RemoteAddr = sessionInput.Ip.String() + ":9999"
+				req.RemoteAddr = "203.0.113.50:9999"
 				req.Header.Set("Authorization", "Bearer not-found-token")
 				req.Header.Set("User-Agent", sessionInput.UserAgent)
 				return req
@@ -727,57 +716,10 @@ func TestAppSessions_FromRequestErrors(t *testing.T) {
 			wantErr:     "token not found",
 			wantUserErr: true,
 		},
-		{
-			name: "different ip",
-			buildReq: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
-				req.RemoteAddr = "203.0.113.51:9999"
-				req.Header.Set("Authorization", "Bearer "+token)
-				req.Header.Set("User-Agent", sessionInput.UserAgent)
-				return req
-			},
-			wantErr:     "invalid token",
-			wantUserErr: true,
-		},
-		{
-			name: "different user agent",
-			buildReq: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
-				req.RemoteAddr = sessionInput.Ip.String() + ":9999"
-				req.Header.Set("Authorization", "Bearer "+token)
-				req.Header.Set("User-Agent", "other-agent")
-				return req
-			},
-			wantErr:     "invalid token",
-			wantUserErr: true,
-		},
-		{
-			name: "session expired",
-			buildReq: func() *http.Request {
-				req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
-				req.RemoteAddr = sessionInput.Ip.String() + ":9999"
-				req.Header.Set("Authorization", "Bearer "+token)
-				req.Header.Set("User-Agent", sessionInput.UserAgent)
-				return req
-			},
-			mutate: func() {
-				appS.mu.Lock()
-				s := appS.all[token]
-				s.ExpiresAt = lystype.Datetime(time.Now().Add(-1 * time.Minute))
-				appS.all[token] = s
-				appS.mu.Unlock()
-			},
-			wantErr:     "session expired",
-			wantUserErr: true,
-		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			if tc.mutate != nil {
-				tc.mutate()
-			}
-
 			req := tc.buildReq()
 			_, err := appS.FromRequest(req, slog.Default())
 			if err == nil {
@@ -794,6 +736,134 @@ func TestAppSessions_FromRequestErrors(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestAppSessions_FromTokenErrors(t *testing.T) {
+	tests := []struct {
+		name        string
+		token       string
+		ip          netip.Addr
+		userAgent   string
+		expired     bool
+		wantErr     string
+		wantUserErr bool
+	}{
+		{
+			name:        "token not found",
+			token:       "missing-token",
+			ip:          netip.MustParseAddr("203.0.113.50"),
+			userAgent:   "agent-2",
+			wantErr:     "token not found",
+			wantUserErr: true,
+		},
+		{
+			name:        "different ip",
+			ip:          netip.MustParseAddr("203.0.113.51"),
+			userAgent:   "agent-2",
+			wantErr:     "invalid token",
+			wantUserErr: true,
+		},
+		{
+			name:        "different user agent",
+			ip:          netip.MustParseAddr("203.0.113.50"),
+			userAgent:   "other-agent",
+			wantErr:     "invalid token",
+			wantUserErr: true,
+		},
+		{
+			name:        "session expired",
+			ip:          netip.MustParseAddr("203.0.113.50"),
+			userAgent:   "agent-2",
+			expired:     true,
+			wantErr:     "session expired",
+			wantUserErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			appS := NewAppSessions(validator.New(), 10*time.Hour, false, 0)
+			input := newDefaultSessionInput()
+			input.Ip = netip.MustParseAddr("203.0.113.50")
+			input.UserAgent = "agent-2"
+			input.UserId = 300
+			input.UserName = "bob"
+			token, err := appS.Add(input)
+			if err != nil {
+				t.Fatalf("setup Add returned unexpected error: %v", err)
+			}
+			if tc.expired {
+				appS.mu.Lock()
+				session := appS.all[token]
+				session.ExpiresAt = lystype.Datetime(time.Now().Add(-time.Minute))
+				appS.all[token] = session
+				appS.mu.Unlock()
+			}
+			if tc.token == "" {
+				tc.token = token
+			}
+
+			_, err = appS.FromToken(tc.token, tc.ip, tc.userAgent, false, slog.Default())
+			if err == nil {
+				t.Fatalf("FromToken expected error containing %q, got nil", tc.wantErr)
+			}
+			if !strings.Contains(err.Error(), tc.wantErr) {
+				t.Fatalf("FromToken error mismatch: got %q, want contains %q", err.Error(), tc.wantErr)
+			}
+			if tc.wantUserErr {
+				if _, ok := errors.AsType[lyserr.User](err); !ok {
+					t.Fatalf("expected lyserr.User, got %T", err)
+				}
+			}
+		})
+	}
+}
+
+func TestAppSessions_FromToken(t *testing.T) {
+	appS := NewAppSessions(validator.New(), 10*time.Hour, false, 0)
+	input := newDefaultSessionInput()
+	input.Ip = netip.MustParseAddr("203.0.113.50")
+	input.UserAgent = "agent-2"
+	input.UserId = 300
+	input.UserName = "bob"
+	token, err := appS.Add(input)
+	if err != nil {
+		t.Fatalf("setup Add returned unexpected error: %v", err)
+	}
+
+	appS.mu.RLock()
+	original := appS.all[token]
+	appS.mu.RUnlock()
+
+	session, err := appS.FromToken(token, input.Ip, input.UserAgent, false, slog.Default())
+	if err != nil {
+		t.Fatalf("FromToken(valid HTTP session) returned unexpected error: %v", err)
+	}
+	if session.UserId != input.UserId || session.UserName != input.UserName {
+		t.Fatalf("FromToken returned unexpected session: got user %d %q, want %d %q", session.UserId, session.UserName, input.UserId, input.UserName)
+	}
+
+	appS.mu.RLock()
+	updated := appS.all[token]
+	appS.mu.RUnlock()
+	if !time.Time(updated.LastAccessAt).After(time.Time(original.LastAccessAt)) {
+		t.Fatalf("FromToken did not update LastAccessAt: got %v, original %v", updated.LastAccessAt, original.LastAccessAt)
+	}
+	if !time.Time(updated.ExpiresAt).After(time.Time(original.ExpiresAt)) {
+		t.Fatalf("FromToken did not extend ExpiresAt: got %v, original %v", updated.ExpiresAt, original.ExpiresAt)
+	}
+
+	_, err = appS.FromToken(token, input.Ip, "different-agent", true, slog.Default())
+	if err != nil {
+		t.Fatalf("FromToken(valid WebSocket session) returned unexpected error: %v", err)
+	}
+	appS.mu.RLock()
+	afterWebSocket := appS.all[token]
+	appS.mu.RUnlock()
+	if afterWebSocket.LastAccessAt != updated.LastAccessAt || afterWebSocket.ExpiresAt != updated.ExpiresAt {
+		t.Fatalf("FromToken updated session timestamps for WebSocket: LastAccessAt %v -> %v, ExpiresAt %v -> %v",
+			updated.LastAccessAt, afterWebSocket.LastAccessAt, updated.ExpiresAt, afterWebSocket.ExpiresAt)
 	}
 }
 
