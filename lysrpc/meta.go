@@ -2,6 +2,7 @@ package lysrpc
 
 import (
 	"fmt"
+	"net/netip"
 	"reflect"
 	"strings"
 	"time"
@@ -13,6 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
+var netipAddrType = reflect.TypeFor[netip.Addr]()
 var timeType = reflect.TypeFor[time.Time]()
 var uuidType = reflect.TypeFor[uuid.UUID]()
 
@@ -174,7 +176,7 @@ func checkFieldCompat(fd protoreflect.FieldDescriptor, ft reflect.Type) error {
 			return nil
 		}
 		if fd.Kind() == protoreflect.StringKind {
-			if _, ok := lystypeLayouts[ft]; ok || ft == uuidType {
+			if _, ok := lystypeLayouts[ft]; ok || ft == netipAddrType || ft == uuidType {
 				return nil
 			}
 		}
@@ -207,12 +209,14 @@ func goToPbField(msg protoreflect.Message, fd protoreflect.FieldDescriptor, v re
 }
 
 // pbToGoField sets the Go value from the proto field, handling both scalar and repeated fields
-func pbToGoField(msg protoreflect.Message, fd protoreflect.FieldDescriptor, dst reflect.Value) {
+func pbToGoField(msg protoreflect.Message, fd protoreflect.FieldDescriptor, dst reflect.Value) error {
 	if !fd.IsList() {
 		if msg.Has(fd) {
-			pbToGoValue(fd, msg.Get(fd), dst)
+			if err := pbToGoValue(fd, msg.Get(fd), dst); err != nil {
+				return fmt.Errorf("field %s: %w", fd.Name(), err)
+			}
 		}
-		return
+		return nil
 	}
 
 	list := msg.Get(fd).List()
@@ -222,9 +226,12 @@ func pbToGoField(msg protoreflect.Message, fd protoreflect.FieldDescriptor, dst 
 	sl := reflect.MakeSlice(dst.Type(), list.Len(), list.Len())
 
 	for i := range list.Len() {
-		pbToGoValue(fd, list.Get(i), sl.Index(i))
+		if err := pbToGoValue(fd, list.Get(i), sl.Index(i)); err != nil {
+			return fmt.Errorf("field %s element %d: %w", fd.Name(), i, err)
+		}
 	}
 	dst.Set(sl)
+	return nil
 }
 
 // goToPbValue converts a Go value to a proto value, returning the proto value and a boolean indicating if it should be set.
@@ -266,6 +273,15 @@ func goToPbValue(fd protoreflect.FieldDescriptor, v reflect.Value) (protoreflect
 			return protoreflect.ValueOfString(t.Format(layout)), true
 		}
 
+		if v.Type() == netipAddrType {
+			// zero netip.Addr are left unset
+			a := v.Interface().(netip.Addr)
+			if !a.IsValid() {
+				return protoreflect.Value{}, false
+			}
+			return protoreflect.ValueOfString(a.String()), true
+		}
+
 		if v.Type() == uuidType {
 			// zero uuids are left unset
 			u := v.Interface().(uuid.UUID)
@@ -303,13 +319,15 @@ func goToPbValue(fd protoreflect.FieldDescriptor, v reflect.Value) (protoreflect
 }
 
 // pbToGoValue converts a proto value to a Go value, setting the destination reflect.Value accordingly.
-func pbToGoValue(fd protoreflect.FieldDescriptor, pv protoreflect.Value, dst reflect.Value) {
+func pbToGoValue(fd protoreflect.FieldDescriptor, pv protoreflect.Value, dst reflect.Value) error {
 
 	if dst.Kind() == reflect.Pointer {
 		p := reflect.New(dst.Type().Elem())
-		pbToGoValue(fd, pv, p.Elem())
+		if err := pbToGoValue(fd, pv, p.Elem()); err != nil {
+			return err
+		}
 		dst.Set(p)
-		return
+		return nil
 	}
 
 	switch fd.Kind() {
@@ -326,19 +344,32 @@ func pbToGoValue(fd protoreflect.FieldDescriptor, pv protoreflect.Value, dst ref
 
 	case protoreflect.StringKind:
 		if layout, ok := lystypeLayouts[dst.Type()]; ok {
-			// an unparseable time is left as the zero value
-			if t, err := time.Parse(layout, pv.String()); err == nil {
-				dst.Set(reflect.ValueOf(t).Convert(dst.Type()))
+			t, err := time.Parse(layout, pv.String())
+			if err != nil {
+				return fmt.Errorf("invalid %s value %q: %w", dst.Type(), pv.String(), err)
 			}
-			return
+			dst.Set(reflect.ValueOf(t).Convert(dst.Type()))
+			return nil
 		}
+
+		if dst.Type() == netipAddrType {
+			a, err := netip.ParseAddr(pv.String())
+			if err != nil {
+				return fmt.Errorf("invalid %s value %q: %w", dst.Type(), pv.String(), err)
+			}
+			dst.Set(reflect.ValueOf(a))
+			return nil
+		}
+
 		if dst.Type() == uuidType {
-			// an unparseable uuid is left as the zero value
-			if u, err := uuid.Parse(pv.String()); err == nil {
-				dst.Set(reflect.ValueOf(u))
+			u, err := uuid.Parse(pv.String())
+			if err != nil {
+				return fmt.Errorf("invalid %s value %q: %w", dst.Type(), pv.String(), err)
 			}
-			return
+			dst.Set(reflect.ValueOf(u))
+			return nil
 		}
+
 		dst.SetString(pv.String())
 
 	case protoreflect.EnumKind:
@@ -353,6 +384,7 @@ func pbToGoValue(fd protoreflect.FieldDescriptor, pv protoreflect.Value, dst ref
 		ts := pv.Message().Interface().(*timestamppb.Timestamp)
 		dst.Set(reflect.ValueOf(ts.AsTime()).Convert(dst.Type()))
 	}
+	return nil
 }
 
 // NewToPb returns a func converting a store model to its proto message. Fields are matched by proto field name = model json name.
@@ -384,16 +416,17 @@ func NewToPb[modelT any, pbT any, pbPtrT interface {
 }
 
 // NewFromPb returns a func converting a proto input message to a store input struct. Fields are matched by proto field name = input json name.
-// Panics if the proto fields and the input fields are not an exact match or have unsupported types, so call it at init.
+// The returned func errors if a string value cannot be parsed as its Go field type. NewFromPb panics if the proto fields
+// and the input fields are not an exact match or have unsupported types, so call it at init.
 func NewFromPb[inputT any, pbT any, pbPtrT interface {
 	*pbT
 	proto.Message
-}]() func(pbPtrT) inputT {
+}]() func(pbPtrT) (inputT, error) {
 
 	desc := pbPtrT(new(pbT)).ProtoReflect().Descriptor()
 	maps := buildPbFieldMaps(desc, reflect.TypeFor[inputT](), true)
 
-	return func(p pbPtrT) inputT {
+	return func(p pbPtrT) (inputT, error) {
 		var in inputT
 		iv := reflect.ValueOf(&in).Elem()
 		msg := p.ProtoReflect()
@@ -404,8 +437,10 @@ func NewFromPb[inputT any, pbT any, pbPtrT interface {
 			if !ok {
 				panic(fmt.Sprintf("cannot set input field %q", fm.fd.Name()))
 			}
-			pbToGoField(msg, fm.fd, field)
+			if err := pbToGoField(msg, fm.fd, field); err != nil {
+				return in, err
+			}
 		}
-		return in
+		return in, nil
 	}
 }

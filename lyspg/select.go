@@ -32,7 +32,7 @@ func Select[T any](ctx context.Context, db PoolOrTx, schemaName, tableName, view
 
 	// use allFields if the fields param was not sent
 	var fields []string
-	if params.Fields == nil {
+	if len(params.Fields) == 0 {
 		fields = allFields
 	} else {
 		fields = params.Fields

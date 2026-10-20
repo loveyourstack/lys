@@ -9,6 +9,7 @@ import (
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/loveyourstack/lys/internal/stores/core/coreuuidtest"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/fieldmaskpb"
 )
 
@@ -39,7 +40,9 @@ func TestUpdateSuccess(t *testing.T) {
 	assert.NoError(t, err)
 
 	// check changed record
-	coretypetestm.TestFilledInput(t, CoreTTModelFromPbFunc(item).Input)
+	output, err := CoreTTModelFromPbFunc(item)
+	require.NoError(t, err)
+	coretypetestm.TestFilledInput(t, output.Input)
 }
 
 func TestUpdateUuid(t *testing.T) {

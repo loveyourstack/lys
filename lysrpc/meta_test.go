@@ -1,6 +1,7 @@
 package lysrpc
 
 import (
+	"net/netip"
 	"reflect"
 	"testing"
 	"time"
@@ -135,6 +136,10 @@ func TestCheckFieldCompat(t *testing.T) {
 		{"integer width mismatch", fields.ByName("c_int"), reflect.TypeFor[int32](), false},
 		{"repeated", fields.ByName("c_inta"), reflect.TypeFor[[]int64](), true},
 		{"repeated pointers", fields.ByName("c_inta"), reflect.TypeFor[[]*int64](), false},
+		{"netip address", fields.ByName("c_text"), reflect.TypeFor[netip.Addr](), true},
+		{"nullable netip address", fields.ByName("c_textn"), reflect.TypeFor[*netip.Addr](), true},
+		{"repeated netip addresses", fields.ByName("c_texta"), reflect.TypeFor[[]netip.Addr](), true},
+		{"repeated netip address pointers", fields.ByName("c_texta"), reflect.TypeFor[[]*netip.Addr](), false},
 		{"date layout", fields.ByName("c_date"), reflect.TypeFor[lystype.Date](), true},
 		{"string type mismatch", fields.ByName("c_text"), reflect.TypeFor[int64](), false},
 		{"timestamp", fields.ByName("c_datetime"), reflect.TypeFor[time.Time](), true},
@@ -193,12 +198,89 @@ func TestEnumValueConversion(t *testing.T) {
 	msg := dynamicpb.NewMessage(file.Messages().ByName("Entry"))
 	msg.Set(fd, pv)
 	dst := reflect.New(reflect.TypeFor[string]()).Elem()
-	pbToGoValue(fd, msg.Get(fd), dst)
+	require.NoError(t, pbToGoValue(fd, msg.Get(fd), dst))
 	assert.Equal(t, "MONDAY", dst.String())
 
 	dst.SetString("unchanged")
-	pbToGoValue(fd, protoreflect.ValueOfEnum(99), dst)
+	require.NoError(t, pbToGoValue(fd, protoreflect.ValueOfEnum(99), dst))
 	assert.Equal(t, "unchanged", dst.String())
+}
+
+func TestNetipAddrConversion(t *testing.T) {
+	fields := (&pb.CoreTypeTestInput{}).ProtoReflect().Descriptor().Fields()
+	textField := fields.ByName("c_text")
+	textListField := fields.ByName("c_texta")
+	values := []netip.Addr{
+		netip.MustParseAddr("192.0.2.1"),
+		netip.MustParseAddr("2001:db8::1"),
+	}
+
+	for _, addr := range values {
+		pv, ok := goToPbValue(textField, reflect.ValueOf(addr))
+		require.True(t, ok)
+		assert.Equal(t, addr.String(), pv.String())
+
+		dst := reflect.New(netipAddrType).Elem()
+		require.NoError(t, pbToGoValue(textField, pv, dst))
+		assert.Equal(t, addr, dst.Interface().(netip.Addr))
+
+		pv, ok = goToPbValue(textField, reflect.ValueOf(&addr))
+		require.True(t, ok)
+		ptrDst := reflect.New(reflect.TypeFor[*netip.Addr]()).Elem()
+		require.NoError(t, pbToGoValue(textField, pv, ptrDst))
+		require.NotNil(t, ptrDst.Interface().(*netip.Addr))
+		assert.Equal(t, addr, *ptrDst.Interface().(*netip.Addr))
+	}
+
+	_, ok := goToPbValue(textField, reflect.ValueOf(netip.Addr{}))
+	assert.False(t, ok)
+
+	msg := (&pb.CoreTypeTestInput{}).ProtoReflect()
+	goToPbField(msg, textListField, reflect.ValueOf(values))
+	list := msg.Get(textListField).List()
+	require.Equal(t, len(values), list.Len())
+	for i, addr := range values {
+		assert.Equal(t, addr.String(), list.Get(i).String())
+	}
+
+	dst := reflect.New(reflect.TypeFor[[]netip.Addr]()).Elem()
+	require.NoError(t, pbToGoField(msg, textListField, dst))
+	assert.Equal(t, values, dst.Interface())
+
+	msg.Set(textField, protoreflect.ValueOfString("not-an-ip"))
+	addrDst := reflect.New(netipAddrType).Elem()
+	addrDst.Set(reflect.ValueOf(values[0]))
+	err := pbToGoField(msg, textField, addrDst)
+	require.ErrorContains(t, err, "field c_text")
+	require.ErrorContains(t, err, "invalid netip.Addr value")
+	assert.Equal(t, values[0], addrDst.Interface().(netip.Addr))
+
+	msg.Mutable(textListField).List().Append(protoreflect.ValueOfString("not-an-ip"))
+	err = pbToGoField(msg, textListField, dst)
+	require.ErrorContains(t, err, "field c_texta element 2")
+}
+
+func TestPbToGoValueStringParseErrors(t *testing.T) {
+	fields := (&pb.CoreTypeTestInput{}).ProtoReflect().Descriptor().Fields()
+	tests := []struct {
+		name string
+		fd   protoreflect.FieldDescriptor
+		typ  reflect.Type
+		text string
+	}{
+		{"netip address", fields.ByName("c_text"), netipAddrType, "not-an-ip"},
+		{"uuid", fields.ByName("c_text"), uuidType, "not-a-uuid"},
+		{"date", fields.ByName("c_date"), reflect.TypeFor[lystype.Date](), "not-a-date"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dst := reflect.New(tt.typ).Elem()
+			err := pbToGoValue(tt.fd, protoreflect.ValueOfString(tt.text), dst)
+			require.Error(t, err)
+			assert.Contains(t, err.Error(), tt.text)
+		})
+	}
 }
 
 func TestNewToPbAndNewFromPb(t *testing.T) {
@@ -220,7 +302,8 @@ func TestNewToPbAndNewFromPb(t *testing.T) {
 	assert.NotNil(t, message.CBooln)
 	assert.Equal(t, *input.CBoolN, *message.CBooln)
 
-	output := fromPb(message)
+	output, err := fromPb(message)
+	require.NoError(t, err)
 	assert.Equal(t, input.CBool, output.CBool)
 	assert.Equal(t, input.CBoolN, output.CBoolN)
 	assert.Equal(t, input.CBoolA, output.CBoolA)
@@ -264,13 +347,17 @@ func TestNewToPbZeroValues(t *testing.T) {
 	assert.Empty(t, message.CDatetimea)
 	assert.Empty(t, message.CInta)
 
-	output := NewFromPb[coretypetestm.Input, pb.CoreTypeTestInput]()(&pb.CoreTypeTestInput{})
+	output, err := NewFromPb[coretypetestm.Input, pb.CoreTypeTestInput]()(&pb.CoreTypeTestInput{})
+	require.NoError(t, err)
 	assert.Nil(t, output.CBoolN)
 	assert.Nil(t, output.CDatetimeN)
 	assert.NotNil(t, output.CBoolA)
 	assert.Empty(t, output.CBoolA)
 	assert.NotNil(t, output.CDatetimeA)
 	assert.Empty(t, output.CDatetimeA)
+
+	_, err = NewFromPb[coretypetestm.Input, pb.CoreTypeTestInput]()(&pb.CoreTypeTestInput{CDate: "not-a-date"})
+	require.ErrorContains(t, err, "field c_date")
 }
 
 func TestNewToPbUuid(t *testing.T) {
@@ -294,7 +381,8 @@ func TestNewConvertersEmbeddedPointers(t *testing.T) {
 	message := NewToPb[coretypetestm.Input, pb.CoreTypeTestInput]()(input)
 
 	fromPb := NewFromPb[inputWithEmbeddedPointer, pb.CoreTypeTestInput]()
-	output := fromPb(message)
+	output, err := fromPb(message)
+	require.NoError(t, err)
 	require.NotNil(t, output.Input)
 	assert.Equal(t, input.CText, output.CText)
 	assert.Equal(t, input.CTextN, output.CTextN)

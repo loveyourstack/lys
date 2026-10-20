@@ -15,11 +15,14 @@ func Create[inputT any, modelT any, pbInputT any, pbModelT any](
 	ctx context.Context,
 	pbInput pbInputT,
 	store lyspg.InsertSelecter[inputT, modelT],
-	pbToInput func(pbInputT) inputT,
+	pbToInput func(pbInputT) (inputT, error),
 	toPb func(modelT) *pbModelT,
 ) (*pbModelT, error) {
 
-	input := pbToInput(pbInput)
+	input, err := pbToInput(pbInput)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
 
 	if err := store.Validate(validator.New(), input); err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())

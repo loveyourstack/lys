@@ -7,6 +7,7 @@ import (
 	"github.com/loveyourstack/lys/internal/pb"
 	"github.com/loveyourstack/lys/internal/stores/core/coretypetestm"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateEmptySuccess(t *testing.T) {
@@ -49,7 +50,9 @@ func TestPostFilledSuccess(t *testing.T) {
 	item, err := ttClient.Create(ctx, CoreTTInputToPbFunc(input))
 	assert.NoError(t, err)
 
-	coretypetestm.TestFilledInput(t, CoreTTModelFromPbFunc(item).Input)
+	output, err := CoreTTModelFromPbFunc(item)
+	require.NoError(t, err)
+	coretypetestm.TestFilledInput(t, output.Input)
 }
 
 func TestPostFailure(t *testing.T) {
