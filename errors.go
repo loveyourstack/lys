@@ -23,7 +23,7 @@ var (
 	ErrNotParseableToMap  = lyserr.User{Message: "json body could not be parsed into a map of field names to values"}
 	ErrRouteNotFound      = lyserr.User{Message: "route not found"}
 
-	// forbidden
-	ErrPermissionDenied = lyserr.User{Message: "permission denied", StatusCode: http.StatusForbidden} // authorization failed
-	ErrUserInfoMissing  = lyserr.User{Message: "userInfo missing", StatusCode: http.StatusForbidden}  // failed to get ReqUserInfo from context
+	// auth
+	ErrPermissionDenied = lyserr.User{Message: "permission denied", StatusCode: http.StatusForbidden}   // authorization failed
+	ErrUserInfoMissing  = lyserr.User{Message: "userInfo missing", StatusCode: http.StatusUnauthorized} // failed to get ReqUserInfo from context
 )
