@@ -1,7 +1,7 @@
 package rootcli
 
 import (
-	"os"
+	"fmt"
 
 	"github.com/loveyourstack/lys/internal/cmd/lyscli/cliapp"
 	"github.com/loveyourstack/lys/internal/sql/ddl"
@@ -16,16 +16,15 @@ func CreateTestDbCmd(cliApp *cliapp.App) *cobra.Command {
 		Use:   "createTestDb",
 		Short: "Creates test database from embedded SQL files. Drops existing if present.",
 		Args:  cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-
-			defer cliApp.Db.Close()
+		RunE: func(cmd *cobra.Command, args []string) (err error) {
 
 			// (re-)create test db
-			if err := lyspgdb.CreateLocalDb(cmd.Context(), ddl.SQLAssets, cliApp.Config.Db, cliApp.Config.DbSuperUser, cliApp.Config.DbOwnerUser, true, false,
+			if err = lyspgdb.CreateLocalDb(cmd.Context(), ddl.SQLAssets, cliApp.Config.Db, cliApp.Config.DbSuperUser, cliApp.Config.DbOwnerUser, true, false,
 				nil, cliApp.Logger); err != nil {
-				cliApp.Logger.Error("lyspgdb.CreateLocalDb failed: " + err.Error())
-				os.Exit(1)
+				return fmt.Errorf("lyspgdb.CreateLocalDb failed: %w", err)
 			}
+
+			return nil
 		},
 	}
 }

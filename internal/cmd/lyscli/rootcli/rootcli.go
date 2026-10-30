@@ -2,8 +2,7 @@ package rootcli
 
 import (
 	"context"
-	"errors"
-	"log"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -11,7 +10,6 @@ import (
 	appCmd "github.com/loveyourstack/lys/internal/cmd"
 	"github.com/loveyourstack/lys/internal/cmd/lyscli/cliapp"
 	"github.com/loveyourstack/lys/internal/myapp"
-	"github.com/loveyourstack/lys/lyserr"
 	"github.com/loveyourstack/lys/lyspgdb"
 	"github.com/spf13/cobra"
 )
@@ -33,7 +31,7 @@ func addSubCommands() {
 	rootCmd.AddCommand(CreateTestDbCmd(cliApp))
 }
 
-func Execute() {
+func Run() error {
 
 	// set up signal handling for graceful shutdown
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -45,7 +43,7 @@ func Execute() {
 	conf := myapp.Config{}
 	err := conf.LoadFromFile("/usr/local/etc/lys_config.toml")
 	if err != nil {
-		log.Fatalf("initialization: lys_config.toml not found: %s", err.Error())
+		return fmt.Errorf("conf.LoadFromFile failed: %w", err)
 	}
 
 	// create non-specific app
@@ -59,20 +57,13 @@ func Execute() {
 	// connect to db and assign pool to cliApp
 	cliApp.Db, err = lyspgdb.GetPool(ctx, conf.Db, conf.DbOwnerUser, conf.General.AppName+" Cli")
 	if err != nil {
-		log.Fatalf("initialization: failed to create db connection pool: %s", err.Error())
+		return fmt.Errorf("lyspgdb.GetPool failed: %w", err)
 	}
 	defer cliApp.Db.Close()
-
-	// note that defer db Close is also needed in subcommands or else context cancelation doesn't propagate to db
 
 	// subcommands
 	addSubCommands()
 
-	if err := rootCmd.Execute(); err != nil {
-		var userErr lyserr.User
-		if errors.As(err, &userErr) {
-			log.Fatal(userErr)
-		}
-		log.Fatal(err.Error())
-	}
+	// execute the root command, which runs the appropriate subcommand based on user input
+	return rootCmd.Execute()
 }
