@@ -64,7 +64,7 @@ func newDefaultSessionInput() SessionInput {
 
 func TestAppSessions_Add_RejectsZeroValueIP(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	input := newDefaultSessionInput()
 	input.Ip = netip.Addr{}
@@ -81,7 +81,7 @@ func TestAppSessions_Add_RejectsZeroValueIP(t *testing.T) {
 
 func TestAppSessions_Add_NormalizesMappedIPv4(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	input := newDefaultSessionInput()
 	input.Ip = netip.MustParseAddr("::ffff:198.51.100.77")
@@ -108,7 +108,7 @@ func TestAppSessions_Add_NormalizesMappedIPv4(t *testing.T) {
 
 func TestAppSessions_Add(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	if got := appS.Count(); got != 0 {
 		t.Fatalf("initial Count mismatch: got %d, want 0", got)
@@ -195,7 +195,7 @@ func TestAppSessions_Add(t *testing.T) {
 
 func TestAppSessions_Add_SingleSessionPolicyDeletesPriorSessions(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	firstInput := newDefaultSessionInput()
 	firstInput.AllowMultipleSessions = false
@@ -265,7 +265,7 @@ func TestAppSessions_Add_SingleSessionPolicyDeletesPriorSessions(t *testing.T) {
 
 func TestAppSessions_DeleteByUserId(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	input1 := newDefaultSessionInput()
 	input1.AllowMultipleSessions = true
@@ -309,7 +309,7 @@ func TestAppSessions_DeleteByUserId(t *testing.T) {
 
 func TestAppSessions_UpdateProfilePicByUserId(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	input1 := newDefaultSessionInput()
 	input1.AllowMultipleSessions = true
@@ -365,7 +365,7 @@ func TestAppSessions_UpdateProfilePicByUserId(t *testing.T) {
 
 func TestAppSessions_DeleteByToken(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	input1 := newDefaultSessionInput()
 	input1.Ip = netip.MustParseAddr("198.51.100.30")
@@ -419,7 +419,7 @@ func TestAppSessions_DeleteByToken(t *testing.T) {
 
 func TestAppSessions_DeleteByIp(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	input1 := newDefaultSessionInput()
 	input1.AllowMultipleSessions = true
@@ -467,7 +467,7 @@ func TestAppSessions_DeleteByIp(t *testing.T) {
 
 func TestAppSessions_FromRequest(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	sessionInput := newDefaultSessionInput()
 	sessionInput.Ip = netip.MustParseAddr("198.51.100.44")
@@ -504,7 +504,7 @@ func TestAppSessions_FromRequest(t *testing.T) {
 
 func TestAppSessions_FromRequest_AcceptsMappedIPv4(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	sessionInput := newDefaultSessionInput()
 	sessionInput.Ip = netip.MustParseAddr("198.51.100.44")
@@ -531,7 +531,7 @@ func TestAppSessions_FromRequest_AcceptsMappedIPv4(t *testing.T) {
 
 func TestAppSessions_FromRequest_WebSocket(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	sessionInput := newDefaultSessionInput()
 	sessionInput.Ip = netip.MustParseAddr("198.51.100.120")
@@ -584,16 +584,16 @@ func TestAppSessions_FromRequest_WebSocket(t *testing.T) {
 	})
 }
 
-func TestAppSessions_FromRequest_XForwardedFor(t *testing.T) {
+func TestAppSessions_FromRequest_RealIpHeader(t *testing.T) {
 	validate := validator.New()
 
-	t.Run("success with selected forwarded ip", func(t *testing.T) {
-		appS := NewAppSessions(validate, 10*time.Hour, true, 1)
+	t.Run("success with real ip header", func(t *testing.T) {
+		appS := NewAppSessions(validate, 10*time.Hour, true)
 		input := newDefaultSessionInput()
 		input.Ip = netip.MustParseAddr("198.51.100.90")
-		input.UserAgent = "xff-ok"
+		input.UserAgent = "real-ip-ok"
 		input.UserId = 901
-		input.UserName = "xff-ok"
+		input.UserName = "real-ip-ok"
 
 		token, err := appS.Add(input)
 		if err != nil {
@@ -605,22 +605,22 @@ func TestAppSessions_FromRequest_XForwardedFor(t *testing.T) {
 			t.Fatalf("failed creating request: %v", err)
 		}
 		req.RemoteAddr = "127.0.0.1:443"
-		req.Header.Set("X-Forwarded-For", "203.0.113.1, 198.51.100.90")
+		req.Header.Set("X-Real-IP", "198.51.100.90")
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("User-Agent", input.UserAgent)
 
 		if _, err = appS.FromRequest(req, slog.Default()); err != nil {
-			t.Fatalf("FromRequest(X-Forwarded-For success) returned unexpected error: %v", err)
+			t.Fatalf("FromRequest(X-Real-IP success) returned unexpected error: %v", err)
 		}
 	})
 
-	t.Run("remote must be loopback when using forwarded header", func(t *testing.T) {
-		appS := NewAppSessions(validate, 10*time.Hour, true, 0)
+	t.Run("remote must be loopback when using real ip header", func(t *testing.T) {
+		appS := NewAppSessions(validate, 10*time.Hour, true)
 		input := newDefaultSessionInput()
 		input.Ip = netip.MustParseAddr("198.51.100.91")
-		input.UserAgent = "xff-loopback"
+		input.UserAgent = "real-ip-loopback"
 		input.UserId = 902
-		input.UserName = "xff-loopback"
+		input.UserName = "real-ip-loopback"
 
 		token, err := appS.Add(input)
 		if err != nil {
@@ -632,7 +632,7 @@ func TestAppSessions_FromRequest_XForwardedFor(t *testing.T) {
 			t.Fatalf("failed creating request: %v", err)
 		}
 		req.RemoteAddr = "10.0.0.7:443"
-		req.Header.Set("X-Forwarded-For", "198.51.100.91")
+		req.Header.Set("X-Real-IP", "198.51.100.91")
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("User-Agent", input.UserAgent)
 
@@ -648,13 +648,13 @@ func TestAppSessions_FromRequest_XForwardedFor(t *testing.T) {
 		}
 	})
 
-	t.Run("forwarded index out of range", func(t *testing.T) {
-		appS := NewAppSessions(validate, 10*time.Hour, true, 2)
+	t.Run("real ip header must be present", func(t *testing.T) {
+		appS := NewAppSessions(validate, 10*time.Hour, true)
 		input := newDefaultSessionInput()
 		input.Ip = netip.MustParseAddr("198.51.100.92")
-		input.UserAgent = "xff-idx"
+		input.UserAgent = "real-ip-missing"
 		input.UserId = 903
-		input.UserName = "xff-idx"
+		input.UserName = "real-ip-missing"
 
 		token, err := appS.Add(input)
 		if err != nil {
@@ -666,25 +666,24 @@ func TestAppSessions_FromRequest_XForwardedFor(t *testing.T) {
 			t.Fatalf("failed creating request: %v", err)
 		}
 		req.RemoteAddr = "127.0.0.1:443"
-		req.Header.Set("X-Forwarded-For", "198.51.100.92")
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("User-Agent", input.UserAgent)
 
 		_, err = appS.FromRequest(req, slog.Default())
 		if err == nil {
-			t.Fatalf("FromRequest(X-Forwarded-For idx out of range) expected error, got nil")
+			t.Fatalf("FromRequest(missing X-Real-IP) expected error, got nil")
 		}
 		if !strings.Contains(err.Error(), "GetIpAddrFromReq failed") {
-			t.Fatalf("FromRequest(X-Forwarded-For idx out of range) error mismatch: got %q, want contains %q", err.Error(), "GetIpAddrFromReq failed")
+			t.Fatalf("FromRequest(missing X-Real-IP) error mismatch: got %q, want contains %q", err.Error(), "GetIpAddrFromReq failed")
 		}
-		if !strings.Contains(err.Error(), "idx 2 requested") {
-			t.Fatalf("FromRequest(X-Forwarded-For idx out of range) error mismatch: got %q, want contains %q", err.Error(), "idx 2 requested")
+		if !strings.Contains(err.Error(), "X-Real-IP header is empty") {
+			t.Fatalf("FromRequest(missing X-Real-IP) error mismatch: got %q, want contains %q", err.Error(), "X-Real-IP header is empty")
 		}
 	})
 }
 
 func TestAppSessions_FromRequestErrors(t *testing.T) {
-	appS := NewAppSessions(validator.New(), 10*time.Hour, false, 0)
+	appS := NewAppSessions(validator.New(), 10*time.Hour, false)
 	sessionInput := newDefaultSessionInput()
 	sessionInput.Ip = netip.MustParseAddr("203.0.113.50")
 	sessionInput.UserAgent = "agent-2"
@@ -783,7 +782,7 @@ func TestAppSessions_FromTokenErrors(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			appS := NewAppSessions(validator.New(), 10*time.Hour, false, 0)
+			appS := NewAppSessions(validator.New(), 10*time.Hour, false)
 			input := newDefaultSessionInput()
 			input.Ip = netip.MustParseAddr("203.0.113.50")
 			input.UserAgent = "agent-2"
@@ -821,7 +820,7 @@ func TestAppSessions_FromTokenErrors(t *testing.T) {
 }
 
 func TestAppSessions_FromToken(t *testing.T) {
-	appS := NewAppSessions(validator.New(), 10*time.Hour, false, 0)
+	appS := NewAppSessions(validator.New(), 10*time.Hour, false)
 	input := newDefaultSessionInput()
 	input.Ip = netip.MustParseAddr("203.0.113.50")
 	input.UserAgent = "agent-2"
@@ -869,7 +868,7 @@ func TestAppSessions_FromToken(t *testing.T) {
 
 func TestAppSessions_ListByLastAccessAt(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	if got := appS.ListByLastAccessAt(true); len(got) != 0 {
 		t.Fatalf("ListByLastAccessAt on empty map mismatch: got non-empty slice, want empty")
@@ -931,7 +930,7 @@ func TestAppSessions_ListByLastAccessAt(t *testing.T) {
 
 func TestAppSessions_ConcurrentAddAndFromRequest(t *testing.T) {
 	validate := validator.New()
-	appS := NewAppSessions(validate, 10*time.Hour, false, 0)
+	appS := NewAppSessions(validate, 10*time.Hour, false)
 
 	type sessionRef struct {
 		token     string

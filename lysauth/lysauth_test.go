@@ -96,116 +96,84 @@ func TestGetBearerToken(t *testing.T) {
 
 func TestGetIpAddr(t *testing.T) {
 	tests := []struct {
-		name                string
-		remoteAddr          string
-		xForwardedForHeader string
-		useXForwardedFor    bool
-		xForwardedForIdx    int
-		wantIP              netip.Addr
-		wantErr             string
+		name            string
+		remoteAddr      string
+		xRealIpHeader   string
+		useRealIpHeader bool
+		wantIP          netip.Addr
+		wantErr         string
 	}{
 		{
-			name:             "negative x-forwarded-for idx",
-			remoteAddr:       "127.0.0.1:8080",
-			useXForwardedFor: false,
-			xForwardedForIdx: -1,
-			wantErr:          "invalid xForwardedForIdx: -1",
+			name:       "remote addr success without real ip header",
+			remoteAddr: "10.2.3.4:8080",
+			wantIP:     netip.MustParseAddr("10.2.3.4"),
 		},
 		{
-			name:             "remote addr success without x-forwarded-for",
-			remoteAddr:       "10.2.3.4:8080",
-			useXForwardedFor: false,
-			xForwardedForIdx: 0,
-			wantIP:           netip.MustParseAddr("10.2.3.4"),
+			name:       "remote ipv6 success without real ip header",
+			remoteAddr: "[2001:db8::11]:8080",
+			wantIP:     netip.MustParseAddr("2001:db8::11"),
 		},
 		{
-			name:             "remote ipv6 success without x-forwarded-for",
-			remoteAddr:       "[2001:db8::11]:8080",
-			useXForwardedFor: false,
-			xForwardedForIdx: 0,
-			wantIP:           netip.MustParseAddr("2001:db8::11"),
+			name:       "remote ipv4-mapped ipv6 is normalized",
+			remoteAddr: "[::ffff:198.51.100.42]:8080",
+			wantIP:     netip.MustParseAddr("198.51.100.42"),
 		},
 		{
-			name:             "remote ipv4-mapped ipv6 is normalized",
-			remoteAddr:       "[::ffff:198.51.100.42]:8080",
-			useXForwardedFor: false,
-			xForwardedForIdx: 0,
-			wantIP:           netip.MustParseAddr("198.51.100.42"),
+			name:       "remote addr missing port",
+			remoteAddr: "10.2.3.4",
+			wantErr:    "net.SplitHostPort failed",
 		},
 		{
-			name:             "remote addr missing port",
-			remoteAddr:       "10.2.3.4",
-			useXForwardedFor: false,
-			xForwardedForIdx: 0,
-			wantErr:          "net.SplitHostPort failed",
+			name:       "remote addr invalid ip",
+			remoteAddr: "not-an-ip:8080",
+			wantErr:    "invalid RemoteAddr IP: not-an-ip",
 		},
 		{
-			name:             "remote addr invalid ip",
-			remoteAddr:       "not-an-ip:8080",
-			useXForwardedFor: false,
-			xForwardedForIdx: 0,
-			wantErr:          "invalid RemoteAddr IP: not-an-ip",
+			name:            "real ip header requires loopback proxy",
+			remoteAddr:      "10.2.3.4:8080",
+			xRealIpHeader:   "203.0.113.8",
+			useRealIpHeader: true,
+			wantErr:         "remote IP 10.2.3.4 is not loopback, but useRealIpHeader is true",
 		},
 		{
-			name:                "x-forwarded-for requires loopback proxy",
-			remoteAddr:          "10.2.3.4:8080",
-			xForwardedForHeader: "203.0.113.8",
-			useXForwardedFor:    true,
-			xForwardedForIdx:    0,
-			wantErr:             "remote IP 10.2.3.4 is not loopback, but useXForwardedFor is true",
+			name:            "real ip header missing",
+			remoteAddr:      "127.0.0.1:8080",
+			useRealIpHeader: true,
+			wantErr:         "X-Real-IP header is empty",
 		},
 		{
-			name:             "x-forwarded-for missing header",
-			remoteAddr:       "127.0.0.1:8080",
-			useXForwardedFor: true,
-			xForwardedForIdx: 0,
-			wantErr:          "X-Forwarded-For header is empty",
+			name:            "real ip header invalid",
+			remoteAddr:      "127.0.0.1:8080",
+			xRealIpHeader:   "bad-ip",
+			useRealIpHeader: true,
+			wantErr:         "invalid X-Real-IP: bad-ip",
 		},
 		{
-			name:                "x-forwarded-for idx out of range",
-			remoteAddr:          "127.0.0.1:8080",
-			xForwardedForHeader: "198.51.100.1",
-			useXForwardedFor:    true,
-			xForwardedForIdx:    1,
-			wantErr:             "idx 1 requested from X-Forwarded-For header, but len is only 1",
+			name:            "real ip header is trimmed",
+			remoteAddr:      "127.0.0.1:8080",
+			xRealIpHeader:   " 203.0.113.7 ",
+			useRealIpHeader: true,
+			wantIP:          netip.MustParseAddr("203.0.113.7"),
 		},
 		{
-			name:                "x-forwarded-for selected ip invalid",
-			remoteAddr:          "127.0.0.1:8080",
-			xForwardedForHeader: "bad-ip",
-			useXForwardedFor:    true,
-			xForwardedForIdx:    0,
-			wantErr:             "invalid X-Forwarded-For IP: bad-ip",
+			name:            "real ip header ipv6",
+			remoteAddr:      "[::1]:8080",
+			xRealIpHeader:   "2001:db8::20",
+			useRealIpHeader: true,
+			wantIP:          netip.MustParseAddr("2001:db8::20"),
 		},
 		{
-			name:                "x-forwarded-for selected ip with spaces",
-			remoteAddr:          "127.0.0.1:8080",
-			xForwardedForHeader: "203.0.113.7, 198.51.100.5",
-			useXForwardedFor:    true,
-			xForwardedForIdx:    1,
-			wantIP:              netip.MustParseAddr("198.51.100.5"),
-		},
-		{
-			name:                "x-forwarded-for selected ipv6",
-			remoteAddr:          "[::1]:8080",
-			xForwardedForHeader: "2001:db8::10, 2001:db8::20",
-			useXForwardedFor:    true,
-			xForwardedForIdx:    1,
-			wantIP:              netip.MustParseAddr("2001:db8::20"),
-		},
-		{
-			name:                "x-forwarded-for selected mapped ipv4 is normalized",
-			remoteAddr:          "127.0.0.1:8080",
-			xForwardedForHeader: "::ffff:198.51.100.44",
-			useXForwardedFor:    true,
-			xForwardedForIdx:    0,
-			wantIP:              netip.MustParseAddr("198.51.100.44"),
+			name:            "real ip header mapped ipv4 is normalized",
+			remoteAddr:      "127.0.0.1:8080",
+			xRealIpHeader:   "::ffff:198.51.100.44",
+			useRealIpHeader: true,
+			wantIP:          netip.MustParseAddr("198.51.100.44"),
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			gotIP, err := GetIpAddr(tc.remoteAddr, tc.xForwardedForHeader, tc.useXForwardedFor, tc.xForwardedForIdx)
+			gotIP, err := GetIpAddr(tc.remoteAddr, tc.xRealIpHeader, tc.useRealIpHeader)
 			if tc.wantErr == "" {
 				if err != nil {
 					t.Fatalf("GetIpAddr returned unexpected error: %v", err)
@@ -221,6 +189,49 @@ func TestGetIpAddr(t *testing.T) {
 			}
 			if !strings.Contains(err.Error(), tc.wantErr) {
 				t.Fatalf("GetIpAddr error mismatch: got %q, want contains %q", err.Error(), tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestGetIpAddrFromReq(t *testing.T) {
+	tests := []struct {
+		name            string
+		remoteAddr      string
+		xRealIpHeader   string
+		useRealIpHeader bool
+		wantIP          netip.Addr
+	}{
+		{
+			name:          "uses remote addr when real ip header disabled",
+			remoteAddr:    "198.51.100.1:8080",
+			xRealIpHeader: "203.0.113.1",
+			wantIP:        netip.MustParseAddr("198.51.100.1"),
+		},
+		{
+			name:            "uses real ip header when enabled",
+			remoteAddr:      "127.0.0.1:8080",
+			xRealIpHeader:   "203.0.113.1",
+			useRealIpHeader: true,
+			wantIP:          netip.MustParseAddr("203.0.113.1"),
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			req, err := http.NewRequest(http.MethodGet, "http://example.com", nil)
+			if err != nil {
+				t.Fatalf("failed creating request: %v", err)
+			}
+			req.RemoteAddr = tc.remoteAddr
+			req.Header.Set("X-Real-IP", tc.xRealIpHeader)
+
+			gotIP, err := GetIpAddrFromReq(req, tc.useRealIpHeader)
+			if err != nil {
+				t.Fatalf("GetIpAddrFromReq returned unexpected error: %v", err)
+			}
+			if gotIP != tc.wantIP {
+				t.Fatalf("GetIpAddrFromReq IP mismatch: got %q, want %q", gotIP, tc.wantIP)
 			}
 		})
 	}

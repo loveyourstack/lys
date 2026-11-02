@@ -33,19 +33,13 @@ func GetBearerToken(headerStr string) (token string, err error) {
 }
 
 // GetIpAddrFromReq is an HTTP request wrapper for GetIpAddr.
-func GetIpAddrFromReq(r *http.Request, useXForwardedFor bool, xForwardedForIdx int) (remoteHostIP netip.Addr, err error) {
-	return GetIpAddr(r.RemoteAddr, r.Header.Get("X-Forwarded-For"), useXForwardedFor, xForwardedForIdx)
+func GetIpAddrFromReq(r *http.Request, useRealIpHeader bool) (remoteHostIP netip.Addr, err error) {
+	return GetIpAddr(r.RemoteAddr, r.Header.Get("X-Real-IP"), useRealIpHeader)
 }
 
-// GetIpAddr returns the remote IP from either remoteAddr or xForwardedForHeader.
-// useXForwardedFor: set to true when using nginx reverse proxy or services like Cloudflare, since the remote IP will be in the X-Forwarded-For header instead of RemoteAddr.
-// xForwardedForIdx: if using X-Forwarded-For header, this specifies which IP to use from the header (0 for first, etc).
-// This is needed when there are multiple proxies and thus multiple IPs in the header.
-func GetIpAddr(remoteAddr, xForwardedForHeader string, useXForwardedFor bool, xForwardedForIdx int) (remoteHostIP netip.Addr, err error) {
-
-	if xForwardedForIdx < 0 {
-		return netip.Addr{}, fmt.Errorf("invalid xForwardedForIdx: %d", xForwardedForIdx)
-	}
+// GetIpAddr returns the remote IP from either remoteAddr or xRealIpHeader.
+// useRealIpHeader: set to true when using nginx reverse proxy actual client IP will be in the X-Real-IP header instead of RemoteAddr.
+func GetIpAddr(remoteAddr, xRealIpHeader string, useRealIpHeader bool) (remoteHostIP netip.Addr, err error) {
 
 	// get host ip from RemoteAddr
 	ipStr, _, err := net.SplitHostPort(remoteAddr)
@@ -59,33 +53,22 @@ func GetIpAddr(remoteAddr, xForwardedForHeader string, useXForwardedFor bool, xF
 		return netip.Addr{}, fmt.Errorf("invalid RemoteAddr IP: %s", ipStr)
 	}
 
-	// if using X-Forwarded-For, get host ip from that header instead
-	if useXForwardedFor {
+	// if using X-Real-IP, get host ip from that header instead
+	if useRealIpHeader {
 
 		// in lys projects, a reverse proxy is used in production, so RemoteAddr should be a loopback IP
 		if !remoteHostIP.IsLoopback() {
-			return netip.Addr{}, fmt.Errorf("remote IP %s is not loopback, but useXForwardedFor is true", remoteHostIP)
+			return netip.Addr{}, fmt.Errorf("remote IP %s is not loopback, but useRealIpHeader is true", remoteHostIP)
 		}
 
-		if xForwardedForHeader == "" {
-			return netip.Addr{}, fmt.Errorf("X-Forwarded-For header is empty")
+		xRealIpHeader = strings.TrimSpace(xRealIpHeader)
+		if xRealIpHeader == "" {
+			return netip.Addr{}, fmt.Errorf("X-Real-IP header is empty")
 		}
 
-		// assumes multiple X-Forwarded-For IPs are in the same header value, but split by comma
-
-		// split header by comma
-		xForwardedS := strings.Split(xForwardedForHeader, ",")
-		if xForwardedForIdx > len(xForwardedS)-1 {
-			return netip.Addr{}, fmt.Errorf("idx %d requested from X-Forwarded-For header, but len is only %d", xForwardedForIdx, len(xForwardedS))
-		}
-
-		// get IP from idx and trim whitespace
-		remoteHostIPStr := strings.TrimSpace(xForwardedS[xForwardedForIdx])
-
-		// parse X-Forwarded-For IP
-		remoteHostIP, err = netip.ParseAddr(remoteHostIPStr)
+		remoteHostIP, err = netip.ParseAddr(xRealIpHeader)
 		if err != nil {
-			return netip.Addr{}, fmt.Errorf("invalid X-Forwarded-For IP: %s", remoteHostIPStr)
+			return netip.Addr{}, fmt.Errorf("invalid X-Real-IP: %s", xRealIpHeader)
 		}
 	}
 

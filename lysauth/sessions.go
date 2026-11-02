@@ -44,23 +44,21 @@ type Session struct {
 
 // AppSessions contains sessions and methods to manage them.
 type AppSessions struct {
-	all              map[string]Session // map of token to session
-	mu               sync.RWMutex
-	sessionDuration  time.Duration // duration of a session before it expires
-	useXForwardedFor bool          // whether to use X-Forwarded-For header to determine IP
-	validate         *validator.Validate
-	xForwardedForIdx int // if using X-Forwarded-For, which index to use (0 for first, etc)
+	all             map[string]Session // map of token to session
+	mu              sync.RWMutex
+	sessionDuration time.Duration // duration of a session before it expires
+	useRealIpHeader bool          // whether to use X-Real-IP header to determine IP
+	validate        *validator.Validate
 }
 
 // NewAppSessions creates a new AppSessions instance.
-func NewAppSessions(validate *validator.Validate, sessionDuration time.Duration, useXForwardedFor bool, xForwardedForIdx int) *AppSessions {
+func NewAppSessions(validate *validator.Validate, sessionDuration time.Duration, useRealIpHeader bool) *AppSessions {
 	return &AppSessions{
 		all: make(map[string]Session),
 
-		sessionDuration:  sessionDuration,
-		useXForwardedFor: useXForwardedFor,
-		validate:         validate,
-		xForwardedForIdx: xForwardedForIdx,
+		sessionDuration: sessionDuration,
+		useRealIpHeader: useRealIpHeader,
+		validate:        validate,
 	}
 }
 
@@ -191,7 +189,7 @@ func (appS *AppSessions) FromRequest(r *http.Request, logger *slog.Logger) (sess
 	}
 
 	// get IP
-	remoteHostIp, err := GetIpAddrFromReq(r, appS.useXForwardedFor, appS.xForwardedForIdx)
+	remoteHostIp, err := GetIpAddrFromReq(r, appS.useRealIpHeader)
 	if err != nil {
 		return Session{}, fmt.Errorf("GetIpAddrFromReq failed: %w", err)
 	}
