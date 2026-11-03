@@ -9,6 +9,60 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestRunEveryRunsUntilCanceled(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	calls := make(chan struct{}, 10)
+	done := make(chan struct{})
+
+	go func() {
+		RunEvery(ctx, 10*time.Millisecond, func() {
+			calls <- struct{}{}
+		})
+		close(done)
+	}()
+
+	for range 2 {
+		select {
+		case <-calls:
+		case <-time.After(time.Second):
+			t.Fatal("RunEvery did not invoke the function")
+		}
+	}
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("RunEvery did not stop after cancellation")
+	}
+}
+
+func TestRunEveryCanceledBeforeFirstTick(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+
+	called := false
+	done := make(chan struct{})
+	go func() {
+		RunEvery(ctx, time.Millisecond, func() {
+			called = true
+		})
+		close(done)
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("RunEvery did not stop after cancellation")
+	}
+
+	assert.False(t, called)
+}
+
 func TestSleepSuccess(t *testing.T) {
 	t.Parallel()
 
@@ -65,4 +119,22 @@ func TestSleepDeadlineExceeded(t *testing.T) {
 	assert.ErrorIs(t, err, context.DeadlineExceeded)
 	assert.GreaterOrEqual(t, elapsed, 20*time.Millisecond)
 	assert.Less(t, elapsed, 300*time.Millisecond)
+}
+
+func TestWaitOrTimeoutDone(t *testing.T) {
+	t.Parallel()
+
+	done := make(chan struct{})
+	close(done)
+
+	require.NoError(t, WaitOrTimeout(done, time.Second, "timed out"))
+}
+
+func TestWaitOrTimeoutTimeout(t *testing.T) {
+	t.Parallel()
+
+	err := WaitOrTimeout(make(chan struct{}), 10*time.Millisecond, "timed out")
+
+	require.Error(t, err)
+	assert.EqualError(t, err, "timed out")
 }

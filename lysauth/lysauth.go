@@ -38,7 +38,7 @@ func GetIpAddrFromReq(r *http.Request, useRealIpHeader bool) (remoteHostIP netip
 }
 
 // GetIpAddr returns the remote IP from either remoteAddr or xRealIpHeader.
-// useRealIpHeader: set to true when using nginx reverse proxy actual client IP will be in the X-Real-IP header instead of RemoteAddr.
+// useRealIpHeader: set to true when using nginx reverse proxy: actual client IP will be in the X-Real-IP header instead of RemoteAddr.
 func GetIpAddr(remoteAddr, xRealIpHeader string, useRealIpHeader bool) (remoteHostIP netip.Addr, err error) {
 
 	// get host ip from RemoteAddr
