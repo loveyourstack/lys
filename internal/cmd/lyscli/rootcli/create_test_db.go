@@ -18,9 +18,19 @@ func CreateTestDbCmd(cliApp *cliapp.App) *cobra.Command {
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) (err error) {
 
+			params := lyspgdb.CreateLocalDbParams{
+				SqlAssets:              ddl.SQLAssets,
+				DbConf:                 cliApp.Config.Db,
+				DbSuperUser:            cliApp.Config.DbSuperUser,
+				DbOwnerConf:            cliApp.Config.DbOwnerUser,
+				DropExisting:           true,
+				AddSecurityPermissions: false,
+				AddTestData:            true,
+				Replacements:           nil,
+			}
+
 			// (re-)create test db
-			if err = lyspgdb.CreateLocalDb(cmd.Context(), ddl.SQLAssets, cliApp.Config.Db, cliApp.Config.DbSuperUser, cliApp.Config.DbOwnerUser, true, false,
-				nil, cliApp.Logger); err != nil {
+			if err = lyspgdb.CreateLocalDb(cmd.Context(), params, cliApp.Logger); err != nil {
 				return fmt.Errorf("lyspgdb.CreateLocalDb failed: %w", err)
 			}
 
