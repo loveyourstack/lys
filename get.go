@@ -60,20 +60,22 @@ func Get[T any](env Env, store lyspg.Selecter[T], opts *GetOpts[T]) http.Handler
 
 	// get store vars
 	plan := store.GetPlan()
+	jsonKeyTypeMap := plan.JsonKeyTypeMap()
 	storeName := store.GetName()
+
+	extractModifierParams := ExtractGetRequestModifierParams{
+		AdditionalFilterParamNames: additionalFilterParamNames,
+		DbNames:                    lysset.FromSlice(plan.DbNames()),
+		GetOptions:                 env.GetOptions,
+		JsonKeyDbNameMap:           plan.JsonKeyDbNameMap(),
+		SetFuncUrlParamNames:       setFuncUrlParamNames,
+	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
 		// get request modifiers from url params
-		getReqModifiers, err := ExtractGetRequestModifiers(r,
-			ExtractGetRequestModifierParams{
-				AdditionalFilterParamNames: additionalFilterParamNames,
-				DbNames:                    lysset.FromSlice(plan.DbNames()),
-				GetOptions:                 env.GetOptions,
-				JsonKeyDbNameMap:           plan.JsonKeyDbNameMap(),
-				SetFuncUrlParamNames:       setFuncUrlParamNames,
-			})
+		getReqModifiers, err := ExtractGetRequestModifiers(r, extractModifierParams)
 		if err != nil {
 			HandleError(ctx, fmt.Errorf("Get: ExtractGetRequestModifiers failed: %w", err), env.Logger, w)
 			return
@@ -133,7 +135,7 @@ func Get[T any](env Env, store lyspg.Selecter[T], opts *GetOpts[T]) http.Handler
 			}))
 
 			// stream csv to response writer
-			err = lyscsv.WriteItems(items, plan.JsonKeyTypeMap(), env.GetOptions.CsvDelimiter, w)
+			err = lyscsv.WriteItems(items, jsonKeyTypeMap, env.GetOptions.CsvDelimiter, w)
 			if err != nil {
 				HandleInternalError(ctx, fmt.Errorf("Get: lyscsv.WriteItems failed: %w", err), env.Logger, w)
 				return
@@ -148,7 +150,7 @@ func Get[T any](env Env, store lyspg.Selecter[T], opts *GetOpts[T]) http.Handler
 			}))
 
 			// stream Excel to response writer
-			err = lysexcel.WriteItems(items, plan.JsonKeyTypeMap(), "", w)
+			err = lysexcel.WriteItems(items, jsonKeyTypeMap, "", w)
 			if err != nil {
 				HandleInternalError(ctx, fmt.Errorf("Get: lysexcel.WriteItems failed: %w", err), env.Logger, w)
 				return
