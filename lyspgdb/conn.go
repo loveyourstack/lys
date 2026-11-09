@@ -83,11 +83,19 @@ func GetPoolWithTypes(ctx context.Context, dbConfig Database, userConfig User, a
 	return db, nil
 }
 
-type ContextKey string
+type poolSettingCtxKey struct{}
+
+func WithPoolSetting(ctx context.Context, setting any) context.Context {
+	return context.WithValue(ctx, poolSettingCtxKey{}, setting)
+}
+
+func GetPoolSettingFromCtx(ctx context.Context) any {
+	return ctx.Value(poolSettingCtxKey{})
+}
 
 // GetPoolWithCtxSetting returns a connection pool wherein each connection has a setting from ctx applied to it on acquisition
 // adapted from https://github.com/jackc/pgx/issues/288
-func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database, userConfig User, appName, settingName string, ctxKey ContextKey, logger *slog.Logger) (db *pgxpool.Pool, err error) {
+func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database, userConfig User, appName, settingName string, ctxKey poolSettingCtxKey, logger *slog.Logger) (db *pgxpool.Pool, err error) {
 
 	cfg, err := GetConfig(dbConfig, userConfig, appName)
 	if err != nil {

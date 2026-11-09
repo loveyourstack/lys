@@ -2,7 +2,6 @@ package lys
 
 import (
 	"bytes"
-	"context"
 	"encoding/json/v2"
 	"image"
 	"image/color"
@@ -82,7 +81,7 @@ func TestUpload_HandlerSuccess(t *testing.T) {
 	}{
 		"file": {filename: "avatar.png", content: pngBytes(), mimeType: "image/png"},
 	})
-	req = req.WithContext(context.WithValue(req.Context(), UserInfoCtxKey, testUserInfo{userID: 42}))
+	req = req.WithContext(WithUserInfo(req.Context(), testUserInfo{userID: 42}))
 
 	rec := httptest.NewRecorder()
 	handler := Upload(params, dir, slog.New(slog.NewTextHandler(io.Discard, nil)))
