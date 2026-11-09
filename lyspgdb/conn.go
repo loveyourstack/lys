@@ -85,17 +85,14 @@ func GetPoolWithTypes(ctx context.Context, dbConfig Database, userConfig User, a
 
 type poolSettingCtxKey struct{}
 
+// WithPoolSetting binds a setting to the context, which is used by GetPoolWithCtxSetting.
 func WithPoolSetting(ctx context.Context, setting any) context.Context {
 	return context.WithValue(ctx, poolSettingCtxKey{}, setting)
 }
 
-func GetPoolSettingFromCtx(ctx context.Context) any {
-	return ctx.Value(poolSettingCtxKey{})
-}
-
-// GetPoolWithCtxSetting returns a connection pool wherein each connection has a setting from ctx applied to it on acquisition
-// adapted from https://github.com/jackc/pgx/issues/288
-func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database, userConfig User, appName, settingName string, ctxKey poolSettingCtxKey, logger *slog.Logger) (db *pgxpool.Pool, err error) {
+// GetPoolWithCtxSetting returns a connection pool wherein each connection has the setting from poolSettingCtxKey in ctx applied to it on acquisition.
+// Context must use WithPoolSetting. Adapted from https://github.com/jackc/pgx/issues/288
+func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database, userConfig User, appName, settingName string, logger *slog.Logger) (db *pgxpool.Pool, err error) {
 
 	cfg, err := GetConfig(dbConfig, userConfig, appName)
 	if err != nil {
@@ -104,7 +101,7 @@ func GetPoolWithCtxSetting[ctxValueT any](ctx context.Context, dbConfig Database
 
 	cfg.PrepareConn = func(ctx context.Context, conn *pgx.Conn) (bool, error) {
 
-		ctxVal, ok := ctx.Value(ctxKey).(ctxValueT)
+		ctxVal, ok := ctx.Value(poolSettingCtxKey{}).(ctxValueT)
 		if !ok {
 			// fail, but return connection to pool
 			return true, fmt.Errorf("ctxVal not found in ctx")
