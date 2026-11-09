@@ -242,7 +242,7 @@ func TestAppSessions_Add_SingleSessionPolicyDeletesPriorSessions(t *testing.T) {
 	reqOld.Header.Set("Authorization", "Bearer "+firstToken)
 	reqOld.Header.Set("User-Agent", firstInput.UserAgent)
 
-	_, err = appS.FromRequest(reqOld, slog.Default())
+	_, err = appS.FromRequest(reqOld, firstInput.Ip, slog.Default())
 	if err == nil {
 		t.Fatalf("FromRequest(old token) expected error, got nil")
 	}
@@ -258,7 +258,7 @@ func TestAppSessions_Add_SingleSessionPolicyDeletesPriorSessions(t *testing.T) {
 	reqNew.Header.Set("Authorization", "Bearer "+secondToken)
 	reqNew.Header.Set("User-Agent", secondInput.UserAgent)
 
-	if _, err = appS.FromRequest(reqNew, slog.Default()); err != nil {
+	if _, err = appS.FromRequest(reqNew, secondInput.Ip, slog.Default()); err != nil {
 		t.Fatalf("FromRequest(new token) returned unexpected error: %v", err)
 	}
 }
@@ -398,7 +398,7 @@ func TestAppSessions_DeleteByToken(t *testing.T) {
 		t.Fatalf("Count mismatch after DeleteByToken(existing): got %d, want 1", got)
 	}
 
-	_, err = appS.FromRequest(newAuthRequest(t, "198.51.100.30", token1, "ua-30"), slog.Default())
+	_, err = appS.FromRequest(newAuthRequest(t, "198.51.100.30", token1, "ua-30"), input1.Ip, slog.Default())
 	if err == nil {
 		t.Fatalf("FromRequest(deleted token) expected error, got nil")
 	}
@@ -412,7 +412,7 @@ func TestAppSessions_DeleteByToken(t *testing.T) {
 		t.Fatalf("Count mismatch after DeleteByToken(missing): got %d, want 1", got)
 	}
 
-	if _, err = appS.FromRequest(newAuthRequest(t, "198.51.100.31", token2, "ua-31"), slog.Default()); err != nil {
+	if _, err = appS.FromRequest(newAuthRequest(t, "198.51.100.31", token2, "ua-31"), input2.Ip, slog.Default()); err != nil {
 		t.Fatalf("FromRequest(remaining token) returned unexpected error: %v", err)
 	}
 }
@@ -487,7 +487,7 @@ func TestAppSessions_FromRequest(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("User-Agent", sessionInput.UserAgent)
 
-	sess, err := appS.FromRequest(req, slog.Default())
+	sess, err := appS.FromRequest(req, sessionInput.Ip, slog.Default())
 	if err != nil {
 		t.Fatalf("FromRequest(valid) returned unexpected error: %v", err)
 	}
@@ -524,7 +524,7 @@ func TestAppSessions_FromRequest_AcceptsMappedIPv4(t *testing.T) {
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("User-Agent", sessionInput.UserAgent)
 
-	if _, err = appS.FromRequest(req, slog.Default()); err != nil {
+	if _, err = appS.FromRequest(req, sessionInput.Ip, slog.Default()); err != nil {
 		t.Fatalf("FromRequest(mapped ipv4 remote) returned unexpected error: %v", err)
 	}
 }
@@ -547,7 +547,7 @@ func TestAppSessions_FromRequest_WebSocket(t *testing.T) {
 	t.Run("valid websocket request uses token query param", func(t *testing.T) {
 		req := newWebSocketAuthRequest(t, sessionInput.Ip.String(), token, "different-ua")
 
-		sess, err := appS.FromRequest(req, slog.Default())
+		sess, err := appS.FromRequest(req, sessionInput.Ip, slog.Default())
 		if err != nil {
 			t.Fatalf("FromRequest(valid websocket) returned unexpected error: %v", err)
 		}
@@ -560,7 +560,7 @@ func TestAppSessions_FromRequest_WebSocket(t *testing.T) {
 		req := newWebSocketAuthRequest(t, sessionInput.Ip.String(), token, sessionInput.UserAgent)
 		req.Header.Set("Authorization", "Bearer wrong-token")
 
-		if _, err = appS.FromRequest(req, slog.Default()); err != nil {
+		if _, err = appS.FromRequest(req, sessionInput.Ip, slog.Default()); err != nil {
 			t.Fatalf("FromRequest(websocket with wrong Authorization header) returned unexpected error: %v", err)
 		}
 	})
@@ -574,7 +574,7 @@ func TestAppSessions_FromRequest_WebSocket(t *testing.T) {
 		req.Header.Set("Upgrade", "websocket")
 		req.Header.Set("User-Agent", sessionInput.UserAgent)
 
-		_, err = appS.FromRequest(req, slog.Default())
+		_, err = appS.FromRequest(req, sessionInput.Ip, slog.Default())
 		if err == nil {
 			t.Fatalf("FromRequest(websocket missing token query) expected error, got nil")
 		}
@@ -584,7 +584,7 @@ func TestAppSessions_FromRequest_WebSocket(t *testing.T) {
 	})
 }
 
-func TestAppSessions_FromRequest_RealIpHeader(t *testing.T) {
+func TestAppSessions_FromRequest_UsesProvidedRemoteHostIp(t *testing.T) {
 	validate := validator.New()
 
 	t.Run("success with real ip header", func(t *testing.T) {
@@ -609,75 +609,13 @@ func TestAppSessions_FromRequest_RealIpHeader(t *testing.T) {
 		req.Header.Set("Authorization", "Bearer "+token)
 		req.Header.Set("User-Agent", input.UserAgent)
 
-		if _, err = appS.FromRequest(req, slog.Default()); err != nil {
+		remoteHostIP, err := GetIpAddrFromReq(req, true)
+		if err != nil {
+			t.Fatalf("GetIpAddrFromReq returned unexpected error: %v", err)
+		}
+
+		if _, err = appS.FromRequest(req, remoteHostIP, slog.Default()); err != nil {
 			t.Fatalf("FromRequest(X-Real-IP success) returned unexpected error: %v", err)
-		}
-	})
-
-	t.Run("remote must be loopback when using real ip header", func(t *testing.T) {
-		appS := NewAppSessions(validate, 10*time.Hour, true)
-		input := newDefaultSessionInput()
-		input.Ip = netip.MustParseAddr("198.51.100.91")
-		input.UserAgent = "real-ip-loopback"
-		input.UserId = 902
-		input.UserName = "real-ip-loopback"
-
-		token, err := appS.Add(input)
-		if err != nil {
-			t.Fatalf("setup Add returned unexpected error: %v", err)
-		}
-
-		req, err := http.NewRequest(http.MethodGet, "http://example.com", nil)
-		if err != nil {
-			t.Fatalf("failed creating request: %v", err)
-		}
-		req.RemoteAddr = "10.0.0.7:443"
-		req.Header.Set("X-Real-IP", "198.51.100.91")
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("User-Agent", input.UserAgent)
-
-		_, err = appS.FromRequest(req, slog.Default())
-		if err == nil {
-			t.Fatalf("FromRequest(non-loopback reverse proxy) expected error, got nil")
-		}
-		if !strings.Contains(err.Error(), "GetIpAddrFromReq failed") {
-			t.Fatalf("FromRequest(non-loopback reverse proxy) error mismatch: got %q, want contains %q", err.Error(), "GetIpAddrFromReq failed")
-		}
-		if !strings.Contains(err.Error(), "not loopback") {
-			t.Fatalf("FromRequest(non-loopback reverse proxy) error mismatch: got %q, want contains %q", err.Error(), "not loopback")
-		}
-	})
-
-	t.Run("real ip header must be present", func(t *testing.T) {
-		appS := NewAppSessions(validate, 10*time.Hour, true)
-		input := newDefaultSessionInput()
-		input.Ip = netip.MustParseAddr("198.51.100.92")
-		input.UserAgent = "real-ip-missing"
-		input.UserId = 903
-		input.UserName = "real-ip-missing"
-
-		token, err := appS.Add(input)
-		if err != nil {
-			t.Fatalf("setup Add returned unexpected error: %v", err)
-		}
-
-		req, err := http.NewRequest(http.MethodGet, "http://example.com", nil)
-		if err != nil {
-			t.Fatalf("failed creating request: %v", err)
-		}
-		req.RemoteAddr = "127.0.0.1:443"
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("User-Agent", input.UserAgent)
-
-		_, err = appS.FromRequest(req, slog.Default())
-		if err == nil {
-			t.Fatalf("FromRequest(missing X-Real-IP) expected error, got nil")
-		}
-		if !strings.Contains(err.Error(), "GetIpAddrFromReq failed") {
-			t.Fatalf("FromRequest(missing X-Real-IP) error mismatch: got %q, want contains %q", err.Error(), "GetIpAddrFromReq failed")
-		}
-		if !strings.Contains(err.Error(), "X-Real-IP header is empty") {
-			t.Fatalf("FromRequest(missing X-Real-IP) error mismatch: got %q, want contains %q", err.Error(), "X-Real-IP header is empty")
 		}
 	})
 }
@@ -720,7 +658,7 @@ func TestAppSessions_FromRequestErrors(t *testing.T) {
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			req := tc.buildReq()
-			_, err := appS.FromRequest(req, slog.Default())
+			_, err := appS.FromRequest(req, sessionInput.Ip, slog.Default())
 			if err == nil {
 				t.Fatalf("FromRequest expected error containing %q, got nil", tc.wantErr)
 			}
@@ -981,7 +919,7 @@ func TestAppSessions_ConcurrentAddAndFromRequest(t *testing.T) {
 				req.Header.Set("Authorization", "Bearer "+ref.token)
 				req.Header.Set("User-Agent", ref.userAgent)
 
-				if _, err = appS.FromRequest(req, slog.Default()); err != nil {
+				if _, err = appS.FromRequest(req, netip.MustParseAddr(ref.ip), slog.Default()); err != nil {
 					errCh <- fmt.Errorf("FromRequest failed: %w", err)
 				}
 			}

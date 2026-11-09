@@ -169,7 +169,7 @@ func (appS *AppSessions) DeleteByUserId(userId int64) {
 }
 
 // FromRequest returns the session associated with the request, or an error if the session is invalid.
-func (appS *AppSessions) FromRequest(r *http.Request, logger *slog.Logger) (sess Session, err error) {
+func (appS *AppSessions) FromRequest(r *http.Request, remoteHostIp netip.Addr, logger *slog.Logger) (sess Session, err error) {
 
 	isWebSocket := IsWebSocket(r.Header)
 	token := ""
@@ -186,12 +186,6 @@ func (appS *AppSessions) FromRequest(r *http.Request, logger *slog.Logger) (sess
 		if err != nil {
 			return Session{}, fmt.Errorf("GetBearerToken failed: %w", err)
 		}
-	}
-
-	// get IP
-	remoteHostIp, err := GetIpAddrFromReq(r, appS.useRealIpHeader)
-	if err != nil {
-		return Session{}, fmt.Errorf("GetIpAddrFromReq failed: %w", err)
 	}
 
 	// delegate to FromToken
