@@ -1,6 +1,7 @@
 package lysauth
 
 import (
+	"context"
 	"errors"
 	"net/http"
 	"net/netip"
@@ -9,6 +10,50 @@ import (
 
 	"github.com/loveyourstack/lys/lyserr"
 )
+
+func TestClientIpFromCtx(t *testing.T) {
+	tests := []struct {
+		name    string
+		ctx     context.Context
+		wantIP  netip.Addr
+		wantErr bool
+	}{
+		{
+			name:   "client IP is set",
+			ctx:    WithClientIp(context.Background(), netip.MustParseAddr("203.0.113.1")),
+			wantIP: netip.MustParseAddr("203.0.113.1"),
+		},
+		{
+			name:    "client IP is missing",
+			ctx:     context.Background(),
+			wantErr: true,
+		},
+		{
+			name:    "client IP is invalid",
+			ctx:     WithClientIp(context.Background(), netip.Addr{}),
+			wantErr: true,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			gotIP, err := ClientIpFromCtx(tc.ctx)
+			if tc.wantErr {
+				if err == nil {
+					t.Fatal("ClientIpFromCtx expected an error, got nil")
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("ClientIpFromCtx returned unexpected error: %v", err)
+			}
+			if gotIP != tc.wantIP {
+				t.Fatalf("ClientIpFromCtx IP mismatch: got %q, want %q", gotIP, tc.wantIP)
+			}
+		})
+	}
+}
 
 func TestGetBearerToken(t *testing.T) {
 	tests := []struct {

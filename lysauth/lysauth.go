@@ -1,6 +1,7 @@
 package lysauth
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -9,6 +10,22 @@ import (
 
 	"github.com/loveyourstack/lys/lyserr"
 )
+
+type clientIpCtxKey struct{}
+
+// WithClientIp stores the client's IP address in context.
+func WithClientIp(ctx context.Context, ip netip.Addr) context.Context {
+	return context.WithValue(ctx, clientIpCtxKey{}, ip)
+}
+
+// ClientIpFromCtx retrieves the client's IP address from context if WithClientIp was used to set it.
+func ClientIpFromCtx(ctx context.Context) (netip.Addr, error) {
+	ip, ok := ctx.Value(clientIpCtxKey{}).(netip.Addr)
+	if !ok || !ip.IsValid() {
+		return netip.Addr{}, fmt.Errorf("client IP missing or invalid in context")
+	}
+	return ip, nil
+}
 
 // GetBearerToken returns the bearer token from the provided header string. For HTTP, pass the value of the "Authorization" header.
 func GetBearerToken(headerStr string) (token string, err error) {
